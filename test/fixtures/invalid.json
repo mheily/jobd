@@ -1,0 +1,14 @@
+{ "Label": "foo",
+"UserName": "nobody",
+"GroupName": "nogroup",
+"EnvironmentVariables": {
+  "LD_PRELOAD": "/usr/lib:/lib",
+  "DEBUG": "yes",
+},
+"EnableGlobbing": true,
+"WorkingDirectory": "/blah",
+"RootDirectory": "/nowhere",
+"StandardInPath": "/dev/stdin",
+"StandardOutPath": "/dev/stdout",
+"StandardErrorPath": "/dev/stderr",
+}

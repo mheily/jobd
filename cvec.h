@@ -1,0 +1,98 @@
+/*
+ * Copyright (c) 2015 Mark Heily <mark@heily.com>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#ifndef __CVEC_H
+#define __CVEC_H
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <stddef.h>
+
+/* A simple vector of strings that can dynamically grow */
+struct cvec {
+	size_t 	length;   	/* Number of elements actually used */
+	size_t 	allocated; 	/* Number of elements malloc'd */
+	char	**items;
+};
+typedef struct cvec *cvec_t;
+
+static inline cvec_t cvec_new() {
+	cvec_t cv;
+
+	cv = calloc(1, sizeof(*cv));
+	if (cv == NULL) return NULL;
+	return cv;
+}
+
+static inline int cvec_push(cvec_t cv, char *item) {
+	char **new_items;
+
+	if (cv->allocated == cv->length) {
+		new_items = realloc(cv->items, cv->allocated + 50);
+		if (new_items == NULL) {
+			return (-1);
+		} else {
+			cv->items = new_items;
+			cv->allocated += 50;
+		}
+	}
+	cv->items[cv->length] = item;
+	cv->length++;
+	return (0);
+}
+
+static inline char * cvec_get(cvec_t cv, size_t index) {
+	return cv->items[index];
+}
+
+static inline void cvec_free(cvec_t cv) {
+	int i;
+
+	if (cv == NULL) return;
+
+	for (i = 0; i < cv->length; i++) {
+		free(cv->items[i]);
+	}
+	free(cv->items);
+	free(cv);
+}
+
+static inline char ** cvec_to_array(cvec_t cv) {
+	/* Append a terminating NULL element */
+	if (cv->length == 0 || cv->items[cv->length] != NULL) {
+		cvec_push(cv, NULL);
+		cv->length--;
+	}
+	return (cv->items);
+}
+
+static inline void cvec_debug(cvec_t cv) {
+#ifdef DEBUG
+	int i;
+
+	fprintf(stderr, "items: %zu\n", cv->length);
+	for (i = 0; i < cv->length; i++) {
+		fprintf(stderr, "  %d = %s\n", i, cv->items[i]);
+	}
+#else
+	(void) cv;
+#endif
+}
+
+static inline size_t cvec_length(cvec_t const cv) {
+	return cv->length;
+}
+#endif /* __CVEC_H */
