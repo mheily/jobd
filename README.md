@@ -20,7 +20,7 @@ The core functionality is working
 
 Some things are not implemented yet:
 * anything that requires root privileges, such as UserName or RootDirectory
-* unloading jobs, or listing their status
+* unloading jobs
 * cron functionality - StartInterval, StartCalendarInterval
 * on-demand activation - Sockets, StartOnMount
 * file and directory watches - WatchPaths, QueueDirectories

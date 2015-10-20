@@ -195,7 +195,7 @@ static inline void setup_logging()
 	//TODO: redirect stderr to a logfile
 }
 
-static inline void create_pid_file()
+static void create_pid_file()
 {
 	char *path, *buf;
 	int fd;
@@ -214,7 +214,7 @@ static inline void create_pid_file()
 	free(buf);
 }
 
-static inline void reap_child() {
+static void reap_child() {
 	pid_t pid;
 	int status;
 	job_t job;
@@ -239,6 +239,40 @@ static inline void reap_child() {
 		}
 	}
 	log_error("child exited but no job found");
+}
+
+static void write_status_file()
+{
+	char *path, *buf, *pid;
+	int fd;
+	ssize_t len;
+	job_t job;
+
+	/* FIXME: should write to a .new file, then rename() over the old file */
+	if (asprintf(&path, "%s/launchctl.list", options.pkgstatedir) < 0) abort();
+	if ((fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, 0644)) < 0) {
+		log_errno("open of %s", path);
+		abort();
+	}
+	if (asprintf(&buf, "%-8s %-8s %s\n", "PID", "Status", "Label") < 0) abort();
+	len = strlen(buf) + 1;
+	if (write(fd, buf, len) < len) abort();
+	free(buf);
+	LIST_FOREACH(job, &state.jobs, joblist_entry) {
+		if (job->pid == 0) {
+			if ((pid = strdup("-")) == NULL) abort();
+		} else {
+			if (asprintf(&pid, "%d", job->pid) < 0) abort();
+		}
+		if (asprintf(&buf, "%-8s %-8d %s\n", pid, job->last_exit_status, job->jm->label) < 0) abort();
+		len = strlen(buf) + 1;
+		if (write(fd, buf, len) < len) abort();
+		free(buf);
+		free(pid);
+	}
+	if (close(fd) < 0) abort();
+	free(path);
+	free(buf);
 }
 
 static void main_loop()
@@ -268,6 +302,9 @@ static void main_loop()
 				if (poll_watchdir() > 0) {
 					update_jobs();
 				}
+				break;
+			case SIGUSR1:
+				write_status_file();
 				break;
 			case SIGCHLD:
 				reap_child();
