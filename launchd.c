@@ -17,6 +17,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,7 +43,6 @@ static struct {
 
 static struct {
 	int 	kq;				/* kqueue(2) descriptor */
-	int 	watchfd;		/* fd being watched to signal new jobs in the watchdir */
 	LIST_HEAD(,job_manifest) pending; /* Jobs that have been submitted but not loaded */
 	LIST_HEAD(,job) jobs;			/* All active jobs */
 } state;
@@ -170,16 +170,21 @@ static void update_jobs(void)
 	}
 }
 
-static void watch_for_new_jobs()
+static void signal_handler(int signum) {
+	(void) signum;
+}
+
+static void setup_signal_handlers()
 {
     struct kevent kev;
-	char *buf;
 
-	if (asprintf(&buf, "%s/.notify", options.watchdir) < 0) abort();
-	if ((state.watchfd = open(buf, O_RDONLY)) < 0) abort();
-	free(buf);
-    EV_SET(&kev, state.watchfd, EVFILT_VNODE, EV_ADD | EV_CLEAR, NOTE_ATTRIB, 0, &state.watchfd);
+    EV_SET(&kev, SIGHUP, EVFILT_SIGNAL, EV_ADD, 0, 0, &setup_signal_handlers);
     if (kevent(state.kq, &kev, 1, NULL, 0, NULL) < 0) abort();
+    if (signal(SIGHUP, signal_handler) == SIG_ERR) abort();
+
+    EV_SET(&kev, SIGUSR1, EVFILT_SIGNAL, EV_ADD, 0, 0, &setup_signal_handlers);
+    if (kevent(state.kq, &kev, 1, NULL, 0, NULL) < 0) abort();
+    if (signal(SIGUSR1, signal_handler) == SIG_ERR) abort();
 }
 
 static inline void setup_logging()
@@ -187,6 +192,25 @@ static inline void setup_logging()
 	//close(0);
 	//close(1);
 	//TODO: redirect stderr to a logfile
+}
+
+static inline void create_pid_file()
+{
+	char *path, *buf;
+	int fd;
+	ssize_t len;
+
+	if (asprintf(&path, "%s/launchd.pid", options.pkgstatedir) < 0) abort();
+	if (asprintf(&buf, "%d", getpid()) < 0) abort();
+	len = strlen(buf);
+	if ((fd = open(path, O_CREAT | O_WRONLY, 0644)) < 0) {
+		log_errno("open of %s", path);
+		abort();
+	}
+	if (write(fd, buf, len) < len) abort();
+	if (close(fd) < 0) abort();
+	free(path);
+	free(buf);
 }
 
 static void main_loop()
@@ -197,14 +221,31 @@ static void main_loop()
 	if ((state.kq = kqueue()) < 0) abort();
 	LIST_INIT(&state.jobs);
 
-	watch_for_new_jobs();
+	create_pid_file();
+	setup_signal_handlers();
 	poll_watchdir();
 
 	for (;;) {
-		if (kevent(state.kq, NULL, 0, &kev, 1, NULL) < 1) abort();
-		if (kev.udata == &state.watchfd) {
-			if (poll_watchdir() > 0) {
-				update_jobs();
+		if (kevent(state.kq, NULL, 0, &kev, 1, NULL) < 1) {
+			if (errno == EINTR) {
+				continue;
+			} else {
+				log_errno("kevent");
+				abort();
+			}
+		}
+		if (kev.udata == &setup_signal_handlers) {
+			switch (kev.ident) {
+			case SIGHUP:
+				if (poll_watchdir() > 0) {
+					update_jobs();
+				}
+				break;
+			case SIGCHLD:
+				puts("got sigchld");
+				break;
+			default:
+				log_error("got unexpected signal");
 			}
 		} else {
 			log_warning("spurious wakeup, no known handlers");

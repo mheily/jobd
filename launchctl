@@ -35,7 +35,7 @@ load)
 			cp $path $watchdir
 		fi
 	done
-	touch $watchdir/.notify
+	kill -HUP `cat $pkgdatadir/launchd.pid`
 	;;
 
 *)

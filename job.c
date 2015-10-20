@@ -176,7 +176,10 @@ int job_run(job_t job)
     if (pid < 0) {
     	return (-1);
     } else if (pid == 0) {
-    	(void) start_child_process(job); //TODO: report failures to the parent
+    	if (start_child_process(job) < 0) {
+    		//TODO: report failures to the parent
+    		exit(127);
+    	}
     } else {
     	log_debug("running %s", job->jm->label);
     	job->pid = pid;

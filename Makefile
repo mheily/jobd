@@ -14,13 +14,15 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
+DEBUGFLAGS=-g -O0 -DDEBUG
+
 all: launchd
 
 check: launchd
 	cd test && make && ./jmtest
 
 launchd:
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ launchd.c job.c manifest.c jsmn/jsmn.c
+	$(CC) $(CFLAGS) $(DEBUGFLAGS) $(LDFLAGS) -o $@ launchd.c job.c manifest.c jsmn/jsmn.c
 
 clean:
 	rm -f *.o
