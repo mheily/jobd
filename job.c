@@ -106,25 +106,34 @@ static int start_child_process(const job_t job)
     	//TODO: umask
     }
     if (job->jm->stdin_path) {
-	int fd = open(job->jm->stdin_path, O_RDONLY);
-	if (fd < 0) goto err_out;
+    	log_debug("setting stdin path to %s", job->jm->stdin_path);
+    	int fd = open(job->jm->stdin_path, O_RDONLY);
+    	if (fd < 0) goto err_out;
     	if (dup2(fd, 0) < 0) goto err_out;
     	if (close(fd) < 0) goto err_out;
     }
     if (job->jm->stdout_path) {
-	int fd = open(job->jm->stdout_path, O_WRONLY);
-	if (fd < 0) goto err_out;
+    	log_debug("setting stdout path to %s", job->jm->stdout_path);
+    	int fd = open(job->jm->stdout_path, O_CREAT | O_WRONLY, 0600);
+		if (fd < 0) goto err_out;
     	if (dup2(fd, 1) < 0) goto err_out;
     	if (close(fd) < 0) goto err_out;
     }
     if (job->jm->stderr_path) {
-	int fd = open(job->jm->stderr_path, O_WRONLY);
-	if (fd < 0) goto err_out;
+    	/* FIXME: this shares a fd with launchd's logger. Fix this by moving launchd's logger to fd #3 */
+    	log_debug("setting stderr path to %s", job->jm->stderr_path);
+    	int fd = open(job->jm->stderr_path, O_CREAT | O_WRONLY, 0600);
+    	if (fd < 0) goto err_out;
     	if (dup2(fd, 2) < 0) goto err_out;
     	if (close(fd) < 0) goto err_out;
     }
 
-    return (exec_job(job));
+    if (exec_job(job) < 0) {
+    	log_error("exec_job() failed");
+    	goto err_out;
+    }
+
+    return (0);
 
 err_out:
 	log_error("job %s failed to start; see previous log message for details", job->jm->label);
