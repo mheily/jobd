@@ -26,6 +26,7 @@
 #include <sys/queue.h>
 #include <sys/types.h>
 #include <sys/event.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "log.h"
@@ -176,15 +177,15 @@ static void signal_handler(int signum) {
 
 static void setup_signal_handlers()
 {
+	const int signals[] = {SIGHUP, SIGUSR1, SIGCHLD, 0};
+	int i;
     struct kevent kev;
 
-    EV_SET(&kev, SIGHUP, EVFILT_SIGNAL, EV_ADD, 0, 0, &setup_signal_handlers);
-    if (kevent(state.kq, &kev, 1, NULL, 0, NULL) < 0) abort();
-    if (signal(SIGHUP, signal_handler) == SIG_ERR) abort();
-
-    EV_SET(&kev, SIGUSR1, EVFILT_SIGNAL, EV_ADD, 0, 0, &setup_signal_handlers);
-    if (kevent(state.kq, &kev, 1, NULL, 0, NULL) < 0) abort();
-    if (signal(SIGUSR1, signal_handler) == SIG_ERR) abort();
+    for (i = 0; signals[i] != 0; i++) {
+        EV_SET(&kev, signals[i], EVFILT_SIGNAL, EV_ADD, 0, 0, &setup_signal_handlers);
+        if (kevent(state.kq, &kev, 1, NULL, 0, NULL) < 0) abort();
+        if (signal(signals[i], signal_handler) == SIG_ERR) abort();
+    }
 }
 
 static inline void setup_logging()
@@ -211,6 +212,33 @@ static inline void create_pid_file()
 	if (close(fd) < 0) abort();
 	free(path);
 	free(buf);
+}
+
+static inline void reap_child() {
+	pid_t pid;
+	int status;
+	job_t job;
+
+	pid = waitpid(-1, &status, WNOHANG);
+	if (pid < 0) abort();
+
+	LIST_FOREACH(job, &state.jobs, joblist_entry) {
+		if (job->pid == pid) {
+			job->state = JOB_STATE_EXITED;
+			if (WIFEXITED(status)) {
+				job->last_exit_status = WEXITSTATUS(status);
+			} else if (WIFSIGNALED(status)) {
+				job->last_exit_status = -1;
+				job->term_signal = WTERMSIG(status);
+			} else {
+				log_error("unhandled exit status");
+			}
+			log_debug("job %d exited with status %d", job->pid, job->last_exit_status);
+			job->pid = 0;
+			return;
+		}
+	}
+	log_error("child exited but no job found");
 }
 
 static void main_loop()
@@ -242,7 +270,7 @@ static void main_loop()
 				}
 				break;
 			case SIGCHLD:
-				puts("got sigchld");
+				reap_child();
 				break;
 			default:
 				log_error("got unexpected signal");

@@ -24,15 +24,16 @@
 #include "manifest.h"
 
 struct job {
-    LIST_ENTRY(job) 	joblist_entry;
-	job_manifest_t		jm;
-	enum	{
+	LIST_ENTRY(job)	joblist_entry;
+	job_manifest_t jm;
+	enum {
 		JOB_STATE_DEFINED,
 		JOB_STATE_LOADED,
 		JOB_STATE_RUNNING,
 		JOB_STATE_EXITED,
 	} state;
-	pid_t	pid;
+	pid_t pid;
+	int last_exit_status, term_signal;
 };
 typedef struct job *job_t;
 
