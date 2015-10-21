@@ -41,7 +41,7 @@ list)
 	listfile="$pkgdatadir/launchctl.list"
 	rm -f $listfile
 	kill -USR1 `cat $pkgdatadir/launchd.pid`
-	while [ ! -f $listfile ] ; do sleep 1 ; done
+	while [ ! -f $listfile ] ; do sleep 0.2 ; done
 	cat $listfile
 	;;
 

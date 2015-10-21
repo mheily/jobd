@@ -34,6 +34,8 @@
 #include "job.h"
 #include "uset.h"
 
+FILE *logfile;
+
 static struct {
 	char *	pkgstatedir;	/* Top-level directory for state data */
 	char *	watchdir;		/* Directory to watch for new jobs */
@@ -178,7 +180,7 @@ static void signal_handler(int signum) {
 
 static void setup_signal_handlers()
 {
-	const int signals[] = {SIGHUP, SIGUSR1, SIGCHLD, 0};
+	const int signals[] = {SIGHUP, SIGUSR1, SIGCHLD, SIGINT, SIGTERM, 0};
 	int i;
     struct kevent kev;
 
@@ -191,9 +193,18 @@ static void setup_signal_handlers()
 
 static inline void setup_logging()
 {
-	//close(0);
-	//close(1);
-	//TODO: redirect stderr to a logfile
+	char *path = NULL;
+
+	if (getuid() == 0) {
+		path = strdup("/.launchd/launchd.log");
+	} else {
+		asprintf(&path, "%s/.launchd/launchd.log", getenv("HOME"));
+	}
+	if (!path) abort();
+	logfile = fopen(path, "a");
+	if (!logfile) abort();
+	free(path);
+	log_info("log started");
 }
 
 static void create_pid_file()
@@ -283,7 +294,8 @@ static void write_status_file()
 static void load_jobs(const char *path)
 {
 	char *buf;
-	if (asprintf(&buf, "/usr/bin/find %s -name *.json -exec cp {} %s \\;", path, options.watchdir) < 0) abort();
+	if (asprintf(&buf, "/usr/bin/find %s -type f -exec cp {} %s \\;", path, options.watchdir) < 0) abort();
+	log_debug("loading: %s", buf);
 	if (system(buf) < 0) {
 		log_errno("system");
 		abort();
@@ -318,7 +330,9 @@ static void main_loop()
 	create_pid_file();
 	setup_signal_handlers();
 	load_all_jobs();
-	poll_watchdir();
+	if (poll_watchdir() > 0) {
+		update_jobs();
+	}
 
 	for (;;) {
 		if (kevent(state.kq, NULL, 0, &kev, 1, NULL) < 1) {
@@ -342,8 +356,14 @@ static void main_loop()
 			case SIGCHLD:
 				reap_child();
 				break;
+			case SIGINT:
+			case SIGTERM:
+				log_notice("caught signal %lu, exiting", kev.ident);
+				/* TODO: save state */
+				exit(0);
+				break;
 			default:
-				log_error("got unexpected signal");
+				log_error("caught unexpected signal");
 			}
 		} else {
 			log_warning("spurious wakeup, no known handlers");

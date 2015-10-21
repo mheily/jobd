@@ -168,6 +168,7 @@ static inline int exec_job(const job_t job, const struct passwd *pwent) {
 	}
 #endif
 
+	fclose(logfile);
     rv = execve(path, argv, envp);
     if (rv < 0) {
     	log_error("failed to call execve(2)");
