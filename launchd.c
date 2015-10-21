@@ -69,10 +69,6 @@ static void setup_job_dirs()
 	if (asprintf(&buf, "/bin/rm -f %s/*", options.activedir) < 0) abort();
 	if (system(buf) < 0) abort();
 	free(buf);
-
-	if (asprintf(&buf, "/usr/bin/touch %s/.notify", options.watchdir) < 0) abort();
-	if (system(buf) < 0) abort();
-	free(buf);
 }
 
 static void at_shutdown()
@@ -121,8 +117,7 @@ static ssize_t poll_watchdir()
 	while (dirp) {
 		if (readdir_r(dirp, &entry, &result) < 0) abort();
 		if (!result) break;
-		if (strcmp(entry.d_name, ".") == 0 || strcmp(entry.d_name, "..") == 0 ||
-				strcmp(entry.d_name, ".notify") == 0) {
+		if (strcmp(entry.d_name, ".") == 0 || strcmp(entry.d_name, "..") == 0) {
 			continue;
 		}
 		jm = read_job(entry.d_name);
@@ -327,7 +322,7 @@ main(int argc, char *argv[])
 	options.daemon = true;
 	options.log_level = LOG_DEBUG;
 	if (getuid() == 0) {
-		abort();
+		if (asprintf(&options.pkgstatedir, "/.launchd/run") < 0) abort();
 	} else {
 		if (asprintf(&options.pkgstatedir, "%s/.launchd/run", getenv("HOME")) < 0) abort();
 	}

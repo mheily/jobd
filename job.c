@@ -15,6 +15,8 @@
  */
 
 #include <fcntl.h>
+#include <grp.h>
+#include <pwd.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 
@@ -35,18 +37,115 @@ static int apply_resource_limits(const job_t job) {
 	return (0);
 }
 
-static inline int modify_credentials(job_t const job)
+static inline int modify_credentials(job_t const job, const struct passwd *pwent, const struct group *grent)
 {
-	//TODO: support all the things when running as root
+	if (getuid() != 0) return (0);
+
+	log_debug("setting credentials: uid=%d gid=%d", pwent->pw_uid, grent->gr_gid);
+
+	if (initgroups(job->jm->user_name, grent->gr_gid) < 0) {
+		log_errno("initgroups");
+		return (-1);
+	}
+	if (setgid(grent->gr_gid) < 0) {
+		log_errno("setgid");
+		return (-1);
+	}
+	if (setlogin(job->jm->user_name) < 0) {
+		log_errno("setlogin");
+		return (-1);
+	}
+	if (setuid(pwent->pw_uid) < 0) {
+		log_errno("setuid");
+		return (-1);
+	}
 	return (0);
 }
 
-static inline int exec_job(const job_t job) {
+static inline cvec_t setup_environment_variables(const job_t job, const struct passwd *pwent)
+{
+	cvec_t env = NULL;
+	char *curp, *buf = NULL;
+	char *logname_var, *user_var;
+	int i, j;
+	bool found[] = { false, false, false, false, false, false };
+
+	env = cvec_new();
+	if (!env) goto err_out;
+
+	if (asprintf(&logname_var, "LOGNAME=%s", job->jm->user_name) < 0) goto err_out;
+	if (asprintf(&user_var, "USER=%s", job->jm->user_name) < 0) goto err_out;
+
+	/* Convert the flat array into an array of key=value pairs */
+	/* Follow the crontab(5) convention of overriding LOGNAME and USER
+	 * and providing a default value for HOME, PATH, and SHELL */
+	for (i = 0; i < cvec_length(job->jm->environment_variables); i += 2) {
+		curp = cvec_get(job->jm->environment_variables, i);
+		if (strcmp(curp, "LOGNAME") == 0) {
+			found[0] = true;
+			if (cvec_push(env, logname_var) < 0) goto err_out;
+		} else if (strcmp(curp, "USER") == 0) {
+			found[1] = true;
+			if (cvec_push(env, user_var) < 0) goto err_out;
+		} else if (strcmp(curp, "HOME")) {
+			found[2] = true;
+		} else if (strcmp(curp, "PATH")) {
+			found[3] = true;
+		} else if (strcmp(curp, "SHELL")) {
+			found[4] = true;
+		} else if (strcmp(curp, "TMPDIR")) {
+			found[5] = true;
+		}
+	}
+	if (!found[0]) {
+		if (cvec_push(env, logname_var) < 0) goto err_out;
+	}
+	if (!found[1]) {
+		if (cvec_push(env, user_var) < 0) goto err_out;
+	}
+	if (!found[2]) {
+		if (asprintf(&buf, "HOME=%s", pwent->pw_dir) < 0) goto err_out;
+		if (cvec_push(env, buf) < 0) goto err_out;
+		free(buf);
+	}
+	if (!found[3]) {
+		if (cvec_push(env, "PATH=/usr/bin:/bin") < 0) goto err_out;
+	}
+	if (!found[4]) {
+		if (asprintf(&buf, "SHELL=%s", pwent->pw_shell) < 0) goto err_out;
+		if (cvec_push(env, buf) < 0) goto err_out;
+		free(buf);
+	}
+	if (!found[5]) {
+		if (cvec_push(env, "TMPDIR=/tmp") < 0) goto err_out;
+	}
+	free(logname_var);
+	free(user_var);
+
+	return (env);
+
+err_out:
+	free(logname_var);
+	free(user_var);
+	free(buf);
+	cvec_free(env);
+	return NULL;
+}
+
+static inline int exec_job(const job_t job, const struct passwd *pwent) {
 	int rv;
 	char *path;
 	char **argv, **envp;
+	cvec_t final_env;
 
-	envp = cvec_to_array(job->jm->environment_variables);
+	final_env = setup_environment_variables(job, pwent);
+	if (final_env == NULL) {
+		log_error("unable to set environment vars");
+		return (-1);
+	}
+	envp = cvec_to_array(final_env);
+	cvec_free(final_env);
+
 	argv = cvec_to_array(job->jm->program_arguments);
 	path = argv[0];
 	if (job->jm->program) {
@@ -78,10 +177,16 @@ static inline int exec_job(const job_t job) {
     return (0);
 }
 
-static int start_child_process(const job_t job)
+static int start_child_process(const job_t job, const struct passwd *pwent, const struct group *grent)
 {
 	int rv;
 
+#ifndef NOFORK
+	if (setsid() < 0) {
+		log_errno("setsid");
+		goto err_out;
+	}
+#endif
 	if (apply_resource_limits(job) < 0) {
     	log_error("unable to apply resource limits");
     	goto err_out;
@@ -98,7 +203,7 @@ static int start_child_process(const job_t job)
 			goto err_out;
 		}
 	}
-	if (modify_credentials(job) < 0) {
+	if (modify_credentials(job, pwent, grent) < 0) {
     	log_error("unable to modify credentials");
     	goto err_out;
 	}
@@ -128,7 +233,7 @@ static int start_child_process(const job_t job)
     	if (close(fd) < 0) goto err_out;
     }
 
-    if (exec_job(job) < 0) {
+    if (exec_job(job, pwent) < 0) {
     	log_error("exec_job() failed");
     	goto err_out;
     }
@@ -175,17 +280,29 @@ int job_load(job_t job)
 
 int job_run(job_t job)
 {
+	struct passwd *pwent;
+	struct group *grent;
 	pid_t pid;
+
+	if ((pwent = getpwnam(job->jm->user_name)) == NULL) {
+		log_errno("getpwnam");
+		return (-1);
+	}
+
+	if ((grent = getgrnam(job->jm->group_name)) == NULL) {
+		log_errno("getgrnam");
+		return (-1);
+	}
 
 	// temporary for debugging
 #ifdef NOFORK
-	(void) start_child_process(job);
+	(void) start_child_process(job, pwent, grent);
 #else
     pid = fork();
     if (pid < 0) {
     	return (-1);
     } else if (pid == 0) {
-    	if (start_child_process(job) < 0) {
+    	if (start_child_process(job, pwent, grent) < 0) {
     		//TODO: report failures to the parent
     		exit(127);
     	}

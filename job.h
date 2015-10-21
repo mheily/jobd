@@ -17,6 +17,8 @@
 #ifndef JOB_H_
 #define JOB_H_
 
+#include <grp.h>
+#include <pwd.h>
 #include <sys/types.h>
 #include <sys/queue.h>
 #include <unistd.h>

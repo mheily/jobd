@@ -1,0 +1,9 @@
+{
+"Label": "env",
+"UserName": "nobody",
+"GroupName": "nogroup", 
+"Program": "/usr/bin/id",
+"StandardInPath": "/dev/null",
+"StandardOutPath": "/tmp/idjob.out",
+"StandardErrorPath": "/tmp/idjob.err",
+}

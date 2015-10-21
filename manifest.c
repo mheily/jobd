@@ -21,11 +21,15 @@
 
 #include <errno.h>
 #include <err.h>
+#include <grp.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 /* The internal state of the parser */
 struct parser_state {
@@ -105,8 +109,14 @@ static int parse_label(parser_state_t p) {
 	return (1);
 }
 
-static int parse_user_name(parser_state_t p) {
+static int parse_UserName(parser_state_t p) {
 	if (parse_string(&p->jm->user_name, p) < 1) return -1;
+	//TODO: validation
+	return (1);
+}
+
+static int parse_GroupName(parser_state_t p) {
+	if (parse_string(&p->jm->group_name, p) < 1) return -1;
 	//TODO: validation
 	return (1);
 }
@@ -127,12 +137,6 @@ static int parse_WatchPaths(parser_state_t p) {
 
 static int parse_QueueDirectories(parser_state_t p) {
 	return parse_cvec(&p->jm->queue_directories, p);
-}
-
-static int parse_group_name(parser_state_t p) {
-	if (parse_string(&p->jm->group_name, p) < 1) return -1;
-	//TODO: validation
-	return (1);
 }
 
 static int parse_EnableGlobbing(parser_state_t p) {
@@ -180,6 +184,10 @@ static int parse_EnvironmentVariables(parser_state_t p) {
 		if (cvec_push(cv, item) < 0) goto err_out;
 		item = NULL;
 	}
+	if (cvec_length(cv) % 2 != 0) {
+		log_error("parsed an odd number of EnvironmentVariables");
+		goto err_out;
+	}
 	p->jm->environment_variables = cv;
 
 	return (p->tok[p->pos].size + tokens_left + 1);
@@ -202,6 +210,7 @@ static int parse_RootDirectory(parser_state_t p) {
 	return (1);
 }
 
+/* TODO: deprecate this key, the default should be mandatory */
 static int parse_InitGroups(parser_state_t p) {
 	return parse_bool(&p->jm->init_groups, p);
 }
@@ -230,8 +239,8 @@ static const struct {
 } manifest_parser[] = {
         { "Label", parse_label },
 		{ "Disabled", parse_not_implemented },
-		{ "UserName", parse_user_name },
-		{ "GroupName", parse_group_name },
+		{ "UserName", parse_UserName },
+		{ "GroupName", parse_GroupName },
 		{ "inetdCompatibility", parse_not_implemented },
 		{ "Program", parse_program },
 		{ "ProgramArguments", parse_ProgramArguments },
@@ -269,6 +278,31 @@ static const struct {
 		{ NULL, NULL },
 };
 
+/* Ensure that the User and Group keys are set appropriately */
+static inline int job_manifest_set_credentials(job_manifest_t jm)
+{
+	uid_t uid;
+	struct passwd *pwent;
+	struct group *grent;
+
+	uid = getuid();
+	if (uid == 0) {
+		if (!jm->user_name) jm->user_name = strdup("root");
+		if (!jm->group_name) jm->group_name = strdup("wheel");
+	} else {
+		free(jm->user_name);
+		if ((pwent = getpwuid(uid)) == NULL) return -1;
+		jm->user_name = strdup(pwent->pw_name);
+
+		if ((grent = getgrgid(pwent->pw_gid)) == NULL) return -1;
+		free(jm->group_name);
+		jm->group_name = strdup(grent->gr_name);
+	}
+	jm->init_groups = true; /* TODO: deprecate this key entirely */
+	if (!jm->user_name || !jm->group_name) return -1;
+	return (0);
+}
+
 /* Validate the semantic correctness of the manifest */
 static int job_manifest_validate(job_manifest_t jm)
 {
@@ -297,6 +331,11 @@ static int job_manifest_validate(job_manifest_t jm)
 	/* By convention, argv[0] == Program */
 	if (jm->program && cvec_length(jm->program_arguments) == 0) {
 		if (cvec_push(jm->program_arguments, jm->program) < 0) goto err_out;
+	}
+
+	if (job_manifest_set_credentials(jm) < 0) {
+		log_error("unable to set credentials");
+		return (-1);
 	}
 	return (0);
 

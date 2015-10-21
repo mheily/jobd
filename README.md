@@ -12,15 +12,12 @@ Be especially mindful that there is NO WARRANTY provided with this software.
 
 ** Status **
 
-The core functionality is working
+The core functionality is working:
 * loading JSON-formatted jobs with launchctl
-* launching jobs that use these keys:
-  * Label, Program, ProgramArguments, WorkingDirectory, EnvironmentVariables
-  * StandardInPath, StandardOutPath, StandardErrorPath 
+* launching jobs
 
 Some things are not implemented yet:
-* anything that requires root privileges, such as UserName or RootDirectory
-* unloading jobs
+* unloading jobs via launchctl
 * cron functionality - StartInterval, StartCalendarInterval
 * on-demand activation - Sockets, StartOnMount
 * file and directory watches - WatchPaths, QueueDirectories

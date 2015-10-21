@@ -16,12 +16,11 @@
 #
 
 if [ `whoami` = 'root' ] ; then
-  echo 'TODO'
-  exit 1
+	pkgdatadir="/.launchd/run"
 else
 	pkgdatadir="$HOME/.launchd/run"
-	watchdir="$pkgdatadir/new"
 fi
+watchdir="$pkgdatadir/new"
 
 command=$1
 shift
