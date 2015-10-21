@@ -199,7 +199,7 @@ static void create_pid_file()
 	if (asprintf(&path, "%s/launchd.pid", options.pkgstatedir) < 0) abort();
 	if (asprintf(&buf, "%d", getpid()) < 0) abort();
 	len = strlen(buf);
-	if ((fd = open(path, O_CREAT | O_WRONLY, 0644)) < 0) {
+	if ((fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, 0644)) < 0) {
 		log_errno("open of %s", path);
 		abort();
 	}
