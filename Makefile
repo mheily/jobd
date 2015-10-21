@@ -28,4 +28,11 @@ clean:
 	rm -f *.o
 	rm -f launchd
 	
+install:
+	test -e launchd || $(MAKE) launchd
+	install -m 755 -o 0 -g 0 launchd /sbin
+	install -m 755 -o 0 -g 0 launchctl /bin
+	install -d -m 700 -o 0 -g 0 /.launchd
+	grep -q launchd /etc/rc || patch -p0 < rc.patch
+
 .PHONY: all clean launchd
