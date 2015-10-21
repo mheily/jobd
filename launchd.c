@@ -65,8 +65,14 @@ static void setup_job_dirs()
 	if (system(buf) < 0) abort();
 	free(buf);
 
+	if (getuid() != 0 && getenv("HOME")) {
+		if (asprintf(&buf, "/bin/mkdir -p %s/.launchd/agents", getenv("HOME")) < 0) abort();
+		if (system(buf) < 0) abort();
+		free(buf);
+	}
+
 	/* Clear any record of active jobs that may be leftover from a previous program crash */
-	if (asprintf(&buf, "/bin/rm -f %s/*", options.activedir) < 0) abort();
+	if (asprintf(&buf, "/bin/rm -f %s/* %s/*", options.activedir, options.watchdir) < 0) abort();
 	if (system(buf) < 0) abort();
 	free(buf);
 }
@@ -215,7 +221,11 @@ static void reap_child() {
 	job_t job;
 
 	pid = waitpid(-1, &status, WNOHANG);
-	if (pid < 0) abort();
+	if (pid < 0) {
+		if (errno == ECHILD) return;
+		log_errno("waitpid");
+		abort();
+	}
 
 	LIST_FOREACH(job, &state.jobs, joblist_entry) {
 		if (job->pid == pid) {
@@ -270,6 +280,33 @@ static void write_status_file()
 	free(buf);
 }
 
+static void load_jobs(const char *path)
+{
+	char *buf;
+	if (asprintf(&buf, "/usr/bin/find %s -name *.json -exec cp {} %s \\;", path, options.watchdir) < 0) abort();
+	if (system(buf) < 0) {
+		log_errno("system");
+		abort();
+	}
+	free(buf);
+}
+
+static void load_all_jobs()
+{
+	char *buf, *cur;
+	int i;
+	if (getuid() == 0) {
+		load_jobs("/usr/share/launchd/daemons");
+		load_jobs("/etc/launchd/daemons");
+	} else {
+		load_jobs("/usr/share/launchd/agents");
+		load_jobs("/etc/launchd/agents");
+		if (getenv("HOME") && asprintf(&buf, "%s/.launchd/agents", getenv("HOME")) < 0) abort();
+		load_jobs(buf);
+		free(buf);
+	}
+}
+
 static void main_loop()
 {
     struct kevent kev;
@@ -280,6 +317,7 @@ static void main_loop()
 
 	create_pid_file();
 	setup_signal_handlers();
+	load_all_jobs();
 	poll_watchdir();
 
 	for (;;) {

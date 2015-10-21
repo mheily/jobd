@@ -33,6 +33,8 @@ install:
 	install -m 755 -o 0 -g 0 launchd /sbin
 	install -m 755 -o 0 -g 0 launchctl /bin
 	install -d -m 700 -o 0 -g 0 /.launchd
+	install -d -m 755 -o 0 -g 0 /etc/launchd /etc/launchd/agents /etc/launchd/daemons
+	install -d -m 755 -o 0 -g 0 /usr/share/launchd /usr/share/launchd/agents /usr/share/launchd/daemons
 	grep -q launchd /etc/rc || patch -p0 < rc.patch
 
 .PHONY: all clean launchd
