@@ -14,7 +14,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-#DEBUGFLAGS=-g -O0 -DDEBUG
+DEBUGFLAGS=-g -O0 -DDEBUG
 
 all: launchd
 
@@ -23,6 +23,9 @@ check: launchd
 
 launchd:
 	$(CC) $(CFLAGS) $(DEBUGFLAGS) $(LDFLAGS) -o $@ launchd.c job.c manifest.c jsmn/jsmn.c
+
+launchd-debug:
+	CFLAGS="$(DEBUGFLAGS)" $(MAKE) launchd
 
 clean:
 	rm -f *.o

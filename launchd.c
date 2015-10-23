@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sysexits.h>
 #include <syslog.h>
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -79,8 +80,12 @@ static void setup_job_dirs()
 	free(buf);
 }
 
-static void at_shutdown()
+static void do_shutdown()
 {
+	char *path;
+	if (asprintf(&path, "%s/launchd.pid", options.pkgstatedir) < 0) abort();
+	(void) unlink(path);
+	free(path);
 	free(options.pkgstatedir);
 }
 
@@ -207,6 +212,18 @@ static inline void setup_logging()
 	log_info("log started");
 }
 
+static bool pidfile_is_stale(const char *path) {
+	char *buf;
+
+	if (asprintf(&buf, "kill -0 `cat %s`", path) < 0) abort();
+	if (system(buf) == 0) {
+		return false;
+	} else {
+		log_warning("detected a stale pidfile");
+		return true;
+	}
+}
+
 static void create_pid_file()
 {
 	char *path, *buf;
@@ -216,10 +233,22 @@ static void create_pid_file()
 	if (asprintf(&path, "%s/launchd.pid", options.pkgstatedir) < 0) abort();
 	if (asprintf(&buf, "%d", getpid()) < 0) abort();
 	len = strlen(buf);
-	if ((fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, 0644)) < 0) {
-		log_errno("open of %s", path);
-		abort();
+retry:
+	if ((fd = open(path, O_CREAT | O_EXCL | O_EXLOCK | O_WRONLY, 0644)) < 0) {
+		if (errno == EEXIST) {
+			if (pidfile_is_stale(path)) {
+				log_warning("detected a stale pidfile");
+				if (unlink(path) < 0) abort();
+				goto retry;
+			}
+			log_error("another instance of launchd is running");
+			exit(EX_SOFTWARE);
+		} else {
+			log_errno("open of %s", path);
+			abort();
+		}
 	}
+	if (ftruncate(fd, 0) < 0) abort();
 	if (write(fd, buf, len) < len) abort();
 	if (close(fd) < 0) abort();
 	free(path);
@@ -324,16 +353,6 @@ static void main_loop()
     struct kevent kev;
     uset_t new_jobs;
 
-	if ((state.kq = kqueue()) < 0) abort();
-	LIST_INIT(&state.jobs);
-
-	create_pid_file();
-	setup_signal_handlers();
-	load_all_jobs();
-	if (poll_watchdir() > 0) {
-		update_jobs();
-	}
-
 	for (;;) {
 		if (kevent(state.kq, NULL, 0, &kev, 1, NULL) < 1) {
 			if (errno == EINTR) {
@@ -359,7 +378,7 @@ static void main_loop()
 			case SIGINT:
 			case SIGTERM:
 				log_notice("caught signal %lu, exiting", kev.ident);
-				/* TODO: save state */
+				do_shutdown();
 				exit(0);
 				break;
 			default:
@@ -369,7 +388,6 @@ static void main_loop()
 			log_warning("spurious wakeup, no known handlers");
 		}
 	}
-	at_shutdown(); //TODO-make this actually run
 }
 
 int
@@ -401,9 +419,20 @@ main(int argc, char *argv[])
 			}
 	}
 
-	if (options.daemon && daemon(0, 0) < 0) abort();
+	if (options.daemon && daemon(0, 0) < 0) {
+		fprintf(stderr, "Unable to daemonize");
+		exit(EX_OSERR);
+	}
 
+	if ((state.kq = kqueue()) < 0) abort();
+	LIST_INIT(&state.jobs);
 	setup_logging();
+	create_pid_file();
+	setup_signal_handlers();
+	load_all_jobs();
+	if (poll_watchdir() > 0) {
+		update_jobs();
+	}
 	main_loop();
 
 	/* NOTREACHED */
