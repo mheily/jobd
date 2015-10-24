@@ -25,6 +25,8 @@
 
 extern FILE *logfile;
 
+int log_open(const char *path);
+
 /* Kludgy because this doesn't use syslog(3) yet */
 #define _log_all(level, format,...) do { \
 	(void)level; \

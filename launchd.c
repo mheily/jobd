@@ -196,22 +196,6 @@ static void setup_signal_handlers()
     }
 }
 
-static inline void setup_logging()
-{
-	char *path = NULL;
-
-	if (getuid() == 0) {
-		path = strdup("/.launchd/launchd.log");
-	} else {
-		asprintf(&path, "%s/.launchd/launchd.log", getenv("HOME"));
-	}
-	if (!path) abort();
-	logfile = fopen(path, "a");
-	if (!logfile) abort();
-	free(path);
-	log_info("log started");
-}
-
 static bool pidfile_is_stale(const char *path) {
 	char *buf;
 
@@ -388,6 +372,18 @@ static void main_loop()
 			log_warning("spurious wakeup, no known handlers");
 		}
 	}
+}
+
+static inline void setup_logging()
+{
+       char *path = NULL;
+
+       if (getuid() == 0) {
+               path = strdup("/.launchd/launchd.log");
+       } else {
+               asprintf(&path, "%s/.launchd/launchd.log", getenv("HOME"));
+       }
+       if (log_open(path) < 0) abort();
 }
 
 int

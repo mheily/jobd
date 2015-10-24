@@ -22,7 +22,7 @@ check: launchd
 	cd test && make && ./jmtest
 
 launchd:
-	$(CC) $(CFLAGS) $(DEBUGFLAGS) $(LDFLAGS) -o $@ launchd.c job.c manifest.c jsmn/jsmn.c
+	$(CC) $(CFLAGS) $(DEBUGFLAGS) $(LDFLAGS) -o $@ launchd.c log.c job.c manifest.c jsmn/jsmn.c
 
 launchd-debug:
 	CFLAGS="$(DEBUGFLAGS)" $(MAKE) launchd
