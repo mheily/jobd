@@ -30,5 +30,5 @@ SYSCONFDIR = $(PREFIX)/etc
 DATADIR = $(PREFIX)/share
 
 # Files to include in the tarball
-DISTFILES = *.[ch] rc.* LICENSE README.md Makefile Makefile.inc include jsmn test
+DISTFILES = *.[ch] rc.* launchctl LICENSE README.md Makefile Makefile.inc include jsmn test
 

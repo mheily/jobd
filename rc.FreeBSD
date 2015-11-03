@@ -9,7 +9,7 @@
 
 . /etc/rc.subr
 
-name="stated"
+name="launchd"
 rcvar="launchd_enable"
 command="/usr/local/sbin/${name}"
 
