@@ -14,11 +14,17 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-jmtest: 
-	$(CC) -I.. $(CFLAGS) -g -O0 $(LDFLAGS) -o $@ jmtest.c ../log.c ../job.c ../manifest.c ../jsmn/jsmn.c
+PACKAGE_NAME ?= relaunchd
+PACKAGE_VERSION ?= 0.1.1
+MAJOR_VERSION != echo $(PACKAGE_VERSION) | cut -f1 -d.
+MINOR_VERSION != echo $(PACKAGE_VERSION) | cut -f2 -d.
+PATCH_VERSION != echo $(PACKAGE_VERSION) | cut -f3 -d.
 
-clean:
-	rm -f *.o
-	rm -f jmtest
-	
-.PHONY: jmtest
+PREFIX ?= /usr/local
+LIBDIR = $(PREFIX)/lib
+BINDIR = $(PREFIX)/bin
+SBINDIR = $(PREFIX)/sbin
+LIBEXECDIR = $(PREFIX)/libexec
+MANDIR = $(PREFIX)/man
+SYSCONFDIR = $(PREFIX)/etc
+DATADIR = $(PREFIX)/share

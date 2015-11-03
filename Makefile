@@ -14,6 +14,8 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
+include Makefile.inc
+
 DEBUGFLAGS=-g -O0 -DDEBUG
 
 all: launchd
@@ -22,7 +24,7 @@ check: launchd
 	cd test && make && ./jmtest
 
 launchd:
-	$(CC) $(CFLAGS) $(DEBUGFLAGS) $(LDFLAGS) -o $@ launchd.c log.c job.c manifest.c jsmn/jsmn.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ launchd.c log.c job.c manifest.c jsmn/jsmn.c
 
 launchd-debug:
 	CFLAGS="$(DEBUGFLAGS)" $(MAKE) launchd
@@ -30,14 +32,18 @@ launchd-debug:
 clean:
 	rm -f *.o
 	rm -f launchd
+	cd test && $(MAKE) clean
 	
 install:
-	test -e launchd || $(MAKE) launchd
-	install -m 755 -o 0 -g 0 launchd /sbin
-	install -m 755 -o 0 -g 0 launchctl /bin
-	install -d -m 700 -o 0 -g 0 /.launchd
-	install -d -m 755 -o 0 -g 0 /etc/launchd /etc/launchd/agents /etc/launchd/daemons
-	install -d -m 755 -o 0 -g 0 /usr/share/launchd /usr/share/launchd/agents /usr/share/launchd/daemons
-	grep -q launchd /etc/rc || patch -p0 < rc.patch
+	install -m 755 launchd $$DESTDIR$(SBINDIR)
+	install -m 755 launchctl $$DESTDIR$(BINDIR)
+	install -d -m 700 $$DESTDIR/.launchd
+	install -d -m 755 $$DESTDIR$(SYSCONFDIR)/launchd \
+		$$DESTDIR$(SYSCONFDIR)/launchd/agents \
+		$$DESTDIR$(SYSCONFDIR)/etc/launchd/daemons
+	install -d -m 755 $$DESTDIR$(DATADIR)/launchd \
+		$$DESTDIR$(DATADIR)/launchd/agents \
+		$$DESTDIR$(DATADIR)/launchd/daemons
+	test `uname` = "FreeBSD" && install -m 755 rc.FreeBSD $$DESTDIR/usr/local/etc/rc.d/stated || true
 
 .PHONY: all clean launchd

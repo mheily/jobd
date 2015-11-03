@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# $FreeBSD$
+#
+
+# PROVIDE: launchd
+# REQUIRE: DAEMON
+# BEFORE:  LOGIN
+
+. /etc/rc.subr
+
+name="stated"
+rcvar="launchd_enable"
+command="/usr/local/sbin/${name}"
+
+load_rc_config $name
+run_rc_command "$1"
