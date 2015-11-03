@@ -2,3 +2,4 @@
 .project
 /launchd
 .settings/
+*.tar.gz

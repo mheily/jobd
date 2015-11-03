@@ -33,7 +33,14 @@ clean:
 	rm -f *.o
 	rm -f launchd
 	cd test && $(MAKE) clean
-	
+
+dist: clean
+	mkdir $(PACKAGE_NAME)-$(PACKAGE_VERSION)
+	cp -R $(DISTFILES) $(PACKAGE_NAME)-$(PACKAGE_VERSION)
+	find $(PACKAGE_NAME)-$(PACKAGE_VERSION) -name '.gitignore' -exec rm {} \;
+	tar cvf $(PACKAGE_NAME)-$(PACKAGE_VERSION).tar.gz $(PACKAGE_NAME)-$(PACKAGE_VERSION)
+	rm -rf $(PACKAGE_NAME)-$(PACKAGE_VERSION)
+
 install:
 	install -m 755 launchd $$DESTDIR$(SBINDIR)
 	install -m 755 launchctl $$DESTDIR$(BINDIR)
