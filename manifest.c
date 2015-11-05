@@ -28,6 +28,7 @@
 #include <string.h>
 #include <sysexits.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -42,8 +43,29 @@ struct parser_state {
 };
 typedef struct parser_state *parser_state_t;
 
-static void token_dump(jsmntok_t tok) {
-	log_debug("token info: type=%d size=%d", tok.type, tok.size);
+static void token_dump(parser_state_t p, jsmntok_t tok) {
+	static const char *type_names[] = { "primitive", "object", "array", "string" };
+	char *val;
+
+	if (tok.type == JSMN_STRING) {
+		val = strndup(p->buf + tok.start, tok.end - tok.start);
+	} else {
+		val = strdup("(unknown format)");
+	}
+
+	log_debug("token info: type=%s size=%d value='%s'", type_names[tok.type], tok.size, val);
+	free(val);
+}
+
+static bool token_type_check(parser_state_t p, const jsmntok_t tok, jsmntype_t expected_type)
+{
+	if (tok.type != expected_type) {
+		token_dump(p, tok);
+		log_error("token type mismatch; see above token dump");
+		return false;
+	}
+
+	return true;
 }
 
 static int parse_string(char **dst, parser_state_t p) {
@@ -158,14 +180,14 @@ static int parse_EnvironmentVariables(parser_state_t p) {
 	cv = cvec_new();
 	if (!cv) return -1;
 
-	token_dump(p->tok[p->pos]);
+	token_dump(p, p->tok[p->pos]);
 	if (p->tok[p->pos].type != JSMN_OBJECT) goto err_out;
 	tokens_left = p->tok[p->pos].size;
 	log_debug("got %zu child tokens", tokens_left);
 	for (i = 0; i < tokens_left; i += 2) {
 		log_debug(" -- hash token");
 		child = p->tok[p->pos + i + 1];
-		token_dump(child);
+		token_dump(p, child);
 		if (child.type != JSMN_STRING || child.size != 1) goto err_out;
 		tokens_left += 1; //XXX-HORRIBLE
 		item = strndup(p->buf + child.start, child.end - child.start);
@@ -176,7 +198,7 @@ static int parse_EnvironmentVariables(parser_state_t p) {
 
 		// XXX-COPY PASTA FROM ABOVE STANZA
 		child = p->tok[p->pos + i + 2];
-		token_dump(child);
+		token_dump(p, child);
 		if (child.type != JSMN_STRING || child.size != 0) goto err_out;
 		item = strndup(p->buf + child.start, child.end - child.start);
 		if (item == NULL) goto err_out;
@@ -233,6 +255,138 @@ static int parse_StandardErrorPath(parser_state_t p) {
 	return (1);
 }
 
+/* : break up parse_Sockets() and call this.. need a helper function for the parser first */
+/* Parse inner key/value pairs for a single Socket entry */
+static int parse_Sockets_inner(parser_state_t p, struct job_manifest_socket *jms, jsmntok_t key_tok, jsmntok_t val_tok) {
+	char *key = NULL, *value_s = NULL;
+	bool value_b;
+	int value_i;
+
+	key = strndup(p->buf + key_tok.start, key_tok.end - key_tok.start);
+	log_debug("got key: %s", key);
+
+	/* Determine the type of value expected */
+	if (strcmp(key, "SockPassive") == 0) {
+		if (!token_type_check(p, val_tok, JSMN_PRIMITIVE)) goto err_out;
+		abort(); //FIXME: parse into value_b
+	}
+	else if (strcmp(key, "SockPathMode") == 0) {
+		if (!token_type_check(p, val_tok, JSMN_PRIMITIVE)) goto err_out;
+		abort(); //FIXME: parse into value_i
+	} else {
+		/* Default: string type */
+		if (!token_type_check(p, val_tok, JSMN_STRING)) goto err_out;
+		value_s = strndup(p->buf + val_tok.start, val_tok.end - val_tok.start);
+		if (!value_s) goto err_out;
+		log_debug("value=%s", value_s);
+	}
+
+	if (strcmp(key, "SockType") == 0) { abort(); /*STUB*/ }
+	else if (strcmp(key, "SockPassive") == 0) { abort(); /*STUB*/ }
+	else if (strcmp(key, "SockNodeName") == 0) { abort(); /*STUB*/ }
+	else if (strcmp(key, "SockServiceName") == 0) { jms->sock_service_name = value_s; value_s = NULL; }
+	else if (strcmp(key, "SockFamily") == 0) { abort(); /*STUB*/ }
+	else if (strcmp(key, "SockNodeName") == 0) { abort(); /*STUB*/ }
+	else if (strcmp(key, "SockProtocol") == 0) { abort(); /*STUB*/ }
+	else if (strcmp(key, "SockPathName") == 0) { abort(); /*STUB*/ }
+	else if (strcmp(key, "SecureSocketWithKey") == 0) { abort(); /*STUB*/ }
+	else if (strcmp(key, "SockPathMode") == 0) { abort(); /*STUB*/ }
+	else if (strcmp(key, "Bonjour") == 0) { abort(); /*STUB*/ }
+	else if (strcmp(key, "MulticastGroup") == 0) { abort(); /*STUB*/ }
+	else {
+		log_error("unexpected key %s", key);
+		goto err_out;
+	}
+
+	free(key);
+	free(value_s);
+	return 0;
+
+err_out:
+	free(key);
+	free(value_s);
+	return -1;
+}
+
+static int parse_Sockets(parser_state_t p) {
+	int i, j;
+	size_t tokens_left, eaten;
+	jsmntok_t child;
+	char *item = NULL;
+	struct job_manifest_socket *jms = NULL;
+
+	token_dump(p, p->tok[p->pos]);
+	if (p->tok[p->pos].type != JSMN_OBJECT) {
+		log_error("expecting JSMN_OBJECT");
+		goto err_out;
+	}
+	tokens_left = p->tok[p->pos].size;
+	log_debug("1 -- got %zu child tokens", tokens_left);
+	eaten = 1;
+	for (i = 0; i < tokens_left; i++) {
+		eaten++;
+		log_debug("eaten %zu so far", eaten);
+		child = p->tok[p->pos + i + 1];
+		if (child.type != JSMN_STRING || child.size != 1) {
+			token_dump(p, child);
+			log_error("expecting JSMN_STRING; got above object");
+			goto err_out;
+		}
+		tokens_left += 1; //XXX-HORRIBLE
+		item = strndup(p->buf + child.start, child.end - child.start);
+		if (item == NULL) goto err_out;
+		log_debug("parsed item: %s", item);
+
+		jms = job_manifest_socket_new();
+		if (!jms) abort();
+		jms->label = item;
+		if (!jms->label) abort();
+		SLIST_INSERT_HEAD(&p->jm->sockets, jms, entry);
+
+		i++;
+		child = p->tok[p->pos + i + 1];
+		if (child.type != JSMN_OBJECT) {
+			jms = NULL; /* To avoid accidental free() during err_out */
+			token_dump(p, child);
+			log_error("expecting JSMN_OBJECT; got above object");
+			goto err_out;
+		}
+		//token_dump(child);
+		//log_debug("look above");
+		eaten++;
+		for (j = 0; j < child.size; j++) {
+			jsmntok_t tok2, tok3;
+
+			tok2 = p->tok[p->pos + i + j + 2];
+			if (tok2.type != JSMN_STRING) {
+				jms = NULL; /* To avoid accidental free() during err_out */
+				token_dump(p, tok2);
+				log_error("expecting JSMN_STRING; got above object");
+				goto err_out;
+			}
+
+			eaten++;
+
+			tok3 = p->tok[p->pos + i + j + 3];
+			eaten++;
+
+			if (parse_Sockets_inner(p, jms, tok2, tok3) < 0) {
+				log_error("failed inner Sockets parsing");
+				goto err_out;
+			}
+		}
+	}
+
+	log_debug("ate %zu tokens", eaten);
+	return (eaten);
+
+err_out:
+	log_error("failed to parse Sockets");
+	free(item);
+  	job_manifest_socket_free(jms);
+  	return (-1);
+}
+
 static const struct {
         const char *ident;
         int (*func)(parser_state_t);
@@ -273,7 +427,7 @@ static const struct {
 		{ "HopefullyExitsLast", parse_not_implemented },
 		{ "LowPriorityIO", parse_not_implemented },
 		{ "LaunchOnlyOnce", parse_not_implemented },
-		{ "Sockets", parse_not_implemented },
+		{ "Sockets", parse_Sockets },
 
 		{ NULL, NULL },
 };
@@ -344,6 +498,33 @@ err_out:
 	return (-1);
 }
 
+struct job_manifest_socket *
+job_manifest_socket_new()
+{
+	struct job_manifest_socket *jms;
+
+	jms = calloc(1, sizeof(*jms));
+	if (!jms) return NULL;
+
+	jms->sock_type = SOCK_STREAM;
+	jms->sock_passive = true;
+	jms->sock_family = PF_INET;
+
+	return (jms);
+}
+
+void job_manifest_socket_free(struct job_manifest_socket *jms)
+{
+	if (!jms) return;
+	free(jms->label);
+	free(jms->sock_node_name);
+	free(jms->sock_service_name);
+	free(jms->sock_path_name);
+	free(jms->secure_socket_with_key);
+	free(jms->multicast_group);
+	free(jms);
+}
+
 job_manifest_t job_manifest_new()
 {
 	job_manifest_t jm;
@@ -358,7 +539,7 @@ job_manifest_t job_manifest_new()
 	if ((jm->watch_paths = cvec_new()) == NULL) goto err_out;
 	if ((jm->queue_directories = cvec_new()) == NULL) goto err_out;
 	if ((jm->environment_variables = cvec_new()) == NULL) goto err_out;
-
+	SLIST_INIT(&jm->sockets);
 	return (jm);
 
 err_out:
@@ -368,6 +549,8 @@ err_out:
 
 void job_manifest_free(job_manifest_t jm)
 {
+	struct job_manifest_socket *jms, *jms_tmp;
+
 	if (jm == NULL)
 		return;
 	free(jm->json_buf);
@@ -383,6 +566,10 @@ void job_manifest_free(job_manifest_t jm)
 	free(jm->stdin_path);
 	free(jm->stdout_path);
 	free(jm->stderr_path);
+	SLIST_FOREACH_SAFE(jms, &jm->sockets, entry, jms_tmp) {
+        SLIST_REMOVE(&jm->sockets, jms, job_manifest_socket, entry);
+        job_manifest_socket_free(jms);
+	}
 	free(jm);
 }
 
@@ -445,10 +632,19 @@ int job_manifest_parse(job_manifest_t jm, char *buf, size_t bufsz)
 
     /* Verify there is a Key->Value token combo */
     for (state.pos = 1; state.pos < rv;) {
-    	if (state.tok[state.pos].type != JSMN_STRING) goto err_out;
+    	if (state.tok[state.pos].type != JSMN_STRING) {
+    		token_dump(&state, state.tok[state.pos]);
+    		log_error("expected string, got above token");
+    		goto err_out;
+    	}
     	keylen = state.tok->end - state.tok->start;
 
-    	if (state.pos + 1 == rv) goto err_out;
+    	if (state.pos + 1 == rv) {
+    		token_dump(&state, state.tok[state.pos]);
+    		token_dump(&state, state.tok[state.pos + 1]);
+    		log_error("odd number of tokens; expecting key/value pairs");
+    		goto err_out;
+    	}
     	state.key = strndup(buf + state.tok[state.pos].start, state.tok[state.pos].end - state.tok[state.pos].start);
     	if (state.key == NULL) goto err_out;
     	state.pos++;
@@ -471,7 +667,10 @@ int job_manifest_parse(job_manifest_t jm, char *buf, size_t bufsz)
 		}
 		if (!match) { log_error("unsupported key: %s", state.key); goto err_out; }
     }
-    if (job_manifest_validate(jm) < 0) goto err_out;
+    if (job_manifest_validate(jm) < 0) {
+    	log_error("manifest validation failed");
+    	goto err_out;
+    }
 
 	return 0;
 

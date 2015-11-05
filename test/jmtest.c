@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "log.h"
 #include "manifest.h"
 #include "cvec.h"
 
@@ -34,10 +35,33 @@ void test_cvec() {
 	printf("cvec ok\n");
 }
 
+void test_sockets() {
+	job_manifest_t jm;
+
+	jm = job_manifest_new();
+	printf("testing sockets: ");
+	fflush(stdout);
+	if (job_manifest_read(jm, "fixtures/sockets.json") == 0) {
+		puts("ok");
+	} else {
+		puts("FAILED");
+		exit(1);
+	}
+}
+
 int main() {
 	job_manifest_t jm;
 
+	if (getenv("DEBUG")) {
+		logfile = stdout;
+	} else {
+		log_open("jmtest.log");
+	}
 	test_cvec();
+	test_sockets();
+	exit(0);
+
+	//FIXME: refactor this
 	jm = job_manifest_new();
 	if (job_manifest_read(jm, "fixtures/test.json") == 0) {
 printf("program arguments:\n");
@@ -49,4 +73,5 @@ printf("program arguments:\n");
 		printf("failed");
 		exit(1);
 	}
+
 }

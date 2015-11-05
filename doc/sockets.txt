@@ -1,0 +1,18 @@
+Notes about the implementation of the Sockets key:
+
+relaunchd is different from the original Apple launchd in these regards:
+
+* 	The Sockets key is a dictionary of dictionaries, period. This means
+	that every socket must be assigned a name in the plist file.
+	
+*	When the job is launched, the socket descriptor number is passed
+	as an environment variable named LAUNCHD_SOCKET_$FOO, where $FOO
+	is the name that is defined in the plist.
+
+* 	It is not necessary to "checkin" with launchd and call liblaunch
+	functions to get socket information. The program can say something
+	like this:
+	
+		if (getenv("LAUNCHD_SOCKET_MYSERVICE")) {
+			fd = strtol(getenv("LAUNCHD_SOCKET_MYSERVICE"), &errorp, 10);
+		} 

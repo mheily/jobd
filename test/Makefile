@@ -15,7 +15,10 @@
 #
 
 jmtest: 
-	$(CC) -I.. $(CFLAGS) -g -O0 $(LDFLAGS) -o $@ jmtest.c ../log.c ../job.c ../manifest.c ../jsmn/jsmn.c
+	$(CC) -I.. $(CFLAGS) -g -O0 -DDEBUG $(LDFLAGS) -o $@ jmtest.c ../log.c ../job.c ../manifest.c ../jsmn/jsmn.c
+
+check: jmtest
+	DEBUG=yes ./jmtest
 
 clean:
 	rm -f *.o

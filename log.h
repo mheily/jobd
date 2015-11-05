@@ -47,6 +47,4 @@ int log_open(const char *path);
 #endif
 #define log_errno(format,...) _log_all(LOG_ERR, format": %s", ## __VA_ARGS__, strerror(errno))
 
-
-
 #endif /* LOG_H_ */
