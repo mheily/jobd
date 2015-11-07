@@ -14,6 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/event.h>
 
@@ -26,15 +27,43 @@ static int parent_kqfd;
 /* The kqueue descriptor dedicated to socket activation */
 static int socket_kqfd;
 
+
+struct job_manifest_socket *
+job_manifest_socket_new()
+{
+	struct job_manifest_socket *jms;
+
+	jms = calloc(1, sizeof(*jms));
+	if (!jms) return NULL;
+
+	jms->sock_type = SOCK_STREAM;
+	jms->sock_passive = true;
+	jms->sock_family = PF_INET;
+
+	return (jms);
+}
+
+void job_manifest_socket_free(struct job_manifest_socket *jms)
+{
+	if (!jms) return;
+	free(jms->label);
+	free(jms->sock_node_name);
+	free(jms->sock_service_name);
+	free(jms->sock_path_name);
+	free(jms->secure_socket_with_key);
+	free(jms->multicast_group);
+	free(jms);
+}
+
 void setup_socket_activation(int kqfd)
 {
 	struct kevent kev;
 
 	parent_kqfd = kqfd;
-	socket_kqfd = kqueue();	
+	socket_kqfd = kqueue();
 	if (socket_kqfd < 0) abort();
 
-        EV_SET(&kev, socket_kqfd, EVFILT_READ, EV_ADD, 0, 0, &setup_socket_activation);
-        if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) abort();
+	EV_SET(&kev, socket_kqfd, EVFILT_READ, EV_ADD, 0, 0, &setup_socket_activation);
+	if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) abort();
 }
 

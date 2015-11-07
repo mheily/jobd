@@ -498,32 +498,6 @@ err_out:
 	return (-1);
 }
 
-struct job_manifest_socket *
-job_manifest_socket_new()
-{
-	struct job_manifest_socket *jms;
-
-	jms = calloc(1, sizeof(*jms));
-	if (!jms) return NULL;
-
-	jms->sock_type = SOCK_STREAM;
-	jms->sock_passive = true;
-	jms->sock_family = PF_INET;
-
-	return (jms);
-}
-
-void job_manifest_socket_free(struct job_manifest_socket *jms)
-{
-	if (!jms) return;
-	free(jms->label);
-	free(jms->sock_node_name);
-	free(jms->sock_service_name);
-	free(jms->sock_path_name);
-	free(jms->secure_socket_with_key);
-	free(jms->multicast_group);
-	free(jms);
-}
 
 job_manifest_t job_manifest_new()
 {
@@ -567,8 +541,8 @@ void job_manifest_free(job_manifest_t jm)
 	free(jm->stdout_path);
 	free(jm->stderr_path);
 	SLIST_FOREACH_SAFE(jms, &jm->sockets, entry, jms_tmp) {
-        SLIST_REMOVE(&jm->sockets, jms, job_manifest_socket, entry);
-        job_manifest_socket_free(jms);
+		SLIST_REMOVE(&jm->sockets, jms, job_manifest_socket, entry);
+		job_manifest_socket_free(jms);
 	}
 	free(jm);
 }
