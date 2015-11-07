@@ -27,7 +27,6 @@ static int parent_kqfd;
 /* The kqueue descriptor dedicated to socket activation */
 static int socket_kqfd;
 
-
 struct job_manifest_socket *
 job_manifest_socket_new()
 {
@@ -36,6 +35,7 @@ job_manifest_socket_new()
 	jms = calloc(1, sizeof(*jms));
 	if (!jms) return NULL;
 
+	jms->sd = -1;
 	jms->sock_type = SOCK_STREAM;
 	jms->sock_passive = true;
 	jms->sock_family = PF_INET;
@@ -46,6 +46,7 @@ job_manifest_socket_new()
 void job_manifest_socket_free(struct job_manifest_socket *jms)
 {
 	if (!jms) return;
+	if (jms->sd >= 0) (void) close(jms->sd);
 	free(jms->label);
 	free(jms->sock_node_name);
 	free(jms->sock_service_name);
