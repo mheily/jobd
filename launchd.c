@@ -33,6 +33,7 @@
 #include "log.h"
 #include "manifest.h"
 #include "job.h"
+#include "socket.h"
 #include "uset.h"
 
 FILE *logfile;
@@ -425,6 +426,7 @@ main(int argc, char *argv[])
 	setup_logging();
 	create_pid_file();
 	setup_signal_handlers();
+	setup_socket_activation(state.kq);
 	load_all_jobs();
 	if (poll_watchdir() > 0) {
 		update_jobs();

@@ -16,6 +16,7 @@
 
 include Makefile.inc
 
+launchd_SOURCES=job.c log.c launchd.c manifest.c socket.c jsmn/jsmn.c
 DEBUGFLAGS=-g -O0 -DDEBUG
 
 all: launchd
@@ -23,8 +24,8 @@ all: launchd
 check: launchd
 	cd test && make && ./jmtest
 
-launchd:
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ launchd.c log.c job.c manifest.c jsmn/jsmn.c
+launchd: $(launchd_SOURCES)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(launchd_SOURCES)
 
 launchd-debug:
 	CFLAGS="$(DEBUGFLAGS)" $(MAKE) launchd
