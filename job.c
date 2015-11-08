@@ -266,13 +266,26 @@ void job_free(job_t job)
 
 int job_load(job_t job)
 {
+	struct job_manifest_socket *jms;
+
 	/* TODO: This is the place to setup on-demand watches for the following keys:
 			WatchPaths
 			QueueDirectories
 			StartInterval
 			StartCalendarInterval
-			Sockets
 	*/
+	if (!SLIST_EMPTY(&job->jm->sockets)) {
+		SLIST_FOREACH(jms, &job->jm->sockets, entry) {
+			if (job_manifest_socket_open(jms) < 0) {
+				log_error("failed to open socket");
+				return (-1);
+			}
+		}
+		log_debug("job %s sockets created", job->jm->label);
+		job->state = JOB_STATE_WAITING;
+		return (0);
+	}
+
 	job->state = JOB_STATE_LOADED;
 	log_debug("loaded %s", job->jm->label);
 	job_dump(job);

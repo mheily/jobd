@@ -31,25 +31,19 @@
 #include <unistd.h>
 
 #include "log.h"
+#include "manager.h"
 #include "manifest.h"
+#include "options.h"
 #include "job.h"
 #include "socket.h"
 #include "uset.h"
 
 FILE *logfile;
 
-static struct {
-	char *	pkgstatedir;	/* Top-level directory for state data */
-	char *	watchdir;		/* Directory to watch for new jobs */
-	char *	activedir;		/* Directory that holds info about active jobs */
-	bool 	daemon;
-	int		log_level;
-} options;
+struct launchd_options options;
 
 static struct {
 	int 	kq;				/* kqueue(2) descriptor */
-	LIST_HEAD(,job_manifest) pending; /* Jobs that have been submitted but not loaded */
-	LIST_HEAD(,job) jobs;			/* All active jobs */
 } state;
 
 void usage() 
@@ -88,96 +82,6 @@ static void do_shutdown()
 	(void) unlink(path);
 	free(path);
 	free(options.pkgstatedir);
-}
-
-static job_manifest_t read_job(const char *filename)
-{
-	char *path = NULL, *rename_to = NULL;
-	job_manifest_t jm;
-
-	if ((jm = job_manifest_new()) == NULL) goto err_out;
-
-	if (asprintf(&path, "%s/%s", options.watchdir, filename) < 0) goto err_out;
-
-	log_debug("loading %s", path);
-	if (job_manifest_read(jm, path) < 0) goto err_out;
-	if (asprintf(&rename_to, "%s/%s", options.activedir, filename) < 0) goto err_out;
-	if (rename(path, rename_to) != 0) goto err_out;
-	free(path);
-	free(rename_to);
-
-	log_debug("defined job: %s", jm->label);
-
-	return (jm);
-
-err_out:
-	if (path) {
-		(void) unlink(path);
-	}
-	job_manifest_free(jm);
-	free(path);
-	return (NULL);
-}
-
-static ssize_t poll_watchdir()
-{
-	DIR	*dirp;
-	struct dirent entry, *result;
-	job_manifest_t jm;
-	ssize_t found_jobs = 0;
-
-	if ((dirp = opendir(options.watchdir)) == NULL) abort();
-
-	while (dirp) {
-		if (readdir_r(dirp, &entry, &result) < 0) abort();
-		if (!result) break;
-		if (strcmp(entry.d_name, ".") == 0 || strcmp(entry.d_name, "..") == 0) {
-			continue;
-		}
-		jm = read_job(entry.d_name);
-		if (jm) {
-			LIST_INSERT_HEAD(&state.pending, jm, jm_le);
-			found_jobs++;
-		} else {
-			// note the failure?
-		}
-	}
-	if (closedir(dirp) < 0) abort();
-	return (found_jobs);
-}
-
-static void update_jobs(void)
-{
-	int i;
-	job_manifest_t jm;
-	job_t job, job_tmp;
-	LIST_HEAD(,job) joblist;
-
-	LIST_INIT(&joblist);
-
-	/* Pass #1: load all jobs */
-	LIST_FOREACH(jm, &state.pending, jm_le) {
-		job = job_new(jm);
-		LIST_INSERT_HEAD(&joblist, job, joblist_entry);
-		if (!job) abort();
-		(void) job_load(job); // FIXME failure handling?
-		log_debug("loaded job: %s", job->jm->label);
-	}
-	LIST_INIT(&state.pending);
-
-	/* Pass #2: run all loaded jobs */
-	LIST_FOREACH(job, &joblist, joblist_entry) {
-		if (job->state == JOB_STATE_LOADED) {
-			log_debug("job %s state %d", job->jm->label, job->state);
-			(void) job_run(job); // FIXME failure handling?
-		}
-	}
-
-	/* Pass #3: move all new jobs to the main jobs list */
-	LIST_FOREACH_SAFE(job, &joblist, joblist_entry, job_tmp) {
-		LIST_REMOVE(job, joblist_entry);
-		LIST_INSERT_HEAD(&state.jobs, job, joblist_entry);
-	}
 }
 
 static void signal_handler(int signum) {
@@ -252,57 +156,25 @@ static void reap_child() {
 		abort();
 	}
 
-	LIST_FOREACH(job, &state.jobs, joblist_entry) {
-		if (job->pid == pid) {
-			job->state = JOB_STATE_EXITED;
-			if (WIFEXITED(status)) {
-				job->last_exit_status = WEXITSTATUS(status);
-			} else if (WIFSIGNALED(status)) {
-				job->last_exit_status = -1;
-				job->term_signal = WTERMSIG(status);
-			} else {
-				log_error("unhandled exit status");
-			}
-			log_debug("job %d exited with status %d", job->pid, job->last_exit_status);
-			job->pid = 0;
-			return;
-		}
+	job = manager_get_job_by_pid(pid);
+	if (!job) {
+		log_error("child exited but no job found");
+		return;
 	}
-	log_error("child exited but no job found");
-}
 
-static void write_status_file()
-{
-	char *path, *buf, *pid;
-	int fd;
-	ssize_t len;
-	job_t job;
-
-	/* FIXME: should write to a .new file, then rename() over the old file */
-	if (asprintf(&path, "%s/launchctl.list", options.pkgstatedir) < 0) abort();
-	if ((fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, 0644)) < 0) {
-		log_errno("open of %s", path);
-		abort();
+	job->state = JOB_STATE_EXITED;
+	if (WIFEXITED(status)) {
+		job->last_exit_status = WEXITSTATUS(status);
+	} else if (WIFSIGNALED(status)) {
+		job->last_exit_status = -1;
+		job->term_signal = WTERMSIG(status);
+	} else {
+		log_error("unhandled exit status");
 	}
-	if (asprintf(&buf, "%-8s %-8s %s\n", "PID", "Status", "Label") < 0) abort();
-	len = strlen(buf) + 1;
-	if (write(fd, buf, len) < len) abort();
-	free(buf);
-	LIST_FOREACH(job, &state.jobs, joblist_entry) {
-		if (job->pid == 0) {
-			if ((pid = strdup("-")) == NULL) abort();
-		} else {
-			if (asprintf(&pid, "%d", job->pid) < 0) abort();
-		}
-		if (asprintf(&buf, "%-8s %-8d %s\n", pid, job->last_exit_status, job->jm->label) < 0) abort();
-		len = strlen(buf) + 1;
-		if (write(fd, buf, len) < len) abort();
-		free(buf);
-		free(pid);
-	}
-	if (close(fd) < 0) abort();
-	free(path);
-	free(buf);
+	log_debug("job %d exited with status %d", job->pid,
+			job->last_exit_status);
+	job->pid = 0;
+	return;
 }
 
 static void load_jobs(const char *path)
@@ -335,8 +207,8 @@ static void load_all_jobs()
 
 static void main_loop()
 {
-    struct kevent kev;
-    uset_t new_jobs;
+	struct kevent kev;
+	uset_t new_jobs;
 
 	for (;;) {
 		if (kevent(state.kq, NULL, 0, &kev, 1, NULL) < 1) {
@@ -350,12 +222,10 @@ static void main_loop()
 		if (kev.udata == &setup_signal_handlers) {
 			switch (kev.ident) {
 			case SIGHUP:
-				if (poll_watchdir() > 0) {
-					update_jobs();
-				}
+				manager_update_jobs();
 				break;
 			case SIGUSR1:
-				write_status_file();
+				manager_write_status_file();
 				break;
 			case SIGCHLD:
 				reap_child();
@@ -369,6 +239,8 @@ static void main_loop()
 			default:
 				log_error("caught unexpected signal");
 			}
+		} else if (kev.udata == &setup_socket_activation) {
+			if (socket_activation_handler() < 0) abort();
 		} else {
 			log_warning("spurious wakeup, no known handlers");
 		}
@@ -422,15 +294,13 @@ main(int argc, char *argv[])
 	}
 
 	if ((state.kq = kqueue()) < 0) abort();
-	LIST_INIT(&state.jobs);
+	manager_init();
 	setup_logging();
 	create_pid_file();
 	setup_signal_handlers();
 	setup_socket_activation(state.kq);
 	load_all_jobs();
-	if (poll_watchdir() > 0) {
-		update_jobs();
-	}
+	manager_update_jobs();
 	main_loop();
 
 	/* NOTREACHED */

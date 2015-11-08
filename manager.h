@@ -14,41 +14,24 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef JOB_H_
-#define JOB_H_
+#ifndef MANAGER_H_
+#define MANAGER_H_
 
-#include <grp.h>
-#include <pwd.h>
-#include <sys/types.h>
-#include <sys/queue.h>
-#include <unistd.h>
+#include "job.h"
 
-#include "manifest.h"
+/** Given a pending connection on a socket descriptor, activate the associated job */
+int manager_activate_job_by_fd(int fd);
 
-struct job {
-	LIST_ENTRY(job)	joblist_entry;
-	job_manifest_t jm;
-	enum {
-		JOB_STATE_DEFINED,
-		JOB_STATE_LOADED,
-		JOB_STATE_WAITING,
-		JOB_STATE_RUNNING,
-		JOB_STATE_EXITED,
-	} state;
-	pid_t pid;
-	int last_exit_status, term_signal;
-};
-typedef struct job *job_t;
+/**
+ *
+ * Given a process ID, find the associated job
+ *
+ * @return the job, or NULL if there are no matching jobs
+ */
+job_t manager_get_job_by_pid(pid_t pid);
 
-job_t 	job_new(job_manifest_t jm);
-void	job_free(job_t job);
-int		job_load(job_t job);
-int		job_run(job_t job);
+void manager_init();
+void manager_update_jobs();
+int manager_write_status_file();
 
-static inline int
-job_is_runnable(job_t job)
-{
-	return (job->state == JOB_STATE_LOADED);
-}
-
-#endif /* JOB_H_ */
+#endif /* MANAGER_H_ */

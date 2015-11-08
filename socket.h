@@ -24,14 +24,17 @@ struct job_manifest_socket {
 	/** The socket descriptor */
 	int sd;
 
+	/** The port number, based on the value of <sock_service_name> */
+	int port;
+
 	/* Key/value pairs from the manifest: */
 	char *	label;				/* the unique key in the Sockets dictionary for this structure */
 	int		sock_type;			/*  default: SOCK_STREAM values: SOCK_STREAM, SOCK_DGRAM, SOCK_SEQPACKET */
 	bool	sock_passive;		/* default: true */
-	char *	sock_node_name;	/* optional */
+	char *	sock_node_name;		/* optional */
 	char *	sock_service_name;	/* optional */
 	int		sock_family;		/* optional; default: PF_INET ; allowed: PF_UNIX, PF_INET, PF_INET6 */
-	int		sock_protocol;		/* FIXME: duplicate of sock_type?? default: 'TCP'; */
+	char	sock_protocol;		/* FIXME: duplicate of sock_type?? default: 'TCP'; */
 	char *	sock_path_name;		/* optional; only for PF_UNIX */
 	char *	secure_socket_with_key;		/* optional; only for PF_UNIX */
 	int		sock_path_mode;		/* optional; only for PF_UNIX */
@@ -40,8 +43,11 @@ struct job_manifest_socket {
 };
 
 void setup_socket_activation();
+int socket_activation_handler();
 
 struct job_manifest_socket * job_manifest_socket_new();
 void job_manifest_socket_free(struct job_manifest_socket *);
+int job_manifest_socket_open(struct job_manifest_socket *);
+int job_manifest_socket_get_port(struct job_manifest_socket *);
 
 #endif /* SOCKET_H_ */

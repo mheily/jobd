@@ -15,7 +15,7 @@
 #
 
 jmtest: 
-	$(CC) -I.. $(CFLAGS) -g -O0 -DDEBUG $(LDFLAGS) -o $@ jmtest.c ../log.c ../job.c ../manifest.c ../jsmn/jsmn.c ../socket.c
+	$(CC) -I.. $(CFLAGS) -g -O0 -DDEBUG $(LDFLAGS) -o $@ jmtest.c ../log.c ../job.c ../manifest.c ../manager.c ../jsmn/jsmn.c ../socket.c
 
 check: jmtest
 	DEBUG=yes ./jmtest

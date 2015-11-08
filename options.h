@@ -14,41 +14,15 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef JOB_H_
-#define JOB_H_
+#ifndef OPTIONS_H_
+#define OPTIONS_H_
 
-#include <grp.h>
-#include <pwd.h>
-#include <sys/types.h>
-#include <sys/queue.h>
-#include <unistd.h>
+struct launchd_options {
+	char *	pkgstatedir; 		/* Top-level directory for state data */
+	char *	watchdir;		/* Directory to watch for new jobs */
+	char *	activedir;		/* Directory that holds info about active jobs */
+	bool 	daemon;
+	int	log_level;
+} options;
 
-#include "manifest.h"
-
-struct job {
-	LIST_ENTRY(job)	joblist_entry;
-	job_manifest_t jm;
-	enum {
-		JOB_STATE_DEFINED,
-		JOB_STATE_LOADED,
-		JOB_STATE_WAITING,
-		JOB_STATE_RUNNING,
-		JOB_STATE_EXITED,
-	} state;
-	pid_t pid;
-	int last_exit_status, term_signal;
-};
-typedef struct job *job_t;
-
-job_t 	job_new(job_manifest_t jm);
-void	job_free(job_t job);
-int		job_load(job_t job);
-int		job_run(job_t job);
-
-static inline int
-job_is_runnable(job_t job)
-{
-	return (job->state == JOB_STATE_LOADED);
-}
-
-#endif /* JOB_H_ */
+#endif /* OPTIONS_H_ */

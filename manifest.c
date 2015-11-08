@@ -284,7 +284,14 @@ static int parse_Sockets_inner(parser_state_t p, struct job_manifest_socket *jms
 	if (strcmp(key, "SockType") == 0) { abort(); /*STUB*/ }
 	else if (strcmp(key, "SockPassive") == 0) { abort(); /*STUB*/ }
 	else if (strcmp(key, "SockNodeName") == 0) { abort(); /*STUB*/ }
-	else if (strcmp(key, "SockServiceName") == 0) { jms->sock_service_name = value_s; value_s = NULL; }
+	else if (strcmp(key, "SockServiceName") == 0) {
+		jms->sock_service_name = value_s;
+		if (job_manifest_socket_get_port(jms) < 0) {
+			log_error("unable to convert SockServiceName to a port number");
+			goto err_out;
+		}
+		value_s = NULL;
+	}
 	else if (strcmp(key, "SockFamily") == 0) { abort(); /*STUB*/ }
 	else if (strcmp(key, "SockNodeName") == 0) { abort(); /*STUB*/ }
 	else if (strcmp(key, "SockProtocol") == 0) { abort(); /*STUB*/ }
