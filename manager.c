@@ -121,6 +121,16 @@ void update_jobs(void)
 	}
 }
 
+int manager_wake_job(job_t job)
+{
+	if (job->state != JOB_STATE_WAITING) {
+		log_error("tried to wake a job that was not asleep");
+		return -1;
+	}
+
+	return job_run(job);
+}
+
 int manager_activate_job_by_fd(int fd)
 {
 	return -1; //STUB

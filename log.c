@@ -23,7 +23,7 @@ FILE *logfile;
 int log_open(const char *path)
 {
 	if (!path) return -1;
-	logfile = fopen(path, "a");
+	logfile = fopen(path, "ae");
 	if (!logfile) return -1;
 	return (0);
 	log_info("log started");

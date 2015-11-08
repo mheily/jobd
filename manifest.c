@@ -398,45 +398,45 @@ static const struct {
         const char *ident;
         int (*func)(parser_state_t);
 } manifest_parser[] = {
-        { "Label", parse_label },
-		{ "Disabled", parse_not_implemented },
-		{ "UserName", parse_UserName },
-		{ "GroupName", parse_GroupName },
-		{ "inetdCompatibility", parse_not_implemented },
-		{ "Program", parse_program },
-		{ "ProgramArguments", parse_ProgramArguments },
-		{ "EnableGlobbing", parse_EnableGlobbing },
-		{ "KeepAlive", parse_not_implemented },
-		{ "RunAtLoad", parse_RunAtLoad },
-		{ "WorkingDirectory", parse_WorkingDirectory },
-		{ "RootDirectory", parse_RootDirectory },
-		{ "EnvironmentVariables", parse_EnvironmentVariables },
-		{ "Umask", parse_not_implemented },
-		{ "TimeOut", parse_not_implemented },
-		{ "ExitTimeOut", parse_not_implemented },
-		{ "ThrottleInterval", parse_not_implemented },
-		{ "InitGroups", parse_InitGroups },
-		{ "WatchPaths", parse_WatchPaths },
-		{ "QueueDirectories", parse_QueueDirectories },
-		{ "StartOnMount", parse_not_implemented },
-		{ "StartInterval", parse_not_implemented },
-		{ "StartCalendarInterval", parse_not_implemented },
-		{ "StandardInPath", parse_StandardInPath },
-		{ "StandardOutPath", parse_StandardOutPath },
-		{ "StandardErrorPath", parse_StandardErrorPath },
-		{ "Debug", parse_not_implemented },
-		{ "WaitForDebugger", parse_not_implemented },
-		{ "SoftResourceLimits", parse_not_implemented },
-		{ "HardResourceLimits", parse_not_implemented },
-		{ "Nice", parse_not_implemented },
-		{ "AbandonProcessGroup", parse_not_implemented },
-		{ "HopefullyExitsFirst", parse_not_implemented },
-		{ "HopefullyExitsLast", parse_not_implemented },
-		{ "LowPriorityIO", parse_not_implemented },
-		{ "LaunchOnlyOnce", parse_not_implemented },
-		{ "Sockets", parse_Sockets },
+	{ "Label", parse_label },
+	{ "Disabled", parse_not_implemented },
+	{ "UserName", parse_UserName },
+	{ "GroupName", parse_GroupName },
+	{ "inetdCompatibility", parse_not_implemented },
+	{ "Program", parse_program },
+	{ "ProgramArguments", parse_ProgramArguments },
+	{ "EnableGlobbing", parse_EnableGlobbing },
+	{ "KeepAlive", parse_not_implemented },
+	{ "RunAtLoad", parse_RunAtLoad },
+	{ "WorkingDirectory", parse_WorkingDirectory },
+	{ "RootDirectory", parse_RootDirectory },
+	{ "EnvironmentVariables", parse_EnvironmentVariables },
+	{ "Umask", parse_not_implemented },
+	{ "TimeOut", parse_not_implemented },
+	{ "ExitTimeOut", parse_not_implemented },
+	{ "ThrottleInterval", parse_not_implemented },
+	{ "InitGroups", parse_InitGroups },
+	{ "WatchPaths", parse_WatchPaths },
+	{ "QueueDirectories", parse_QueueDirectories },
+	{ "StartOnMount", parse_not_implemented },
+	{ "StartInterval", parse_not_implemented },
+	{ "StartCalendarInterval", parse_not_implemented },
+	{ "StandardInPath", parse_StandardInPath },
+	{ "StandardOutPath", parse_StandardOutPath },
+	{ "StandardErrorPath", parse_StandardErrorPath },
+	{ "Debug", parse_not_implemented },
+	{ "WaitForDebugger", parse_not_implemented },
+	{ "SoftResourceLimits", parse_not_implemented },
+	{ "HardResourceLimits", parse_not_implemented },
+	{ "Nice", parse_not_implemented },
+	{ "AbandonProcessGroup", parse_not_implemented },
+	{ "HopefullyExitsFirst", parse_not_implemented },
+	{ "HopefullyExitsLast", parse_not_implemented },
+	{ "LowPriorityIO", parse_not_implemented },
+	{ "LaunchOnlyOnce", parse_not_implemented },
+	{ "Sockets", parse_Sockets },
 
-		{ NULL, NULL },
+	{ NULL, NULL },
 };
 
 /* Ensure that the User and Group keys are set appropriately */
@@ -578,19 +578,19 @@ int job_manifest_read(job_manifest_t jm, const char *infile)
 err_out:
 	if (f) (void)fclose(f);
 	free(buf);
-    return (-1);
+	return (-1);
 }
 
 /* NOTE: buf will be owned by job_manifest_t for free() purposes */
 int job_manifest_parse(job_manifest_t jm, char *buf, size_t bufsz)
 {
-    jsmn_parser p;
-    //jsmntok_t *tok;
-    const size_t tokcount = 500;
-    size_t keylen;
-    int i, j, rv, parse_status, eaten;
-    bool match;
-    struct parser_state state;
+	jsmn_parser p;
+	//jsmntok_t *tok;
+	const size_t tokcount = 500;
+	size_t keylen;
+	int i, j, rv, parse_status, eaten;
+	bool match;
+	struct parser_state state;
 
 	if (jm == NULL || buf == NULL || bufsz == 0)
 		return -1;
@@ -602,56 +602,68 @@ int job_manifest_parse(job_manifest_t jm, char *buf, size_t bufsz)
 	jm->json_buf = buf;
 	jm->json_size = bufsz;
 
-    jsmn_init(&p);
-    state.tok = malloc(sizeof(*(state.tok)) * tokcount);
-    if (state.tok == NULL) goto err_out;
-    rv = jsmn_parse(&p, buf, bufsz - 1, state.tok, tokcount);
-    if (rv < 0) goto err_out;
+	jsmn_init(&p);
+	state.tok = malloc(sizeof(*(state.tok)) * tokcount);
+	if (state.tok == NULL)
+		goto err_out;
+	rv = jsmn_parse(&p, buf, bufsz - 1, state.tok, tokcount);
+	if (rv < 0)
+		goto err_out;
 
-    /* Verify there is at least one object */
-    if (rv < 1 || state.tok[0].type != JSMN_OBJECT) goto err_out;
+	/* Verify there is at least one object */
+	if (rv < 1 || state.tok[0].type != JSMN_OBJECT)
+		goto err_out;
 
-    /* Verify there is a Key->Value token combo */
-    for (state.pos = 1; state.pos < rv;) {
-    	if (state.tok[state.pos].type != JSMN_STRING) {
-    		token_dump(&state, state.tok[state.pos]);
-    		log_error("expected string, got above token");
-    		goto err_out;
-    	}
-    	keylen = state.tok->end - state.tok->start;
+	/* Verify there is a Key->Value token combo */
+	for (state.pos = 1; state.pos < rv;) {
+		if (state.tok[state.pos].type != JSMN_STRING) {
+			token_dump(&state, state.tok[state.pos]);
+			log_error("expected string, got above token");
+			goto err_out;
+		}
+		keylen = state.tok->end - state.tok->start;
 
-    	if (state.pos + 1 == rv) {
-    		token_dump(&state, state.tok[state.pos]);
-    		token_dump(&state, state.tok[state.pos + 1]);
-    		log_error("odd number of tokens; expecting key/value pairs");
-    		goto err_out;
-    	}
-    	state.key = strndup(buf + state.tok[state.pos].start, state.tok[state.pos].end - state.tok[state.pos].start);
-    	if (state.key == NULL) goto err_out;
-    	state.pos++;
+		if (state.pos + 1 == rv) {
+			token_dump(&state, state.tok[state.pos]);
+			token_dump(&state, state.tok[state.pos + 1]);
+			log_error(
+					"odd number of tokens; expecting key/value pairs");
+			goto err_out;
+		}
+		state.key = strndup(buf + state.tok[state.pos].start,
+				state.tok[state.pos].end
+						- state.tok[state.pos].start);
+		if (state.key == NULL)
+			goto err_out;
+		state.pos++;
 
 		/* Parse the key/value pair */
-    	match = false;
+		match = false;
 		for (j = 0; manifest_parser[j].ident != NULL; j++) {
-			 if (strncmp(state.key, manifest_parser[j].ident, keylen) == 0) {
-				  eaten = manifest_parser[j].func(&state);
-				  if (eaten < 1) {
-					 log_error("failed to parse %s", state.key);
-					 goto err_out;
-				 } else {
-					 state.pos += eaten;
-				 }
-				 free(state.key);
-				 match = true;
-				 break;
-			 }
+			if (strncmp(state.key, manifest_parser[j].ident, keylen)
+					== 0) {
+				eaten = manifest_parser[j].func(&state);
+				if (eaten < 1) {
+					log_error("failed to parse %s",
+							state.key);
+					goto err_out;
+				} else {
+					state.pos += eaten;
+				}
+				free(state.key);
+				match = true;
+				break;
+			}
 		}
-		if (!match) { log_error("unsupported key: %s", state.key); goto err_out; }
-    }
-    if (job_manifest_validate(jm) < 0) {
-    	log_error("manifest validation failed");
-    	goto err_out;
-    }
+		if (!match) {
+			log_error("unsupported key: %s", state.key);
+			goto err_out;
+		}
+	}
+	if (job_manifest_validate(jm) < 0) {
+		log_error("manifest validation failed");
+		goto err_out;
+	}
 
 	return 0;
 

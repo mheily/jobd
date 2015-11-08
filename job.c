@@ -22,6 +22,7 @@
 
 #include "job.h"
 #include "log.h"
+#include "socket.h"
 
 static void job_dump(job_t job) {
 	log_debug("job dump: label=%s state=%d", job->jm->label, job->state);
@@ -180,7 +181,12 @@ static inline int exec_job(const job_t job, const struct passwd *pwent) {
 
 static int start_child_process(const job_t job, const struct passwd *pwent, const struct group *grent)
 {
+	struct job_manifest_socket *jms;
 	int rv;
+
+	SLIST_FOREACH(jms, &job->jm->sockets, entry) {
+		job_manifest_socket_export(jms);
+	}
 
 #ifndef NOFORK
 	if (setsid() < 0) {
@@ -276,7 +282,7 @@ int job_load(job_t job)
 	*/
 	if (!SLIST_EMPTY(&job->jm->sockets)) {
 		SLIST_FOREACH(jms, &job->jm->sockets, entry) {
-			if (job_manifest_socket_open(jms) < 0) {
+			if (job_manifest_socket_open(job, jms) < 0) {
 				log_error("failed to open socket");
 				return (-1);
 			}

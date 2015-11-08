@@ -30,6 +30,11 @@ int manager_activate_job_by_fd(int fd);
  */
 job_t manager_get_job_by_pid(pid_t pid);
 
+/**
+ * Wake up a job that has been waiting for an external event.
+ */
+int manager_wake_job(job_t job);
+
 void manager_init();
 void manager_update_jobs();
 int manager_write_status_file();

@@ -92,13 +92,16 @@ static void setup_signal_handlers()
 {
 	const int signals[] = {SIGHUP, SIGUSR1, SIGCHLD, SIGINT, SIGTERM, 0};
 	int i;
-    struct kevent kev;
+	struct kevent kev;
 
-    for (i = 0; signals[i] != 0; i++) {
-        EV_SET(&kev, signals[i], EVFILT_SIGNAL, EV_ADD, 0, 0, &setup_signal_handlers);
-        if (kevent(state.kq, &kev, 1, NULL, 0, NULL) < 0) abort();
-        if (signal(signals[i], signal_handler) == SIG_ERR) abort();
-    }
+	for (i = 0; signals[i] != 0; i++) {
+		EV_SET(&kev, signals[i], EVFILT_SIGNAL, EV_ADD, 0, 0,
+				&setup_signal_handlers);
+		if (kevent(state.kq, &kev, 1, NULL, 0, NULL) < 0)
+			abort();
+		if (signal(signals[i], signal_handler) == SIG_ERR)
+			abort();
+	}
 }
 
 static bool pidfile_is_stale(const char *path) {
@@ -262,7 +265,7 @@ static inline void setup_logging()
 int
 main(int argc, char *argv[])
 {
-    int c;
+	int c;
 
 	options.daemon = true;
 	options.log_level = LOG_DEBUG;

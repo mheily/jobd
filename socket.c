@@ -14,6 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -22,6 +23,7 @@
 
 #include "log.h"
 #include "job.h"
+#include "manager.h"
 #include "socket.h"
 
 /* The main kqueue descriptor used by launchd */
@@ -59,7 +61,7 @@ void job_manifest_socket_free(struct job_manifest_socket *jms)
 	free(jms);
 }
 
-int job_manifest_socket_open(struct job_manifest_socket *jms)
+int job_manifest_socket_open(job_t job, struct job_manifest_socket *jms)
 {
 	struct kevent kev;
 	struct sockaddr_in sa;
@@ -71,7 +73,7 @@ int job_manifest_socket_open(struct job_manifest_socket *jms)
 		return -1;
 	}
 
-	sd = socket(jms->sock_family, jms->sock_type, 0);
+	sd = socket(jms->sock_family, jms->sock_type, SOCK_CLOEXEC);
 	if (sd < 0) {
 		log_errno("socket(2)");
 		goto err_out;
@@ -93,7 +95,7 @@ int job_manifest_socket_open(struct job_manifest_socket *jms)
 		goto err_out;
 	}
 
-	EV_SET(&kev, sd, EVFILT_READ, EV_ADD, 0, 0, NULL);
+	EV_SET(&kev, sd, EVFILT_READ, EV_ADD, 0, 0, job);
 	if (kevent(socket_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
 		log_errno("kevent(2)");
 		goto err_out;
@@ -130,6 +132,38 @@ int job_manifest_socket_get_port(struct job_manifest_socket *jms)
 	return 0;
 }
 
+int job_manifest_socket_export(struct job_manifest_socket *jms)
+{
+	char *env_key = NULL, *env_val = NULL;
+
+	/* Remove the O_CLOEXEC flag */
+	if (fcntl(jms->sd, F_SETFD, 0) < 0) {
+		log_errno("fcntl(2)");
+		return -1;
+	}
+
+	if (asprintf(&env_key, "LAUNCHD_SOCKET_%s", jms->label) < 0) {
+		log_errno("asprintf(3)");
+		goto err_out;
+	}
+	if (asprintf(&env_val, "%d", jms->sd) < 0) {
+		log_errno("asprintf(3)");
+		goto err_out;
+	}
+	if (setenv(env_key, env_val, 1) < 0) {
+		log_errno("setenv(3)");
+		goto err_out;
+	}
+
+	free(env_key);
+	free(env_val);
+	return 0;
+
+err_out:
+	free(env_key);
+	free(env_val);
+	return -1;
+}
 void setup_socket_activation(int kqfd)
 {
 	struct kevent kev;
@@ -144,6 +178,7 @@ void setup_socket_activation(int kqfd)
 
 int socket_activation_handler()
 {
+	job_t job;
 	struct kevent kev;
 
 	for (;;) {
@@ -158,8 +193,9 @@ int socket_activation_handler()
 		break;
 	}
 
-	/* FIXME: this module has no visibility into all jobs :( */
+	job = (job_t) (kev.udata);
+	log_debug("job %s starting due to socket activation", job->jm->label);
 
-	return 0;
+	return (manager_wake_job(job));
 }
 
