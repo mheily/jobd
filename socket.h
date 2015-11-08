@@ -51,12 +51,13 @@ int socket_activation_handler();
 struct job_manifest_socket * job_manifest_socket_new();
 void job_manifest_socket_free(struct job_manifest_socket *);
 int job_manifest_socket_open(struct job *, struct job_manifest_socket *);
+int job_manifest_socket_close(struct job_manifest_socket *);
 int job_manifest_socket_get_port(struct job_manifest_socket *);
 
 /**
  * Prepare the socket to be exported to a child process when the associated
  * job is run.
  */
-int job_manifest_socket_export(struct job_manifest_socket *);
+int job_manifest_socket_export(struct job_manifest_socket *, cvec_t);
 
 #endif /* SOCKET_H_ */

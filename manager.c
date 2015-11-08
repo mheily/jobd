@@ -124,7 +124,8 @@ void update_jobs(void)
 int manager_wake_job(job_t job)
 {
 	if (job->state != JOB_STATE_WAITING) {
-		log_error("tried to wake a job that was not asleep");
+		log_error("tried to wake job %s that was not asleep (state=%d)",
+				job->jm->label, job->state);
 		return -1;
 	}
 

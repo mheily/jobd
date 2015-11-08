@@ -16,25 +16,31 @@ Be especially mindful that there is NO WARRANTY provided with this software.
 The core functionality is working:
 * loading JSON-formatted jobs with launchctl
 * launching jobs
+* socket-activated jobs via the Sockets key
 
 Some things are not implemented yet:
 * unloading jobs via launchctl
 * cron functionality - StartInterval, StartCalendarInterval
-* on-demand activation - Sockets, StartOnMount
 * file and directory watches - WatchPaths, QueueDirectories
 * restarting jobs if they crash - TimeOut, ExitTimeout, KeepAliveTimeout, ThrottleInterval
 * resource limits - SoftResourceLimits, HardResourceLimits
-* miscellaneous - LaunchOnlyOnce, inetdCompatibility, EnableGlobbing,
-  RunAtLoad, Umask
+* miscellaneous - LaunchOnlyOnce, inetdCompatibility, EnableGlobbing, RunAtLoad, Umask
 
 Some things will probably never be implemented:
 * oddities - LimitLoadToHosts, LimitLoadToHosts
 * kernel and launchd debugging - Debug, WaitForDebugger
 * Mach IPC
+* the StartOnMount key - may require kernel support for filesystem mount notifications
 * the original XML plist format; use JSON instead.
 * hacks and workarounds - HopefullyExitsFirst, HopefullyExitsLast
 * Darwin-specific things - EnableTransactions
 * legacy keys - Disabled, OnDemand
+
+## Socket activation
+
+relaunchd uses a different mechanism for socket activation than the one that Darwin uses.
+
+TODO -- document this
 
 ## Installation 
 

@@ -32,8 +32,12 @@ static int apply_resource_limits(const job_t job) {
 	//TODO - SoftResourceLimits, HardResourceLimits
 	//TODO - LowPriorityIO
 
-	if (setpriority(PRIO_PROCESS, 0, job->jm->nice) < 0)
-		return (-1);
+	if (job->jm->nice != 0) {
+		if (setpriority(PRIO_PROCESS, 0, job->jm->nice) < 0) {
+			log_errno("setpriority(2) to nice=%d", job->jm->nice);
+			return (-1);
+		}
+	}
 
 	return (0);
 }
@@ -65,6 +69,7 @@ static inline int modify_credentials(job_t const job, const struct passwd *pwent
 
 static inline cvec_t setup_environment_variables(const job_t job, const struct passwd *pwent)
 {
+	struct job_manifest_socket *jms;
 	cvec_t env = NULL;
 	char *curp, *buf = NULL;
 	char *logname_var, *user_var;
@@ -110,7 +115,7 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 		free(buf);
 	}
 	if (!found[3]) {
-		if (cvec_push(env, "PATH=/usr/bin:/bin") < 0) goto err_out;
+		if (cvec_push(env, "PATH=/usr/bin:/bin:/usr/local/bin") < 0) goto err_out;
 	}
 	if (!found[4]) {
 		if (asprintf(&buf, "SHELL=%s", pwent->pw_shell) < 0) goto err_out;
@@ -122,6 +127,10 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 	}
 	free(logname_var);
 	free(user_var);
+
+	SLIST_FOREACH(jms, &job->jm->sockets, entry) {
+		job_manifest_socket_export(jms, env);
+	}
 
 	return (env);
 
@@ -181,12 +190,7 @@ static inline int exec_job(const job_t job, const struct passwd *pwent) {
 
 static int start_child_process(const job_t job, const struct passwd *pwent, const struct group *grent)
 {
-	struct job_manifest_socket *jms;
 	int rv;
-
-	SLIST_FOREACH(jms, &job->jm->sockets, entry) {
-		job_manifest_socket_export(jms);
-	}
 
 #ifndef NOFORK
 	if (setsid() < 0) {
@@ -195,9 +199,9 @@ static int start_child_process(const job_t job, const struct passwd *pwent, cons
 	}
 #endif
 	if (apply_resource_limits(job) < 0) {
-    	log_error("unable to apply resource limits");
-    	goto err_out;
-    }
+		log_error("unable to apply resource limits");
+		goto err_out;
+	}
 	if (job->jm->working_directory) {
 		if (chdir(job->jm->working_directory) < 0) {
 			log_error("unable to chdir to %s", job->jm->working_directory);
@@ -300,6 +304,7 @@ int job_load(job_t job)
 
 int job_run(job_t job)
 {
+	struct job_manifest_socket *jms;
 	struct passwd *pwent;
 	struct group *grent;
 	pid_t pid;
@@ -330,6 +335,9 @@ int job_run(job_t job)
     	log_debug("running %s", job->jm->label);
     	job->pid = pid;
     	job->state = JOB_STATE_RUNNING;
+	SLIST_FOREACH(jms, &job->jm->sockets, entry) {
+		job_manifest_socket_close(jms);
+	}
     }
 #endif
 	return (0);

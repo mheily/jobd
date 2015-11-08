@@ -73,7 +73,7 @@ int job_manifest_socket_open(job_t job, struct job_manifest_socket *jms)
 		return -1;
 	}
 
-	sd = socket(jms->sock_family, jms->sock_type, SOCK_CLOEXEC);
+	sd = socket(jms->sock_family, jms->sock_type | SOCK_CLOEXEC, 0);
 	if (sd < 0) {
 		log_errno("socket(2)");
 		goto err_out;
@@ -110,6 +110,20 @@ err_out:
 	return -1;
 }
 
+int job_manifest_socket_close(struct job_manifest_socket *jms)
+{
+	int rv;
+
+	rv = close(jms->sd);
+	jms->sd = 0;
+	if (rv < 0) {
+		log_errno("close(2)");
+		return -1;
+	} else {
+		return 0;
+	}
+}
+
 /* Given that the caller has filled in the sock_service_name variable, convert
  * this into a port number.
  */
@@ -132,36 +146,28 @@ int job_manifest_socket_get_port(struct job_manifest_socket *jms)
 	return 0;
 }
 
-int job_manifest_socket_export(struct job_manifest_socket *jms)
+int job_manifest_socket_export(struct job_manifest_socket *jms, cvec_t env)
 {
-	char *env_key = NULL, *env_val = NULL;
+	char *env_var = NULL;
 
 	/* Remove the O_CLOEXEC flag */
 	if (fcntl(jms->sd, F_SETFD, 0) < 0) {
 		log_errno("fcntl(2)");
 		return -1;
 	}
-
-	if (asprintf(&env_key, "LAUNCHD_SOCKET_%s", jms->label) < 0) {
+	/* XXX-need to make it uppercase */
+	if (asprintf(&env_var, "LAUNCHD_SOCKET_%s=%d", jms->label, jms->sd) < 0) {
 		log_errno("asprintf(3)");
 		goto err_out;
 	}
-	if (asprintf(&env_val, "%d", jms->sd) < 0) {
-		log_errno("asprintf(3)");
+	if (cvec_push(env, env_var) < 0)
 		goto err_out;
-	}
-	if (setenv(env_key, env_val, 1) < 0) {
-		log_errno("setenv(3)");
-		goto err_out;
-	}
 
-	free(env_key);
-	free(env_val);
+	free(env_var);
 	return 0;
 
 err_out:
-	free(env_key);
-	free(env_val);
+	free(env_var);
 	return -1;
 }
 void setup_socket_activation(int kqfd)
