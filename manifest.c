@@ -394,6 +394,12 @@ err_out:
   	return (-1);
 }
 
+static int parse_JailName(parser_state_t p) {
+	if (parse_string(&p->jm->jail_name, p) < 1) return -1;
+	//TODO: validation
+	return (1);
+}
+
 static const struct {
         const char *ident;
         int (*func)(parser_state_t);
@@ -435,6 +441,9 @@ static const struct {
 	{ "LowPriorityIO", parse_not_implemented },
 	{ "LaunchOnlyOnce", parse_not_implemented },
 	{ "Sockets", parse_Sockets },
+
+	/* XXX-experimental */
+	{ "JailName", parse_JailName },
 
 	{ NULL, NULL },
 };
@@ -547,6 +556,7 @@ void job_manifest_free(job_manifest_t jm)
 	free(jm->stdin_path);
 	free(jm->stdout_path);
 	free(jm->stderr_path);
+	free(jm->jail_name);
 	SLIST_FOREACH_SAFE(jms, &jm->sockets, entry, jms_tmp) {
 		SLIST_REMOVE(&jm->sockets, jms, job_manifest_socket, entry);
 		job_manifest_socket_free(jms);

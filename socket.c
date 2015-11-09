@@ -65,6 +65,7 @@ int job_manifest_socket_open(job_t job, struct job_manifest_socket *jms)
 {
 	struct kevent kev;
 	struct sockaddr_in sa;
+	int enable = 1;
 	int sd = -1;
 
 	if (jms->sock_type != SOCK_STREAM || !jms->sock_passive
@@ -79,13 +80,18 @@ int job_manifest_socket_open(job_t job, struct job_manifest_socket *jms)
 		goto err_out;
 	}
 
+	if (setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
+		log_errno("setsockopt(2)");
+		goto err_out;
+	}
+
 	memset(&sa, 0, sizeof(sa));
 	sa.sin_family = jms->sock_family;
 	sa.sin_addr.s_addr = INADDR_ANY; /* TODO: use jms->sock_node_name */
 	sa.sin_port = htons(jms->port);
 
 	if (bind(sd, (struct sockaddr *) &sa, sizeof(sa)) < 0) {
-		log_errno("bind(2)");
+		log_errno("bind(2) to port %d", jms->port);
 		goto err_out;
 	}
 

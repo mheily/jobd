@@ -42,6 +42,7 @@ struct job_manifest {
 			run_at_load;
 	char	*working_directory;
 	char 	*root_directory;
+	char *	jail_name;
 
 	cvec_t	environment_variables;  // Hash coerced into a flat array of key/value pairs
 
