@@ -58,6 +58,6 @@ int job_manifest_socket_get_port(struct job_manifest_socket *);
  * Prepare the socket to be exported to a child process when the associated
  * job is run.
  */
-int job_manifest_socket_export(struct job_manifest_socket *, cvec_t);
+int job_manifest_socket_export(struct job_manifest_socket *, cvec_t, size_t);
 
 #endif /* SOCKET_H_ */

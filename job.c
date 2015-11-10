@@ -133,8 +133,9 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 	free(logname_var);
 	free(user_var);
 
+	size_t offset = 0;
 	SLIST_FOREACH(jms, &job->jm->sockets, entry) {
-		job_manifest_socket_export(jms, env);
+		job_manifest_socket_export(jms, env, offset++);
 	}
 
 	return (env);

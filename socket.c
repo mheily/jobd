@@ -152,7 +152,7 @@ int job_manifest_socket_get_port(struct job_manifest_socket *jms)
 	return 0;
 }
 
-int job_manifest_socket_export(struct job_manifest_socket *jms, cvec_t env)
+int job_manifest_socket_export(struct job_manifest_socket *jms, cvec_t env, size_t offset)
 {
 	char *env_var = NULL;
 
@@ -168,8 +168,16 @@ int job_manifest_socket_export(struct job_manifest_socket *jms, cvec_t env)
 	}
 	if (cvec_push(env, env_var) < 0)
 		goto err_out;
-
 	free(env_var);
+
+	if (asprintf(&env_var, "LAUNCHD_SOCKET_%zu=%d", offset, jms->sd) < 0) {
+		log_errno("asprintf(3)");
+		goto err_out;
+	}
+	if (cvec_push(env, env_var) < 0)
+		goto err_out;
+	free(env_var);
+
 	return 0;
 
 err_out:
