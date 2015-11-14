@@ -38,6 +38,7 @@ static size_t s_cnt;
 
 static void wrapper_init()
 {
+	char *buf, *errp;
 	void *handle;
 
 	/* FIXME: hardcoded to FreeBSD 10 */
@@ -47,15 +48,31 @@ static void wrapper_init()
 	if (!libc_bind_ptr) err(1, "dlsym failed: %s", dlerror());
 
 	/* FIXME: parse environment variables for launchd */
-	s_cnt = 1;
-	s_info = calloc(s_cnt, sizeof(struct sock_info));
+	buf = getenv("LISTEN_FDS");
+	if (!buf) {
+		s_cnt = 0;
+		return;
+	}
+	s_cnt = (size_t)strtoul(buf, &errp, 10);
+	if (*errp != '\0') {
+		puts("parse error");
+		/* TODO: log parse error somehow */
+		s_cnt = 0;
+		return;
+	}
+	//printf("got %zu descriptors\n", s_cnt);
+	s_info = calloc(s_cnt, sizeof(void *));
 	for (size_t i = 0; i < s_cnt; i++) {
-		s_info[0]->fd = 3; //FIXME: read env var
-		s_info[0]->sa_len = sizeof(struct sockaddr);
-		if (getsockname(s_info[0]->fd, (struct sockaddr *) &s_info[0]->sa, &s_info[0]->sa_len) < 0) {
-			err(1, "getsockname");
+		s_info[i] = malloc(sizeof(struct sock_info));
+		if (!s_info[i]) err(1, "malloc");
+		s_info[i]->fd = 3 + i;
+		s_info[i]->sa_len = sizeof(struct sockaddr);
+		if (getsockname(s_info[i]->fd, (struct sockaddr *) &s_info[i]->sa, &s_info[i]->sa_len) < 0) {
+			// TODO: log the error somehow: err(1, "getsockname");
+			s_info[i]->fd = -1;
 		}
 	}
+	//puts("init");
 }
 
 int
@@ -80,15 +97,5 @@ bind(int s, const struct sockaddr *addr, socklen_t addrlen)
 		}
 	}
 
-	return *(*libc_bind_ptr)(s, addr, addrlen);
-}
-
-int main() {
-  int sd = socket(AF_LOCAL, SOCK_STREAM, 0);
-  if (sd < 0) err(1, "socket");
-	if (bind(sd, NULL, 0) < 0) {
-		err(1, "bind");
-	}
-  puts("ok");
-  exit(0);
+	return (int)(*libc_bind_ptr)(s, addr, addrlen);
 }

@@ -15,13 +15,29 @@
  */
 
 #include <err.h>
+#include <sys/types.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
-int main() {
-  int sd = socket(AF_LOCAL, SOCK_STREAM, 0);
-  if (sd < 0) err(1, "socket");
-  puts("FIXME -- STUB");
-  exit(0);
+int main()
+{
+	struct sockaddr_in sa;
+
+	int sd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sd < 0)
+		err(1, "socket");
+	memset(&sa, 0, sizeof(sa));
+	sa.sin_family = AF_INET;
+	sa.sin_addr.s_addr = INADDR_ANY;
+	sa.sin_port = htons(8088);
+
+	if (bind(sd, (struct sockaddr *) &sa, sizeof(sa)) < 0) {
+		err(1, "bind(2)");
+	}
+
+	exit(0);
 }

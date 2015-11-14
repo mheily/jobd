@@ -14,14 +14,16 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
+DEBUGFLAGS=-g -O0
+
 sa-wrapper.so: wrapper.c
-	$(CC) -shared -fPIC $(CFLAGS) $(LDFLAGS) -o $@ wrapper.c
+	$(CC) -shared -fPIC $(CFLAGS) $(DEBUGFLAGS) $(LDFLAGS) -o $@ wrapper.c
 
 test-wrapper: test-wrapper.c sa-wrapper.so
-	$(CC) $(CFLAGS) -Wl,-rpath,. $(LDFLAGS) -o $@ test-wrapper.c sa-wrapper.so
+	$(CC) $(CFLAGS) -Wl,-rpath,. $(DEBUGFLAGS) $(LDFLAGS) -o $@ test-wrapper.c sa-wrapper.so
 
 check: sa-wrapper.so test-wrapper
-	./test-wrapper
+	./test-wrapper.sh
 
 clean:
 	rm -f *.o *.so test-wrapper
