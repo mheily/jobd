@@ -25,7 +25,8 @@
 
 int main()
 {
-	struct sockaddr_in sa;
+	struct sockaddr_in sa, client_sa;
+	int socklen, client_fd;
 
 	int sd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sd < 0)
@@ -38,6 +39,17 @@ int main()
 	if (bind(sd, (struct sockaddr *) &sa, sizeof(sa)) < 0) {
 		err(1, "bind(2)");
 	}
+
+	if (listen(sd, 5) < 0)
+		err(1, "listen(2)");
+
+	socklen = sizeof(client_sa);
+	client_fd = accept(sd, (struct sockaddr *) &client_sa, &socklen);
+	if (client_fd < 0)
+	  err(1, "accept(2)");
+
+	if (write(client_fd, "hello world", 11) < 11)
+		err(1, "write(2)");
 
 	exit(0);
 }

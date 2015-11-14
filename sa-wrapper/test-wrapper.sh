@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh
 cd ..
 make clean launchd-debug
 cd sa-wrapper
@@ -23,6 +23,7 @@ fi
 kill %1
 kill %2
 echo "response from the server"
+echo $message
 echo "standard output of the job:"
 cat test-wrapper.out
 echo "standard error of the job:"

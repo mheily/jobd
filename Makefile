@@ -19,13 +19,16 @@ include Makefile.inc
 launchd_SOURCES=job.c log.c launchd.c manager.c manifest.c socket.c jsmn/jsmn.c
 DEBUGFLAGS=-g -O0 -DDEBUG
 
-all: launchd
+all: launchd sa-wrapper/sa-wrapper.so
 
 check: launchd
 	cd test && make && ./jmtest
 
 launchd: $(launchd_SOURCES)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(launchd_SOURCES)
+
+sa-wrapper/sa-wrapper.so:
+	cd sa-wrapper ; $(MAKE)
 
 launchd-debug:
 	CFLAGS="$(DEBUGFLAGS)" $(MAKE) launchd
@@ -45,6 +48,7 @@ dist: clean
 install:
 	install -s -m 755 launchd $$DESTDIR$(SBINDIR)
 	install -m 755 launchctl $$DESTDIR$(BINDIR)
+	install -m 755 sa-wrapper/sa-wrapper.so $$DESTDIR$(LIBDIR)
 	install -d -m 700 $$DESTDIR/.launchd
 	install -d -m 755 $$DESTDIR$(SYSCONFDIR)/launchd \
 		$$DESTDIR$(SYSCONFDIR)/launchd/agents \

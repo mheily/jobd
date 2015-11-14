@@ -25,7 +25,7 @@ f.puts <<"__MANIFEST__"
   "UserName": "nobody",
   "GroupName": "nogroup",
   "Program": "#{pwd}/test-wrapper",
-  "EnvironmentVariables": {"LD_PRELOAD":"#{pwd}/sa-wrapper.so", "WORKAROUND":"FIXME"},
+  "EnvironmentVariables": {"LD_PRELOAD":"sa-wrapper.so","FIXME":"Workaround for parser bug"},
   "EnableGlobbing": true,
   "WorkingDirectory": "/",
   "RootDirectory": "/",

@@ -93,19 +93,20 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 	log_debug("job %s has %zu env vars\n", job->jm->label, cvec_length(job->jm->environment_variables));
 	for (i = 0; i < cvec_length(job->jm->environment_variables); i += 2) {
 		curp = cvec_get(job->jm->environment_variables, i);
+		log_debug("evaluating %s", curp);
 		if (strcmp(curp, "LOGNAME") == 0) {
 			found[0] = true;
 			if (cvec_push(env, logname_var) < 0) goto err_out;
 		} else if (strcmp(curp, "USER") == 0) {
 			found[1] = true;
 			if (cvec_push(env, user_var) < 0) goto err_out;
-		} else if (strcmp(curp, "HOME")) {
+		} else if (strcmp(curp, "HOME") == 0) {
 			found[2] = true;
-		} else if (strcmp(curp, "PATH")) {
+		} else if (strcmp(curp, "PATH") == 0) {
 			found[3] = true;
-		} else if (strcmp(curp, "SHELL")) {
+		} else if (strcmp(curp, "SHELL") == 0) {
 			found[4] = true;
-		} else if (strcmp(curp, "TMPDIR")) {
+		} else if (strcmp(curp, "TMPDIR") == 0) {
 			found[5] = true;
 		} else {
 			char *keypair;
