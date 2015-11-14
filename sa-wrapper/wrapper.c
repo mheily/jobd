@@ -55,7 +55,6 @@ static void wrapper_init()
 	}
 	s_cnt = (size_t)strtoul(buf, &errp, 10);
 	if (*errp != '\0') {
-		puts("parse error");
 		/* TODO: log parse error somehow */
 		s_cnt = 0;
 		return;

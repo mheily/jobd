@@ -90,10 +90,9 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 	/* Convert the flat array into an array of key=value pairs */
 	/* Follow the crontab(5) convention of overriding LOGNAME and USER
 	 * and providing a default value for HOME, PATH, and SHELL */
-	printf("---- %s has %zu env vars\n", job->jm->label, cvec_length(job->jm->environment_variables));
+	log_debug("job %s has %zu env vars\n", job->jm->label, cvec_length(job->jm->environment_variables));
 	for (i = 0; i < cvec_length(job->jm->environment_variables); i += 2) {
 		curp = cvec_get(job->jm->environment_variables, i);
-		puts(curp);
 		if (strcmp(curp, "LOGNAME") == 0) {
 			found[0] = true;
 			if (cvec_push(env, logname_var) < 0) goto err_out;
@@ -117,7 +116,7 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 			if (asprintf(&keypair, "%s=%s", curp, value) < 0)
 				goto err_out;
 			if (cvec_push(env, keypair) < 0) goto err_out;
-			printf("WHEEEEEE %s\n", keypair);
+			log_debug("set keypair: %s", keypair);
 			free(keypair);
 		}
 	}
