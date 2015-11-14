@@ -16,6 +16,7 @@
 
 #include <dlfcn.h>
 #include <err.h>
+#include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -24,11 +25,12 @@
 
 struct sock_info {
 	int fd;
-	struct sockaddr sa;
+	struct sockaddr_in sa;
 	socklen_t sa_len;
 };
 
 static void wrapper_init() __attribute__((constructor));
+/* TODO: write a destructor */
 
 static int * (*libc_bind_ptr)(int, const struct sockaddr *, socklen_t);
 static struct sock_info **s_info;
@@ -50,7 +52,7 @@ static void wrapper_init()
 	for (size_t i = 0; i < s_cnt; i++) {
 		s_info[0]->fd = 3; //FIXME: read env var
 		s_info[0]->sa_len = sizeof(struct sockaddr);
-		if (getsockname(s_info[0]->fd, &s_info[0]->sa, &s_info[0]->sa_len) < 0) {
+		if (getsockname(s_info[0]->fd, (struct sockaddr *) &s_info[0]->sa, &s_info[0]->sa_len) < 0) {
 			err(1, "getsockname");
 		}
 	}

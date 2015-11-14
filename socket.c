@@ -154,36 +154,24 @@ int job_manifest_socket_get_port(struct job_manifest_socket *jms)
 
 int job_manifest_socket_export(struct job_manifest_socket *jms, cvec_t env, size_t offset)
 {
-	char *env_var = NULL;
+	int new_sd = offset + 3;
+
+	if (dup2(jms->sd, new_sd) < 0) {
+		log_errno("dup2(2)");
+		return -1;
+	}	
+
+	jms->sd = new_sd;
 
 	/* Remove the O_CLOEXEC flag */
 	if (fcntl(jms->sd, F_SETFD, 0) < 0) {
 		log_errno("fcntl(2)");
 		return -1;
 	}
-	/* XXX-need to make it uppercase */
-	if (asprintf(&env_var, "LAUNCHD_SOCKET_%s=%d", jms->label, jms->sd) < 0) {
-		log_errno("asprintf(3)");
-		goto err_out;
-	}
-	if (cvec_push(env, env_var) < 0)
-		goto err_out;
-	free(env_var);
-
-	if (asprintf(&env_var, "LAUNCHD_SOCKET_%zu=%d", offset, jms->sd) < 0) {
-		log_errno("asprintf(3)");
-		goto err_out;
-	}
-	if (cvec_push(env, env_var) < 0)
-		goto err_out;
-	free(env_var);
 
 	return 0;
-
-err_out:
-	free(env_var);
-	return -1;
 }
+
 void setup_socket_activation(int kqfd)
 {
 	struct kevent kev;

@@ -4,3 +4,4 @@
 .settings/
 /test/jmtest.log
 *.tar.gz
+*.so

@@ -137,6 +137,14 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 	SLIST_FOREACH(jms, &job->jm->sockets, entry) {
 		job_manifest_socket_export(jms, env, offset++);
 	}
+	if (offset > 0) {
+		if (asprintf(&buf, "LISTEN_FDS=%zu", offset) < 0) goto err_out;
+		if (cvec_push(env, buf) < 0) goto err_out;
+		free(buf);
+		if (asprintf(&buf, "LISTEN_PID=%d", getpid()) < 0) goto err_out;
+		if (cvec_push(env, buf) < 0) goto err_out;
+		free(buf);
+	}
 
 	return (env);
 
