@@ -15,6 +15,7 @@
 #
 
 DEBUGFLAGS=-g -O0
+CFLAGS+=-std=c99
 
 sa-wrapper.so: wrapper.c
 	$(CC) -shared -fPIC $(CFLAGS) $(DEBUGFLAGS) $(LDFLAGS) -o $@ wrapper.c

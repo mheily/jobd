@@ -14,6 +14,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "vendor/FreeBSD/sys/queue.h"
+
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/socket.h>

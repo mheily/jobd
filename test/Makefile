@@ -14,6 +14,10 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
+# Flags needed by GCC/glibc
+#CFLAGS+=-std=c99 -D_XOPEN_SOURCE=700 -D_BSD_SOURCE -D_GNU_SOURCE -I/usr/include/kqueue/
+#LDFLAGS+=-lkqueue -lpthread
+
 jmtest: 
 	$(CC) -I.. $(CFLAGS) -g -O0 -DDEBUG $(LDFLAGS) -o $@ jmtest.c ../log.c ../job.c ../manifest.c ../manager.c ../jsmn/jsmn.c ../socket.c
 

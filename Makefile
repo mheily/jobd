@@ -21,6 +21,7 @@ DEBUGFLAGS=-g -O0 -DDEBUG
 
 # Flags needed by GCC/glibc
 #CFLAGS+=-std=c99 -D_XOPEN_SOURCE=700 -D_BSD_SOURCE -D_GNU_SOURCE -I/usr/include/kqueue/
+#LDFLAGS+=-lkqueue -lpthread
 
 all: launchd sa-wrapper/sa-wrapper.so
 

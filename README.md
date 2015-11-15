@@ -13,6 +13,9 @@ Be especially mindful that there is NO WARRANTY provided with this software.
 
 ## Status
 
+relaunchd is primarily developed on FreeBSD, but it compiles under Linux and should work
+there as well.
+
 The core functionality is working:
 * loading JSON-formatted jobs with launchctl
 * launching jobs
@@ -41,6 +44,25 @@ Some things will probably never be implemented:
 * hacks and workarounds - HopefullyExitsFirst, HopefullyExitsLast
 * Darwin-specific things - EnableTransactions
 * legacy keys - Disabled, OnDemand
+
+## Building under Linux
+
+There are a few extra steps when building on Linux:
+
+1. Download and install libkqueue. For Debian-based distributions, you can simply run:
+
+	sudo apt-get install libkqueue-dev
+
+   Other distributions will require you to build from source, which is available at:
+
+	https://github.com/mheily/libkqueue/
+
+2. Edit the following files and uncomment the lines that look like this:
+
+	# Flags needed by GCC/glibc
+	#CFLAGS+=-std=c99 -D_XOPEN_SOURCE=700 -D_BSD_SOURCE -D_GNU_SOURCE -I/usr/include/kqueue/
+	#LDFLAGS+=-lkqueue -lpthread 
+
 
 ## Socket activation
 
