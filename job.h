@@ -20,7 +20,7 @@
 #include <grp.h>
 #include <pwd.h>
 #include <sys/types.h>
-#include <sys/queue.h>
+#include "vendor/FreeBSD/sys/queue.h"
 #include <unistd.h>
 
 #include "manifest.h"

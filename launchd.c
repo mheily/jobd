@@ -24,7 +24,7 @@
 #include <string.h>
 #include <sysexits.h>
 #include <syslog.h>
-#include <sys/queue.h>
+#include "vendor/FreeBSD/sys/queue.h"
 #include <sys/types.h>
 #include <sys/event.h>
 #include <sys/wait.h>

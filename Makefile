@@ -19,13 +19,16 @@ include Makefile.inc
 launchd_SOURCES=job.c log.c launchd.c manager.c manifest.c socket.c jsmn/jsmn.c
 DEBUGFLAGS=-g -O0 -DDEBUG
 
+# Flags needed by GCC/glibc
+#CFLAGS+=-std=c99 -D_XOPEN_SOURCE=700 -D_BSD_SOURCE -D_GNU_SOURCE -I/usr/include/kqueue/
+
 all: launchd sa-wrapper/sa-wrapper.so
 
 check: launchd
 	cd test && make && ./jmtest
 
-launchd: $(launchd_SOURCES)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(launchd_SOURCES)
+launchd: $(launchd_SOURCES) config.h
+	$(CC) -include config.h $(CFLAGS) $(LDFLAGS) -o $@ $(launchd_SOURCES)
 
 sa-wrapper/sa-wrapper.so:
 	cd sa-wrapper ; $(MAKE)
@@ -33,8 +36,11 @@ sa-wrapper/sa-wrapper.so:
 launchd-debug:
 	CFLAGS="$(DEBUGFLAGS)" $(MAKE) launchd
 
+config.h:
+	echo "/* Automatically generated -- do not edit */" > config.h
+ 
 clean:
-	rm -f *.o
+	rm -f *.o config.h
 	rm -f launchd
 	cd test && $(MAKE) clean
 
