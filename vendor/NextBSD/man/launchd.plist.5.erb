@@ -28,7 +28,7 @@
 .Nm launchd.plist
 .Nd System wide and per-user daemon/agent configuration files
 .Sh DESCRIPTION
-This document details the parameters that can be given to an XML property list that can be loaded into
+This document details the parameters that can be given to a JSON property list that can be loaded into
 .Nm launchd
 with
 .Nm launchctl .
@@ -92,16 +92,14 @@ SHOULD:
 .Pp
 .Bl -bullet -offset indent -compact
 .It
-Launch on demand given criteria specified in the XML property list.
+Launch on demand given criteria specified in the JSON property list.
 More information can be found later in this man page.
 .It
 Catch the SIGTERM signal.
 .El
-.Sh XML PROPERTY LIST KEYS
+.Sh JSON PROPERTY LIST KEYS
 The following keys can be used to describe the configuration details of your daemon or agent.
-Property lists are Apple's standard configuration file format. Please see
-.Xr plist 5
-for more information. Please note: property list files are expected to have their name end in ".plist".
+Please note: JSON property list files are expected to have their name end in ".json".
 Also please note that it is the expected convention for launchd property list files to be named <Label>.plist.
 Thus, if your job label is "com.apple.sshd", your plist file should be named "com.apple.sshd.plist".
 .Pp
@@ -488,24 +486,17 @@ It is therefore in the best interest of a job developer who expects dependents
 to define all of the sockets in the configuration file. This has the added
 benefit of making it possible to start the job based on demand instead of
 immediately.
-.Sh EXAMPLE XML PROPERTY LISTS
+.Sh EXAMPLE JSON PROPERTY LISTS
 .Pp
-The following XML Property List simply keeps "exampled" running continuously:
+The following JSON Property List simply keeps "exampled" running continuously:
 .Pp
-.Dl <?xml version="1.0" encoding="UTF-8"?>
-.Dl <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-.Dl <plist version="1.0">
-.Dl <dict>
-.Dl 	<key>Label</key>
-.Dl 	<string>com.example.exampled</string>
-.Dl 	<key>ProgramArguments</key>
-.Dl 	<array>
-.Dl 		<string>exampled</string>
-.Dl 	</array>
-.Dl 	<key>KeepAlive</key>
-.Dl 	<true/>
-.Dl </dict>
-.Dl </plist>
+.Bd -literal
+{
+    "Label": "com.example.exampled"
+    "ProgramArguments": [ "exampled" ],
+    "KeepAlive": true,
+}
+.Ed
 .Pp
 .Sh FILES
 .Bl -tag -width "/System/Library/LaunchDaemons" -compact
@@ -523,5 +514,4 @@ System-wide daemons provided by the operating system.
 .Sh SEE ALSO 
 .Xr launchctl 1 ,
 .Xr sysctl 3 ,
-.Xr launchd 8 ,
-.Xr plist 5
+.Xr launchd 8
