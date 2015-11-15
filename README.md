@@ -57,13 +57,6 @@ There are a few extra steps when building on Linux:
 
 	https://github.com/mheily/libkqueue/
 
-2. Edit the following files and uncomment the lines that look like this:
-
-	# Flags needed by GCC/glibc
-	#CFLAGS+=-std=c99 -D_XOPEN_SOURCE=700 -D_BSD_SOURCE -D_GNU_SOURCE -I/usr/include/kqueue/
-	#LDFLAGS+=-lkqueue -lpthread 
-
-
 ## Socket activation
 
 relaunchd uses a different mechanism for socket activation than the one that Darwin uses.
