@@ -126,7 +126,7 @@ static void create_pid_file()
 	if (asprintf(&buf, "%d", getpid()) < 0) abort();
 	len = strlen(buf);
 retry:
-	if ((fd = open(path, O_CREAT | O_EXCL | O_EXLOCK | O_WRONLY, 0644)) < 0) {
+	if ((fd = open(path, O_CREAT | O_EXCL | O_WRONLY, 0644)) < 0) {
 		if (errno == EEXIST) {
 			if (pidfile_is_stale(path)) {
 				log_warning("detected a stale pidfile");
