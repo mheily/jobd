@@ -63,6 +63,13 @@ install:
 	install -d -m 755 $$DESTDIR$(DATADIR)/launchd \
 		$$DESTDIR$(DATADIR)/launchd/agents \
 		$$DESTDIR$(DATADIR)/launchd/daemons
+
+	erb -T 2 vendor/NextBSD/man/launchd.plist.5.erb | gzip > $$DESTDIR$(MANDIR)/man5/launchd.plist.5.gz
+	for manpage in vendor/NextBSD/man/*.[0-9] ; do \
+		section=`echo $$manpage | sed 's/.*\.//'` ; \
+		cat $$manpage | gzip > $$DESTDIR$(MANDIR)/man$$section/`basename $$manpage`.gz ; \
+	done
+ 	
 	test `uname` = "FreeBSD" && install -m 755 rc.FreeBSD $$DESTDIR/usr/local/etc/rc.d/launchd || true
 
 .PHONY: all clean launchd

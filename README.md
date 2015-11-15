@@ -45,6 +45,10 @@ Some things will probably never be implemented:
 * Darwin-specific things - EnableTransactions
 * legacy keys - Disabled, OnDemand
 
+## Building (all platforms)
+
+Make sure you have Ruby installed before building or installing this project.
+
 ## Building under Linux
 
 There are a few extra steps when building on Linux:

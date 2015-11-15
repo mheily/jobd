@@ -1,0 +1,78 @@
+.\"
+.\" Copyright (c) 2015 Mark Heily <mark@heily.com>
+.\" Copyright (c) 2005 Apple Computer, Inc. All rights reserved.
+.\"
+.\" @APPLE_APACHE_LICENSE_HEADER_START@
+.\" 
+.\" Licensed under the Apache License, Version 2.0 (the "License");
+.\" you may not use this file except in compliance with the License.
+.\" You may obtain a copy of the License at
+.\" 
+.\"     http://www.apache.org/licenses/LICENSE-2.0
+.\" 
+.\" Unless required by applicable law or agreed to in writing, software
+.\" distributed under the License is distributed on an "AS IS" BASIS,
+.\" WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+.\" See the License for the specific language governing permissions and
+.\" limitations under the License.
+.\" 
+.\" @APPLE_APACHE_LICENSE_HEADER_END@
+.\"
+.Dd 1 May, 2009
+.Dt launchd 8 
+.Os relaunchd
+.Sh NAME
+.Nm launchd
+.Nd System wide and per-user daemon/agent manager
+.Sh SYNOPSIS
+.Nm
+.Op Fl d
+.Op Fl D
+.Op Fl s
+.Op Fl S Ar SessionType
+.Op Ar -- command Op Ar args ...
+.Sh DESCRIPTION
+.Nm 
+manages processes, both for the system as a whole and for individual users.
+The primary and preferred interface to
+.Nm
+is via the
+.Xr launchctl 1
+tool which (among other options) allows the user or administrator to load and unload jobs.
+Where possible, it is preferable for jobs to launch on demand based on criteria specified
+in their respective configuration files.
+.Pp
+At some point in the boot process
+.Nm
+is invoked by the underlying init system. 
+.Sh ENVIRONMENTAL VARIABLES
+.Bl -tag -width -indent
+.It Pa LAUNCHD_SOCKET
+This variable is exported when invoking a command via the launchd command line. It informs launchctl how to find the correct launchd to talk to.
+.El
+.Sh NOTES
+In the
+.Nm launchd
+lexicon, a "daemon" is, by definition, a system-wide service of which there is one instance for all clients. An "agent" is a service that runs on
+a per-user basis. Daemons should not attempt to display UI or interact directly with a user's login session. Any and all work that involves interacting
+with a user should be done through agents. 
+.Sh FILES
+.Bl -tag -width "/usr/share/launchd/LaunchDaemons" -compact
+.It Pa ~/.launchd/LaunchAgents
+Per-user agents provided by the user.
+.It Pa /etc/launchd/LaunchAgents
+Per-user agents provided by the administrator.
+.It Pa /etc/launchd/LaunchDaemons
+System-wide daemons provided by the administrator.
+.It Pa /usr/share/launchd/LaunchAgents
+Per-user agents provided by the operating system.
+.It Pa /usr/share/launchd/LaunchDaemons
+System-wide daemons provided by the operating system.
+.El
+.Sh SEE ALSO 
+.Xr launchctl 1 ,
+.Xr launchd.plist 5 ,
+.Sh HISTORY
+A
+.Nm
+command appeared in Mac OS X 10.4
