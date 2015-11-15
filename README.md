@@ -18,6 +18,12 @@ The core functionality is working:
 * launching jobs
 * socket-activated jobs via the Sockets key
 
+There are some new features not found in the original launchd:
+* JSON is used instead of XML
+* you can launch programs that place themselves inside of a jail(8)
+* a wrapper library that allows programs to use socket activation
+  without modifying the source code.
+   
 Some things are not implemented yet:
 * unloading jobs via launchctl
 * cron functionality - StartInterval, StartCalendarInterval
