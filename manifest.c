@@ -172,7 +172,7 @@ static int parse_RunAtLoad(parser_state_t p) {
 // XXX seems very illogical, perhaps the test.json file is malformed?
 static int parse_EnvironmentVariables(parser_state_t p) {
 	int i;
-	size_t tokens_left;
+	size_t tokens_left, eaten;
 	jsmntok_t child;
 	char *item = NULL;
 	cvec_t cv;
@@ -184,8 +184,8 @@ static int parse_EnvironmentVariables(parser_state_t p) {
 	if (p->tok[p->pos].type != JSMN_OBJECT) goto err_out;
 	tokens_left = p->tok[p->pos].size;
 	log_debug("got %zu child tokens", tokens_left);
+	eaten = 1;
 	for (i = 0; i < tokens_left; i += 2) {
-		log_debug(" -- hash token");
 		child = p->tok[p->pos + i + 1];
 		token_dump(p, child);
 		if (child.type != JSMN_STRING || child.size != 1) goto err_out;
@@ -205,6 +205,8 @@ static int parse_EnvironmentVariables(parser_state_t p) {
 		log_debug("parsed item: %s", item);
 		if (cvec_push(cv, item) < 0) goto err_out;
 		item = NULL;
+
+		eaten += 2;
 	}
 	if (cvec_length(cv) % 2 != 0) {
 		log_error("parsed an odd number of EnvironmentVariables");
@@ -212,7 +214,8 @@ static int parse_EnvironmentVariables(parser_state_t p) {
 	}
 	p->jm->environment_variables = cv;
 
-	return (p->tok[p->pos].size + tokens_left + 1);
+	log_debug("ate %zu tokens", eaten);
+	return (eaten);
 
 err_out:
 	free(item);

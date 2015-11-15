@@ -21,6 +21,16 @@
 #include "manifest.h"
 #include "cvec.h"
 
+#define test_run(test) do { \
+	printf("%-20s", ""#test); \
+	if (test() != 0) { \
+		puts("FAILED"); \
+		exit(1); \
+	} else { \
+		puts("passed"); \
+	} \
+} while(0)
+
 void test_cvec() {
 	cvec_t cv;
 	int i;
@@ -49,6 +59,22 @@ void test_sockets() {
 	}
 }
 
+int test_env() {
+	job_manifest_t jm;
+
+	jm = job_manifest_new();
+	if (job_manifest_read(jm, "fixtures/env.json") < 0) return -1;
+	return 0;
+}
+
+int test_env2() {
+	job_manifest_t jm;
+
+	jm = job_manifest_new();
+	if (job_manifest_read(jm, "fixtures/env2.json") < 0) return -1;
+	return 0;
+}
+
 int main() {
 	job_manifest_t jm;
 
@@ -57,6 +83,8 @@ int main() {
 	} else {
 		log_open("jmtest.log");
 	}
+	test_run(test_env);
+	test_run(test_env2);
 	test_cvec();
 	test_sockets();
 	exit(0);

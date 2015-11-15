@@ -1,0 +1,20 @@
+{
+	"UserName": "root",
+	"GroupName": "wheel",
+	"Program": "/usr/local/sbin/httpd",
+	"ProgramArguments": ["-DFOREGROUND"],
+	"EnvironmentVariables": {"LD_PRELOAD":"sa-wrapper.so"},
+	"EnableGlobbing": true,
+	"WorkingDirectory": "/",
+	"RootDirectory": "/",
+	"StandardInPath": "/dev/null",
+	"StandardOutPath": "/tmp/apache.out",
+	"StandardErrorPath": "/tmp/apache.err",
+	"JailName": "testjail"
+	"Sockets": {
+		"MyService": {
+			"SockServiceName": "80",
+		},
+	},
+	"Label": "test.sockets",
+}
