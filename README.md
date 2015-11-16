@@ -78,14 +78,14 @@ To install relaunchd, run the following commands:
 	sudo make install
 
 This will install the following executable commands:
-	* launchd
-	* launchctl
+* launchd
+* launchctl
 
 It will also install the following manpages: 
 
-	launchctl(1)
-	launchd(8)
-	launchd.plist(5)
+* launchctl(1)
+* launchd(8)
+* launchd.plist(5)
 
 ## Usage
 
