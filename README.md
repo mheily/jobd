@@ -76,29 +76,30 @@ To install relaunchd, run the following commands:
 
 	make
 	sudo make install
-	sudo /sbin/launchd
 
 This will install the following executable commands:
 	* launchd
 	* launchctl
 
-If you want to run jobs as your own user account, add the following line to your .xinitrc
-file:
+It will also install the following manpages: 
 
-	/sbin/launchd
-
-If you don't have an .xinitrc file, refer to the documentation for your desktop environment
-to determine the best way to automatically execute a command when you login.
-
+	launchctl(1)
+	launchd(8)
+	launchd.plist(5)
 
 ## Usage
 
-At boot time, jobs will be automatic
-	$HOME/launchd/agents
-	/etc/launchd/agents
-	/etc/launchd/daemons
-        /usr/share/launchd/daemons
+To start launchd, run the following command:
 
+	/usr/local/sbin/launchd
+
+If you want to run jobs as your own user account, add the following line to your .xinitrc
+file:
+
+	/usr/local/sbin/launchd
+
+If you don't have an .xinitrc file, refer to the documentation for your desktop environment
+to determine the best way to automatically execute a command when you login.
 
 ## Differences with Darwin launchd
 
