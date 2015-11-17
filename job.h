@@ -27,6 +27,7 @@
 
 struct job {
 	LIST_ENTRY(job)	joblist_entry;
+	SLIST_ENTRY(job) start_interval_sle;
 	job_manifest_t jm;
 	enum {
 		JOB_STATE_DEFINED,
@@ -37,6 +38,7 @@ struct job {
 	} state;
 	pid_t pid;
 	int last_exit_status, term_signal;
+	time_t  next_scheduled_start;
 };
 typedef struct job *job_t;
 

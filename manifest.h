@@ -25,7 +25,8 @@
 #include "socket.h"
 
 struct job_manifest {
-    LIST_ENTRY(job_manifest) jm_le;
+	LIST_ENTRY(job_manifest) jm_le;
+
 	/* The original JSON manifest. Will be freed along with this structure */
 	char	*json_buf;
 	size_t	 json_size;

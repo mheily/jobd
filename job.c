@@ -28,6 +28,7 @@
 #include "job.h"
 #include "log.h"
 #include "socket.h"
+#include "timer.h"
 
 static void job_dump(job_t job) {
 	log_debug("job dump: label=%s state=%d", job->jm->label, job->state);
@@ -319,7 +320,6 @@ int job_load(job_t job)
 	/* TODO: This is the place to setup on-demand watches for the following keys:
 			WatchPaths
 			QueueDirectories
-			StartInterval
 			StartCalendarInterval
 	*/
 	if (!SLIST_EMPTY(&job->jm->sockets)) {
@@ -332,6 +332,13 @@ int job_load(job_t job)
 		log_debug("job %s sockets created", job->jm->label);
 		job->state = JOB_STATE_WAITING;
 		return (0);
+	}
+
+	if (job->jm->start_interval > 0) {
+		if (timer_register_constant_interval(job) < 0) {
+			log_error("failed to register the interval timer");
+			return -1;
+		}
 	}
 
 	job->state = JOB_STATE_LOADED;

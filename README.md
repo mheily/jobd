@@ -20,6 +20,7 @@ The core functionality is working:
 * loading JSON-formatted jobs with launchctl
 * launching jobs
 * socket-activated jobs via the Sockets key
+* periodic jobs that use the StartInterval key
 
 There are some new features not found in the original launchd:
 * JSON is used instead of XML
@@ -29,7 +30,7 @@ There are some new features not found in the original launchd:
    
 Some things are not implemented yet:
 * unloading jobs via launchctl
-* cron functionality - StartInterval, StartCalendarInterval
+* cron emulation via the StartCalendarInterval key
 * file and directory watches - WatchPaths, QueueDirectories
 * restarting jobs if they crash - TimeOut, ExitTimeout, KeepAliveTimeout, ThrottleInterval
 * resource limits - SoftResourceLimits, HardResourceLimits

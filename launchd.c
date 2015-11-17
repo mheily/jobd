@@ -166,7 +166,11 @@ static void reap_child() {
 		return;
 	}
 
-	job->state = JOB_STATE_EXITED;
+	if (job->jm->start_interval > 0) {
+		job->state = JOB_STATE_WAITING;
+	} else {
+		job->state = JOB_STATE_EXITED;
+	}
 	if (WIFEXITED(status)) {
 		job->last_exit_status = WEXITSTATUS(status);
 	} else if (WIFSIGNALED(status)) {
@@ -305,7 +309,7 @@ main(int argc, char *argv[])
 	create_pid_file();
 	setup_signal_handlers();
 	setup_socket_activation(state.kq);
-	setup_timers(state.kq);
+	if (setup_timers(state.kq) < 0) abort();
 	load_all_jobs();
 	manager_update_jobs();
 	main_loop();
