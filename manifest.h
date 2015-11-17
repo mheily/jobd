@@ -49,6 +49,7 @@ struct job_manifest {
 	uint32_t umask,
 			timeout,	//TODO: figure out the default value for this
 			exit_timeout,
+			start_interval,
 			throttle_interval,
 			nice;
 	bool	init_groups;

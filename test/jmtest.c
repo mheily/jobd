@@ -59,6 +59,16 @@ void test_sockets() {
 	}
 }
 
+int test_start_interval() {
+	job_manifest_t jm;
+
+	jm = job_manifest_new();
+	if (job_manifest_read(jm, "fixtures/start_interval.json") < 0)
+		return -1;
+
+	return 0;
+}
+
 int test_env() {
 	job_manifest_t jm;
 
@@ -85,6 +95,7 @@ int main() {
 	}
 	test_run(test_env);
 	test_run(test_env2);
+	test_run(test_start_interval);
 	test_cvec();
 	test_sockets();
 	exit(0);

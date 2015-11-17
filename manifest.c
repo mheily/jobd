@@ -91,6 +91,16 @@ static int parse_bool(bool *dst, parser_state_t p) {
 	return (1);
 }
 
+static int parse_uint32(uint32_t *dst, parser_state_t p) {
+	if (p->tok[p->pos].type != JSMN_PRIMITIVE) return -1;
+
+	*dst = strtoul((char *) &p->buf[p->tok[p->pos].start], NULL, 10);
+	// TODO: verify that the number parsed correctly
+
+	log_debug("parsed %s => %u", p->key, *dst);
+	return (1);
+}
+
 static int parse_cvec(cvec_t *dst, parser_state_t p) {
 	int i;
 	jsmntok_t child;
@@ -139,6 +149,12 @@ static int parse_UserName(parser_state_t p) {
 
 static int parse_GroupName(parser_state_t p) {
 	if (parse_string(&p->jm->group_name, p) < 1) return -1;
+	//TODO: validation
+	return (1);
+}
+
+static int parse_StartInterval(parser_state_t p) {
+	if (parse_uint32(&p->jm->start_interval, p) < 1) return -1;
 	//TODO: validation
 	return (1);
 }
@@ -428,7 +444,7 @@ static const struct {
 	{ "WatchPaths", parse_WatchPaths },
 	{ "QueueDirectories", parse_QueueDirectories },
 	{ "StartOnMount", parse_not_implemented },
-	{ "StartInterval", parse_not_implemented },
+	{ "StartInterval", parse_StartInterval },
 	{ "StartCalendarInterval", parse_not_implemented },
 	{ "StandardInPath", parse_StandardInPath },
 	{ "StandardOutPath", parse_StandardOutPath },
