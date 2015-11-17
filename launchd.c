@@ -36,6 +36,7 @@
 #include "options.h"
 #include "job.h"
 #include "socket.h"
+#include "timer.h"
 #include "uset.h"
 
 FILE *logfile;
@@ -244,6 +245,8 @@ static void main_loop()
 			}
 		} else if (kev.udata == &setup_socket_activation) {
 			if (socket_activation_handler() < 0) abort();
+		} else if (kev.udata == &setup_timers) {
+			if (timer_handler() < 0) abort();
 		} else {
 			log_warning("spurious wakeup, no known handlers");
 		}
@@ -302,6 +305,7 @@ main(int argc, char *argv[])
 	create_pid_file();
 	setup_signal_handlers();
 	setup_socket_activation(state.kq);
+	setup_timers(state.kq);
 	load_all_jobs();
 	manager_update_jobs();
 	main_loop();
