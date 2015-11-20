@@ -62,10 +62,12 @@ static inline int modify_credentials(job_t const job, const struct passwd *pwent
 		log_errno("setgid");
 		return (-1);
 	}
+#ifndef __GLIBC__
 	if (setlogin(job->jm->user_name) < 0) {
 		log_errno("setlogin");
 		return (-1);
 	}
+#endif
 	if (setuid(pwent->pw_uid) < 0) {
 		log_errno("setuid");
 		return (-1);

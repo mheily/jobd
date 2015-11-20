@@ -37,8 +37,11 @@ sa-wrapper/sa-wrapper.so:
 launchd-debug:
 	CFLAGS="$(DEBUGFLAGS)" $(MAKE) launchd
 
-config.h:
+config.h: Makefile Makefile.inc
 	echo "/* Automatically generated -- do not edit */" > config.h
+	printf '#define HAVE_SYS_LIMITS_H ' >> config.h
+	echo '#include <sys/limits.h>' | $(CC) $(CFLAGS) -x c -c - 2>/dev/null; \
+		echo "$$? == 0" | bc >> config.h
  
 clean:
 	rm -f *.o config.h

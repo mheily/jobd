@@ -15,7 +15,11 @@
  */
 
 #include "vendor/FreeBSD/sys/queue.h"
+#if HAVE_SYS_LIMITS_H
 #include <sys/limits.h>
+#else
+#include <limits.h>
+#endif
 #include <sys/types.h>
 #include <sys/event.h>
 #include <sys/time.h>
@@ -59,8 +63,7 @@ static void update_min_interval()
 
 static inline time_t current_time() {
 	struct timespec now;
-	/* TODO: find a portable alternative to CLOCK_SECOND */
-	if (clock_gettime(CLOCK_SECOND, &now) < 0) {
+	if (clock_gettime(CLOCK_MONOTONIC, &now) < 0) {
 		log_errno("clock_gettime(2)");
 		abort();
 	}
