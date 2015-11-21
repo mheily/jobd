@@ -22,7 +22,7 @@
 #include "cvec.h"
 
 #define test_run(test) do { \
-	printf("%-20s", ""#test); \
+	printf("%-24s", ""#test); \
 	if (test() != 0) { \
 		puts("FAILED"); \
 		exit(1); \
@@ -57,6 +57,26 @@ void test_sockets() {
 		puts("FAILED");
 		exit(1);
 	}
+}
+
+char * get_file_extension(const char *filename);
+int test_get_file_extension() {
+	int retval = 0;
+	char *res;
+
+	res = get_file_extension("foo.json");
+	if (strcmp(res, ".json") != 0) { printf("fail 1: %s", res); retval = -1; }
+	free(res);
+
+	res = get_file_extension("foo");
+	if (strcmp(res, "") != 0)  { puts("fail 2"); retval = -1; }
+	free(res);
+
+	res = get_file_extension("foo.");
+	if (strcmp(res, "") != 0)  { puts("fail 3"); retval = -1; }
+	free(res);
+
+	return retval;
 }
 
 int test_start_interval() {
@@ -96,6 +116,7 @@ int main() {
 	test_run(test_env);
 	test_run(test_env2);
 	test_run(test_start_interval);
+	test_run(test_get_file_extension);
 	test_cvec();
 	test_sockets();
 	exit(0);

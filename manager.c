@@ -33,6 +33,33 @@ extern struct launchd_options options;
 static LIST_HEAD(,job_manifest) pending; /* Jobs that have been submitted but not loaded */
 static LIST_HEAD(,job) jobs;			/* All active jobs */
 
+//TODO: static'ize this once there is a way for the testsuite to un-static private functions.
+/* NOTE: the caller must free the returned string */
+char * get_file_extension(const char *filename)
+{
+        char *token, *prev, *fncopy;
+        char *result;
+
+        /* Special case: no occurance of the delimiter */
+        if (strchr(filename, '.') == NULL)
+		return strdup("");
+
+        fncopy = strdup(filename);
+        if (fncopy == NULL) abort();
+        prev = NULL;
+        while ((token = strsep(&fncopy, ".")) != NULL) {
+                prev = token;
+        }
+        if (strlen(prev) > 0) {
+		asprintf(&result, ".%s", prev); //TODO: error checking
+        } else {
+		/* Special case: trailing dot, e.g. "foo." */
+		result = strdup(prev);
+        }
+        free(fncopy);
+        return result;
+}
+
 static job_manifest_t read_job(const char *filename)
 {
 	char *path = NULL, *rename_to = NULL;
@@ -68,6 +95,7 @@ static ssize_t poll_watchdir()
 	struct dirent entry, *result;
 	job_manifest_t jm;
 	ssize_t found_jobs = 0;
+	char *ext;
 
 	if ((dirp = opendir(options.watchdir)) == NULL) abort();
 
@@ -77,13 +105,19 @@ static ssize_t poll_watchdir()
 		if (strcmp(entry.d_name, ".") == 0 || strcmp(entry.d_name, "..") == 0) {
 			continue;
 		}
-		jm = read_job(entry.d_name);
-		if (jm) {
-			LIST_INSERT_HEAD(&pending, jm, jm_le);
-			found_jobs++;
+		ext = get_file_extension(entry.d_name);
+		if (strcmp(ext, ".json") == 0) {
+			jm = read_job(entry.d_name);
+			if (jm) {
+				LIST_INSERT_HEAD(&pending, jm, jm_le);
+				found_jobs++;
+			} else {
+				// note the failure?
+			}
 		} else {
-			// note the failure?
+			log_error("skipping %s: unsupported file extension", entry.d_name);
 		}
+		free(ext);
 	}
 	if (closedir(dirp) < 0) abort();
 	return (found_jobs);
