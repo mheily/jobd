@@ -37,6 +37,15 @@ load)
 	kill -HUP `cat $pkgdatadir/launchd.pid`
 	;;
 
+unload)
+	filespec=`find $* -name '*.json'`
+	for path in $filespec ; do
+		label=`basename "$path" | sed 's/\.json$//'`
+		touch $watchdir/$label.unload
+	done
+	kill -HUP `cat $pkgdatadir/launchd.pid`
+	;;
+
 list)
 	listfile="$pkgdatadir/launchctl.list"
 	rm -f $listfile

@@ -17,7 +17,7 @@ relaunchd is primarily developed on FreeBSD, but it compiles under Linux and sho
 there as well.
 
 The core functionality is working:
-* loading JSON-formatted jobs with launchctl
+* loading and unloading jobs with launchctl
 * launching jobs
 * socket-activated jobs via the Sockets key
 * periodic jobs that use the StartInterval key
@@ -29,7 +29,6 @@ There are some new features not found in the original launchd:
   without modifying the source code.
    
 Some things are not implemented yet:
-* unloading jobs via launchctl
 * cron emulation via the StartCalendarInterval key
 * file and directory watches - WatchPaths, QueueDirectories
 * restarting jobs if they crash - TimeOut, ExitTimeout, KeepAliveTimeout, ThrottleInterval

@@ -1,0 +1,7 @@
+{
+"Label": "sleepy",
+"ProgramArguments": ["/bin/sleep", "999999"],
+"StandardInPath": "/dev/null",
+"StandardOutPath": "/dev/null",
+"StandardErrorPath": "/dev/null",
+}

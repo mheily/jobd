@@ -34,6 +34,7 @@ struct job {
 		JOB_STATE_LOADED,
 		JOB_STATE_WAITING,
 		JOB_STATE_RUNNING,
+		JOB_STATE_KILLED,
 		JOB_STATE_EXITED,
 	} state;
 	pid_t pid;
@@ -45,6 +46,7 @@ typedef struct job *job_t;
 job_t	job_new(job_manifest_t jm);
 void	job_free(job_t job);
 int	job_load(job_t job);
+int	job_unload(job_t job);
 int	job_run(job_t job);
 
 static inline int

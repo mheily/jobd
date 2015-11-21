@@ -31,6 +31,16 @@ int manager_activate_job_by_fd(int fd);
 job_t manager_get_job_by_pid(pid_t pid);
 
 /**
+ * Unload a job with a given <label>
+ */
+int manager_unload_job(const char *label);
+
+/**
+ * Remove the job from the joblist and free it.
+ */
+void manager_free_job(job_t job);
+
+/**
  * Wake up a job that has been waiting for an external event.
  */
 int manager_wake_job(job_t job);

@@ -17,6 +17,8 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
+#include <sys/types.h>
+#include <signal.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 
@@ -347,6 +349,25 @@ int job_load(job_t job)
 	log_debug("loaded %s", job->jm->label);
 	job_dump(job);
 	return (0);
+}
+
+int job_unload(job_t job)
+{
+	if (job->state == JOB_STATE_RUNNING) {
+		log_debug("sending SIGTERM to process group %d", job->pid);
+		if (killpg(job->pid, SIGTERM) < 0) {
+			log_errno("killpg(2) of pid %d", job->pid);
+			/* not sure how to handle the error, we still want to clean up */
+		}
+		job->state = JOB_STATE_KILLED;
+		//TODO: start a timer to send a SIGKILL if it doesn't die gracefully
+		return 0;
+	} else {
+		//TODO: update the timer interval in timer.c?
+		job->state = JOB_STATE_DEFINED;
+	}
+
+	return 0;
 }
 
 int job_run(job_t job)

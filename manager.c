@@ -114,13 +114,35 @@ static ssize_t poll_watchdir()
 			} else {
 				// note the failure?
 			}
+		} else if (strcmp(ext, ".unload") == 0) {
+			char *path;
+			if (asprintf(&path, "%s/%s", options.watchdir, entry.d_name) < 0) {
+				log_errno("asprintf");
+				goto next_entry;
+			}
+			if (unlink(path) < 0) {
+				log_errno("unlink(2) of %s", path);
+				free(path);
+				goto next_entry;
+			}
+			free(path);
+			char *dot = strrchr(entry.d_name, '.');
+			if (dot) {
+				*dot = '\0';
+			}
+			if (manager_unload_job(entry.d_name) < 0) {
+				log_error("unable to unload job: %s", entry.d_name);
+			}
 		} else {
 			log_error("skipping %s: unsupported file extension", entry.d_name);
 		}
+next_entry:
 		free(ext);
 	}
 	if (closedir(dirp) < 0) abort();
 	return (found_jobs);
+err_out:
+	return -1;
 }
 
 void update_jobs(void)
@@ -218,6 +240,58 @@ int manager_write_status_file()
 	free(path);
 	free(buf);
 	return 0;
+}
+
+void manager_free_job(job_t job) {
+	LIST_REMOVE(job, joblist_entry);
+	job_free(job);
+}
+
+int manager_unload_job(const char *label)
+{
+	job_t job, job_tmp, job_cur;
+	int retval = -1;
+	char *path = NULL;
+
+	job = NULL;
+	LIST_FOREACH_SAFE(job_cur, &jobs, joblist_entry, job_tmp) {
+		if (strcmp(job_cur->jm->label, label) == 0) {
+			job = job_cur;
+			break;
+		}
+	}
+
+	if (!job) {
+		log_error("job not found: %s", label);
+		goto err_out;
+	}
+
+	if (asprintf(&path, "%s/%s.json", options.activedir, label) < 0) {
+		log_errno("asprintf");
+		goto err_out;
+	}
+
+	if (unlink(path) < 0) {
+		log_errno("unlink(2) of %s", path);
+		goto err_out;
+	}
+
+	if (job_unload(job) < 0) {
+		goto err_out;
+	}
+
+	log_debug("job %s unloaded", label);
+
+	if (job->state == JOB_STATE_DEFINED) {
+		manager_free_job(job);
+	}
+
+	free(path);
+	return 0;
+
+err_out:
+	free(path);
+	return -1;;
 }
 
 void manager_init()

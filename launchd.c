@@ -166,6 +166,12 @@ static void reap_child() {
 		return;
 	}
 
+	if (job->state == JOB_STATE_KILLED) {
+		/* The job is unloaded, so nobody cares about the exit status */
+		manager_free_job(job);
+		return;
+	}
+
 	if (job->jm->start_interval > 0) {
 		job->state = JOB_STATE_WAITING;
 	} else {
