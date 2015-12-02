@@ -115,11 +115,11 @@ configuration files are stored.  For example, one of the directories is
 named /System/Library/LaunchDaemons. Relaunchd uses more traditional lowercase 
 names, and stores it's files in:
 
-	$HOME/launchd/agents
-	/etc/launchd/agents
-	/etc/launchd/daemons
-        /usr/share/launchd/daemons
-        /usr/share/launchd/agents
+	$HOME/.launchd/agents
+	/usr/local/etc/launchd/agents
+	/usr/local/etc/launchd/daemons
+        /usr/local/share/launchd/daemons
+        /usr/local/share/launchd/agents
 
 On FreeBSD, there is no compelling reason to have launchd run as pid #1, so 
 relaunchd is designed to be started by the traditional init(8) command. Relaunchd currently 
