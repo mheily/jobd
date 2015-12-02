@@ -262,16 +262,16 @@ Print out a quick usage statement.
 This variable informs launchctl how to find the correct launchd to talk to. If it is missing, launchctl will use a built-in default.
 .El
 .Sh FILES
-.Bl -tag -width "/usr/share/launchd/LaunchDaemons" -compact
-.It Pa ~/.launchd/LaunchAgents
+.Bl -tag -width "/usr/share/launchd/daemons" -compact
+.It Pa ~/.launchd/agents
 Per-user agents provided by the user.
-.It Pa /etc/launchd/LaunchAgents
+.It Pa /usr/local/etc/launchd/agents
 Per-user agents provided by the administrator.
-.It Pa /etc/launchd/LaunchDaemons
+.It Pa /usr/local/etc/launchd/daemons
 System-wide daemons provided by the administrator.
-.It Pa /usr/share/launchd/LaunchAgents
+.It Pa /usr/local/share/launchd/agents
 Per-user agents provided by the operating system.
-.It Pa /usr/share/launchd/LaunchDaemons
+.It Pa /usr/local/share/launchd/daemons
 System-wide daemons provided by the operating system.
 .El
 .Sh SEE ALSO 

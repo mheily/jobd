@@ -1,4 +1,6 @@
 <%-
+  confdir = '/usr/local/etc'
+  datadir = '/usr/local/share'
   have_LimitLoad = false
 -%>
 .\"
@@ -500,15 +502,15 @@ The following JSON Property List simply keeps "exampled" running continuously:
 .Pp
 .Sh FILES
 .Bl -tag -width "/System/Library/LaunchDaemons" -compact
-.It Pa ~/.launchd/LaunchAgents
+.It Pa ~/.launchd/agents
 Per-user agents provided by the user.
-.It Pa /etc/launchd/LaunchAgents
+.It Pa <%= confdir %>/launchd/agents
 Per-user agents provided by the administrator.
-.It Pa /etc/launchd/LaunchDaemons
+.It Pa <%= confdir %>/launchd/daemons
 System-wide daemons provided by the administrator.
-.It Pa /usr/share/launchd/LaunchAgents
+.It Pa <%= datadir %>/launchd/agents
 Per-user agents provided by the operating system.
-.It Pa /usr/share/launchd/LaunchDaemons
+.It Pa <%= datadir %>/launchd/daemons
 System-wide daemons provided by the operating system.
 .El
 .Sh SEE ALSO 
