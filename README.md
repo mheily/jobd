@@ -131,6 +131,15 @@ In the Darwin implementation, there is a single launchd(8) process that is acces
 In relaunchd, there is a "system launchd" process that runs as root and is not accessible by unprivileged users. 
 Each unprivileged user may run their own launchd process under their own UID.
 
+## Contact Information
+
+For questions, comments, or other feedback about relaunchd, you can send an email to
+the author at:
+
+    Mark Heily <mark@heily.com>
+
+There is also a #relaunchd IRC channel on FreeNode. If you don't have an IRC
+client, there is a [web-based chat client](https://webchat.freenode.net/) available.
 ## References
 
 [1] https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man8/launchd.8.html
