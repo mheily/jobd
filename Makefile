@@ -78,4 +78,9 @@ install:
  	
 	test `uname` = "FreeBSD" && install -m 755 rc.FreeBSD $$DESTDIR/usr/local/etc/rc.d/launchd || true
 
+release:
+	test -n "$$VERSION"
+	git tag -a -m'Version $$VERSION' v$$VERSION
+	git push origin v$$VERSION
+
 .PHONY: all clean launchd
