@@ -47,7 +47,11 @@ Some things will probably never be implemented:
 
 ## Building (all platforms)
 
-Make sure you have Ruby installed before building or installing this project.
+The basic commands to build and install the software are:
+```
+	make
+	sudo make install
+```
 
 ## Building under Linux
 
