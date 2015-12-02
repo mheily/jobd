@@ -55,10 +55,13 @@ dist: clean
 	tar cvf $(PACKAGE_NAME)-$(PACKAGE_VERSION).tar.gz $(PACKAGE_NAME)-$(PACKAGE_VERSION)
 	rm -rf $(PACKAGE_NAME)-$(PACKAGE_VERSION)
 
+# Not installed by default; this is still under development
+install-extra:
+	install -m 755 sa-wrapper/sa-wrapper.so $$DESTDIR$(LIBDIR)
+
 install:
 	install -s -m 755 launchd $$DESTDIR$(SBINDIR)
 	install -m 755 launchctl $$DESTDIR$(BINDIR)
-	install -m 755 sa-wrapper/sa-wrapper.so $$DESTDIR$(LIBDIR)
 	install -d -m 700 $$DESTDIR/.launchd
 	install -d -m 755 $$DESTDIR$(SYSCONFDIR)/launchd \
 		$$DESTDIR$(SYSCONFDIR)/launchd/agents \
