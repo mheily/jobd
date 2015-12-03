@@ -16,7 +16,7 @@
 #
 
 if [ `whoami` = 'root' ] ; then
-	pkgdatadir="/.launchd/run"
+	pkgdatadir="/var/db/launchd/run"
 else
 	pkgdatadir="$HOME/.launchd/run"
 fi

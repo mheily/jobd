@@ -268,7 +268,7 @@ static inline void setup_logging()
        char *path = NULL;
 
        if (getuid() == 0) {
-               path = strdup("/.launchd/launchd.log");
+               path = strdup("/var/db/launchd/launchd.log");
        } else {
                asprintf(&path, "%s/.launchd/launchd.log", getenv("HOME"));
        }
@@ -284,7 +284,7 @@ main(int argc, char *argv[])
 	options.daemon = true;
 	options.log_level = LOG_DEBUG;
 	if (getuid() == 0) {
-		if (asprintf(&options.pkgstatedir, "/.launchd/run") < 0) abort();
+		if (asprintf(&options.pkgstatedir, "/var/db/launchd/run") < 0) abort();
 	} else {
 		if (asprintf(&options.pkgstatedir, "%s/.launchd/run", getenv("HOME")) < 0) abort();
 	}
