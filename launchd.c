@@ -273,6 +273,7 @@ static inline void setup_logging()
                asprintf(&path, "%s/.launchd/launchd.log", getenv("HOME"));
        }
        if (log_open(path) < 0) abort();
+       free(path);
 }
 
 int
