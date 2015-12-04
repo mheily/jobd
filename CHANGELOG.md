@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file
 using the [Keep A ChangeLog](http://keepachangelog.com/) style.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.3.0] - 2015-12-03
+### Changed
+- Replace the custom pidfile handling code with code borrowed from libutil.
+- Stop using /.launchd and write logs to /var/log, pidfiles to /var/run, and
+  everything else to /var/{db,lib}/launchd
+
 ## [0.2.1] - 2015-12-01
 ### Fixed
 - Manpage references to paths in the FILES section
