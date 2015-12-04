@@ -26,7 +26,7 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/10.1/lib/libutil/flopen.c 193591 2009-06-06 18:47:03Z des $");
+/* __FBSDID("$FreeBSD: releng/10.1/lib/libutil/flopen.c 193591 2009-06-06 18:47:03Z des $"); */
 
 #include <sys/file.h>
 #include <sys/stat.h>

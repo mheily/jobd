@@ -25,7 +25,7 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/10.1/lib/libutil/pidfile.c 255007 2013-08-28 21:10:37Z jilles $");
+/* __FBSDID("$FreeBSD: releng/10.1/lib/libutil/pidfile.c 255007 2013-08-28 21:10:37Z jilles $"); */
 
 #include <sys/param.h>
 #include <sys/file.h>
@@ -40,6 +40,11 @@ __FBSDID("$FreeBSD: releng/10.1/lib/libutil/pidfile.c 255007 2013-08-28 21:10:37
 #include <err.h>
 #include <errno.h>
 #include "pidfile.h"
+
+#ifdef __GLIBC__
+#define getprogname() program_invocation_short_name
+#define EDOOFUS (1)
+#endif
 
 struct pidfh {
 	int	pf_fd;
