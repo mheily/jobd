@@ -39,7 +39,7 @@ __FBSDID("$FreeBSD: releng/10.1/lib/libutil/pidfile.c 255007 2013-08-28 21:10:37
 #include <time.h>
 #include <err.h>
 #include <errno.h>
-#include <libutil.h>
+#include "pidfile.h"
 
 struct pidfh {
 	int	pf_fd;

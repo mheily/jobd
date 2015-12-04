@@ -43,9 +43,16 @@ config.h: Makefile Makefile.inc
 	printf '#define HAVE_SYS_LIMITS_H ' >> config.h
 	echo '#include <sys/limits.h>' | $(CC) $(CFLAGS) -x c -c - 2>/dev/null; \
 		echo "$$? == 0" | bc >> config.h
- 
+	test -d /var/db && statedir=/var/db/launchd || statedir=/var/lib/launchd ; \
+		echo "#define PKGSTATEDIR \"$$statedir\"" >> config.h
+
+# Convert C preprocessor definitions into shell variables
+vars.sh: config.h
+	echo '# Automatically generated -- do not edit' > vars.sh
+	egrep '^#define' config.h | sed 's/^#define //; s/ /=/' >> vars.sh
+
 clean:
-	rm -f *.o config.h
+	rm -f *.o config.h vars.sh
 	rm -f launchd
 	cd test && $(MAKE) clean
 
@@ -60,10 +67,10 @@ dist: clean
 install-extra:
 	install -m 755 sa-wrapper/sa-wrapper.so $$DESTDIR$(LIBDIR)
 
-install:
+install: vars.sh
 	install -s -m 755 launchd $$DESTDIR$(SBINDIR)
 	install -m 755 launchctl $$DESTDIR$(BINDIR)
-	install -d -m 700 $$DESTDIR/.launchd
+	. vars.sh ; install -d -m 700 $$DESTDIR$$PKGSTATEDIR
 	install -d -m 755 $$DESTDIR$(SYSCONFDIR)/launchd \
 		$$DESTDIR$(SYSCONFDIR)/launchd/agents \
 		$$DESTDIR$(SYSCONFDIR)/launchd/daemons

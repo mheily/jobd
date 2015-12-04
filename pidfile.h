@@ -45,6 +45,8 @@
 
 struct pidfh;
 
+int flopen(const char *path, int flags, ...);
+
 int	pidfile_close(struct pidfh *_pfh);
 int	pidfile_fileno(const struct pidfh *_pfh);
 struct pidfh *

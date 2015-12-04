@@ -16,9 +16,15 @@
 #
 
 if [ `whoami` = 'root' ] ; then
-	pkgdatadir="/.launchd/run"
+	if [ -d /var/db ] ; then
+		pkgdatadir="/var/db/launchd"
+	else
+		pkgdatadir="/var/lib/launchd"
+	fi
+	pidfile="/var/run/launchd.pid"
 else
 	pkgdatadir="$HOME/.launchd/run"
+	pidfile="$pkgdatadir/launchd.pid"
 fi
 watchdir="$pkgdatadir/new"
 
@@ -34,7 +40,7 @@ load)
 			cp $path $watchdir
 		fi
 	done
-	kill -HUP `cat $pkgdatadir/launchd.pid`
+	kill -HUP `cat $pidfile`
 	;;
 
 unload)
@@ -43,13 +49,13 @@ unload)
 		label=`basename "$path" | sed 's/\.json$//'`
 		touch $watchdir/$label.unload
 	done
-	kill -HUP `cat $pkgdatadir/launchd.pid`
+	kill -HUP `cat $pidfile`
 	;;
 
 list)
 	listfile="$pkgdatadir/launchctl.list"
 	rm -f $listfile
-	kill -USR1 `cat $pkgdatadir/launchd.pid`
+	kill -USR1 `cat $pidfile`
 	while [ ! -f $listfile ] ; do sleep 0.2 ; done
 	cat $listfile
 	;;

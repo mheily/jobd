@@ -31,6 +31,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "config.h"
 #include "log.h"
 #include "manager.h"
 #include "manifest.h"
@@ -262,7 +263,7 @@ main(int argc, char *argv[])
 	options.daemon = true;
 	options.log_level = LOG_DEBUG;
 	if (getuid() == 0) {
-		if (asprintf(&options.pkgstatedir, "/.launchd/run") < 0) abort();
+		if (asprintf(&options.pkgstatedir, PKGSTATEDIR) < 0) abort();
 		if (asprintf(&options.pidfile, "/var/run/launchd.pid") < 0) abort();
 	} else {
 		if (asprintf(&options.pkgstatedir, "%s/.launchd/run", getenv("HOME")) < 0) abort();
