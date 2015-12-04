@@ -1,20 +1,15 @@
 Could relaunchd offer a mechanism to create capsicum(4) sandboxes?
 -----------------------------------------------------------------
 
-It would be possible to extend launchd(8) to give it the ability to initialize
-the sandbox for programs that are Capsicum aware. This would improve the
-overall security of programs which use Capsicum.
+  It would be possible to extend launchd(8) to give it the ability to
+initialize the sandbox for programs that are Capsicum aware. This would improve
+the overall security of programs which use Capsicum.
 
-The benefits of adding Capsicum support to launchd are:
-
-* The capsicum(4) security policy can be viewed and audited
-  by the end user or system administrator, without requiring them to look at
-the source code.
-
-* You no longer have to read the source code of the program
-  or trust the person who compiled the program. The security policy is in a
-separate document, that is separate from the source code and the binary
-excutable.
+  The main benefit of adding Capsicum support to launchd is that the
+capsicum(4) security policy can be viewed and audited by the end user or system
+administrator, without requiring them to look at the source code or trust the
+person who compiled the program. The security policy is in a separate document,
+that is separate from the source code and the binary excutable.
 
   If someone puts a backdoor in the source code of a daemon, having a separate
 security policy managed by launchd will thwart the effectiveness of the
@@ -22,9 +17,15 @@ backdoor. You no longer have to trust that the code you are running actually
 puts itself into a sandbox; instead, you can trust that launchd initializes the
 sandbox according to the policy that you can audit fairly easily.
 
-* You could execute an untrusted binary without having the source code,
+  This would require some kind of user interaction when the security policy of
+a program changes, similar to how smartphones ask you to confirm changes to app
+permissions when you upgrade to a new version of an app.
+
+ You could execute an untrusted binary without having the source code,
   and be confident that the binary will run in a sandbox as described in the
 launchd.plist(5) file. 
+
+## Implementation
 
 The basic idea is that programs could add Capsicum directives to their
 launchd.plist(5) job specifications. Here's an example:
@@ -66,8 +67,6 @@ job manifest into the following code and execute it:
    if (fork() == 0) {
         cap_rights_t setrights;
 
-        cap_enter();
-
         cap_rights_init(&setrights, CAP_KQUEUE);
         cap_rights_limit(fd[0], &setrights);
 
@@ -77,6 +76,8 @@ job manifest into the following code and execute it:
         cap_rights_init(&setrights, CAP_CREATE);
         cap_rights_limit(fd[2], &setrights);
 
+        cap_enter();
+        
         execve("/usr/local/sbin/mydaemon", NULL, NULL);
     }
 ```
