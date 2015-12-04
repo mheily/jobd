@@ -20,10 +20,6 @@ launchd_SOURCES=job.c log.c launchd.c manager.c manifest.c socket.c \
                    jsmn/jsmn.c timer.c pidfile.c flopen.c 
 DEBUGFLAGS=-g -O0 -DDEBUG
 
-# Flags needed by GCC/glibc
-#CFLAGS+=-std=c99 -D_XOPEN_SOURCE=700 -D_BSD_SOURCE -D_GNU_SOURCE -I/usr/include/kqueue/
-#LDFLAGS+=-lkqueue -lpthread
-
 all: launchd sa-wrapper/sa-wrapper.so
 
 check: launchd
@@ -41,7 +37,7 @@ launchd-debug:
 config.h: Makefile Makefile.inc
 	echo "/* Automatically generated -- do not edit */" > config.h
 	printf '#define HAVE_SYS_LIMITS_H ' >> config.h
-	echo '#include <sys/limits.h>' | $(CC) $(CFLAGS) -x c -c - 2>/dev/null; \
+	echo '#include <sys/limits.h>' | $(CC) $(CFLAGS) -x c -o /dev/null -c - 2>/dev/null; \
 		echo "$$? == 0" | bc >> config.h
 	test -d /var/db && statedir=/var/db/launchd || statedir=/var/lib/launchd ; \
 		echo "#define PKGSTATEDIR \"$$statedir\"" >> config.h

@@ -39,10 +39,6 @@
 #ifndef _RELAUNCHD_PIDFILE_H_
 #define _RELAUNCHD_PIDFILE_H_
 
-#include <sys/cdefs.h>
-#include <sys/_types.h>
-#include <sys/_stdint.h>
-
 struct pidfh;
 
 int flopen(const char *path, int flags, ...);
