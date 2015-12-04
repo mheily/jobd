@@ -62,7 +62,7 @@ install-extra:
 install:
 	install -s -m 755 launchd $$DESTDIR$(SBINDIR)
 	install -m 755 launchctl $$DESTDIR$(BINDIR)
-	install -d -m 700 $$DESTDIR/.launchd
+	install -d -m 700 $$DESTDIR/var/db/launchd
 	install -d -m 755 $$DESTDIR$(SYSCONFDIR)/launchd \
 		$$DESTDIR$(SYSCONFDIR)/launchd/agents \
 		$$DESTDIR$(SYSCONFDIR)/launchd/daemons
