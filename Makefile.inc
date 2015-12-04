@@ -28,6 +28,8 @@ LIBEXECDIR = $(PREFIX)/libexec
 MANDIR = $(PREFIX)/man
 SYSCONFDIR = $(PREFIX)/etc
 DATADIR = $(PREFIX)/share
+LOCALSTATEDIR = /var
+RUNSTATEDIR = $(LOCALSTATEDIR)/run
 
 # Files to include in the tarball
 DISTFILES = *.[ch] rc.* launchctl LICENSE README.md Makefile Makefile.inc include jsmn test

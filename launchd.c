@@ -15,6 +15,7 @@
  */
 
 #include <dirent.h>
+#include <err.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <signal.h>
@@ -35,6 +36,7 @@
 #include "manifest.h"
 #include "options.h"
 #include "job.h"
+#include "pidfile.h"
 #include "socket.h"
 #include "timer.h"
 #include "uset.h"
@@ -45,6 +47,7 @@ struct launchd_options options;
 
 static struct {
 	int 	kq;				/* kqueue(2) descriptor */
+	struct pidfh *pfh;
 } state;
 
 void usage() 
@@ -78,11 +81,9 @@ static void setup_job_dirs()
 
 static void do_shutdown()
 {
-	char *path;
-	if (asprintf(&path, "%s/launchd.pid", options.pkgstatedir) < 0) abort();
-	(void) unlink(path);
-	free(path);
+	pidfile_remove(state.pfh);
 	free(options.pkgstatedir);
+	free(options.pidfile);
 }
 
 static void signal_handler(int signum) {
@@ -103,49 +104,6 @@ static void setup_signal_handlers()
 		if (signal(signals[i], signal_handler) == SIG_ERR)
 			abort();
 	}
-}
-
-static bool pidfile_is_stale(const char *path) {
-	char *buf;
-
-	if (asprintf(&buf, "kill -0 `cat %s`", path) < 0) abort();
-	if (system(buf) == 0) {
-		return false;
-	} else {
-		log_warning("detected a stale pidfile");
-		return true;
-	}
-}
-
-static void create_pid_file()
-{
-	char *path, *buf;
-	int fd;
-	ssize_t len;
-
-	if (asprintf(&path, "%s/launchd.pid", options.pkgstatedir) < 0) abort();
-	if (asprintf(&buf, "%d", getpid()) < 0) abort();
-	len = strlen(buf);
-retry:
-	if ((fd = open(path, O_CREAT | O_EXCL | O_WRONLY, 0644)) < 0) {
-		if (errno == EEXIST) {
-			if (pidfile_is_stale(path)) {
-				log_warning("detected a stale pidfile");
-				if (unlink(path) < 0) abort();
-				goto retry;
-			}
-			log_error("another instance of launchd is running");
-			exit(EX_SOFTWARE);
-		} else {
-			log_errno("open of %s", path);
-			abort();
-		}
-	}
-	if (ftruncate(fd, 0) < 0) abort();
-	if (write(fd, buf, len) < len) abort();
-	if (close(fd) < 0) abort();
-	free(path);
-	free(buf);
 }
 
 static void reap_child() {
@@ -268,7 +226,7 @@ static inline void setup_logging()
        char *path = NULL;
 
        if (getuid() == 0) {
-               path = strdup("/.launchd/launchd.log");
+               path = strdup("/var/log/launchd.log");
        } else {
                asprintf(&path, "%s/.launchd/launchd.log", getenv("HOME"));
        }
@@ -276,17 +234,39 @@ static inline void setup_logging()
        free(path);
 }
 
+void create_pid_file()
+{
+	pid_t otherpid;
+
+	state.pfh = pidfile_open(options.pidfile, 0600, &otherpid);
+	if (state.pfh == NULL) {
+		if (errno == EEXIST) {
+			errx(EXIT_FAILURE, "Daemon already running, pid: %jd.",
+					(intmax_t) otherpid);
+		}
+		errx(EXIT_FAILURE, "Cannot open or create pidfile");
+	}
+}
+
 int
 main(int argc, char *argv[])
 {
 	int c;
 
+	/* Sanitize environment variables */
+	if ((getuid() != 0) && (access(getenv("HOME"), R_OK | W_OK | X_OK) < 0)) {
+		fputs("Invalid value for the HOME environment variable\n", stderr);
+		exit(1);
+	}
+
 	options.daemon = true;
 	options.log_level = LOG_DEBUG;
 	if (getuid() == 0) {
 		if (asprintf(&options.pkgstatedir, "/.launchd/run") < 0) abort();
+		if (asprintf(&options.pidfile, "/var/run/launchd.pid") < 0) abort();
 	} else {
 		if (asprintf(&options.pkgstatedir, "%s/.launchd/run", getenv("HOME")) < 0) abort();
+		if (asprintf(&options.pidfile, "%s/launchd.pid", options.pkgstatedir) < 0) abort();
 	}
 
 	setup_job_dirs();
@@ -305,15 +285,19 @@ main(int argc, char *argv[])
 			}
 	}
 
+	create_pid_file();
+
 	if (options.daemon && daemon(0, 0) < 0) {
 		fprintf(stderr, "Unable to daemonize");
+		pidfile_remove(state.pfh);
 		exit(EX_OSERR);
 	}
+
+	pidfile_write(state.pfh);
 
 	if ((state.kq = kqueue()) < 0) abort();
 	manager_init();
 	setup_logging();
-	create_pid_file();
 	setup_signal_handlers();
 	setup_socket_activation(state.kq);
 	if (setup_timers(state.kq) < 0) abort();

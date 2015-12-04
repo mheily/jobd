@@ -16,7 +16,8 @@
 
 include Makefile.inc
 
-launchd_SOURCES=job.c log.c launchd.c manager.c manifest.c socket.c jsmn/jsmn.c timer.c
+launchd_SOURCES=job.c log.c launchd.c manager.c manifest.c socket.c \
+                   jsmn/jsmn.c timer.c pidfile.c flopen.c 
 DEBUGFLAGS=-g -O0 -DDEBUG
 
 # Flags needed by GCC/glibc

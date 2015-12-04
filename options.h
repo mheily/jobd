@@ -18,6 +18,7 @@
 #define OPTIONS_H_
 
 struct launchd_options {
+	char *	pidfile;		/* Path to the pid file */
 	char *	pkgstatedir; 		/* Top-level directory for state data */
 	char *	watchdir;		/* Directory to watch for new jobs */
 	char *	activedir;		/* Directory that holds info about active jobs */
