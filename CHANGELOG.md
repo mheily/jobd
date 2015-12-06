@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file
 using the [Keep A ChangeLog](http://keepachangelog.com/) style.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.3.1] - 2015-12-06
+### Added
+- New jail management code, not yet enabled into the default build
+- Support for systems without SOCK_CLOEXEC
+
+### Changed
+- Stop building the sa-wrapper.so library by default
+- Explicitly add C99 mode to the CFLAGS
+
+### Fixed
+- Compiles cleanly on FreeBSD 9.3 now.
+
 ## [0.3.0] - 2015-12-03
 ### Changed
 - Replace the custom pidfile handling code with code borrowed from libutil.
