@@ -16,17 +16,18 @@
 
 include Makefile.inc
 
+launchd_CFLAGS=-std=c99
 launchd_SOURCES=job.c log.c launchd.c manager.c manifest.c socket.c \
                    jsmn/jsmn.c timer.c pidfile.c flopen.c
 DEBUGFLAGS=-g -O0 -DDEBUG
 
-all: launchd sa-wrapper/sa-wrapper.so
+all: launchd
 
 check: launchd
 	cd test && make && ./jmtest
 
 launchd: $(launchd_SOURCES) config.h
-	$(CC) -include config.h $(CFLAGS) $(LDFLAGS) -o $@ $(launchd_SOURCES)
+	$(CC) -include config.h $(launchd_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $(launchd_SOURCES)
 
 sa-wrapper/sa-wrapper.so:
 	cd sa-wrapper ; $(MAKE)

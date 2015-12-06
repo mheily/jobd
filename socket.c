@@ -74,7 +74,21 @@ int job_manifest_socket_open(job_t job, struct job_manifest_socket *jms)
 		return -1;
 	}
 
+#ifdef SOCK_CLOEXEC
 	sd = socket(jms->sock_family, jms->sock_type | SOCK_CLOEXEC, 0);
+#else
+	if (sd >= 0) {
+		int curflags = fcntl(sd, F_GETFD);
+		if (curflags < 0) {
+			log_errno("socket(2)");
+			goto err_out;
+		}
+		if (fcntl(sd, F_SETFD, curflags | FD_CLOEXEC) < 0) {
+			log_errno("fcntl(2)");
+			goto err_out;
+		}
+	}
+#endif
 	if (sd < 0) {
 		log_errno("socket(2)");
 		goto err_out;
