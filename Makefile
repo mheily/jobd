@@ -17,7 +17,7 @@
 include Makefile.inc
 
 launchd_SOURCES=job.c log.c launchd.c manager.c manifest.c socket.c \
-                   jsmn/jsmn.c timer.c pidfile.c flopen.c 
+                   jsmn/jsmn.c timer.c pidfile.c flopen.c
 DEBUGFLAGS=-g -O0 -DDEBUG
 
 all: launchd sa-wrapper/sa-wrapper.so
@@ -39,6 +39,7 @@ config.h: Makefile Makefile.inc
 	printf '#define HAVE_SYS_LIMITS_H ' >> config.h
 	echo '#include <sys/limits.h>' | $(CC) $(CFLAGS) -x c -o /dev/null -c - 2>/dev/null; \
 		echo "$$? == 0" | bc >> config.h
+	echo "#define CACHEDIR \"/var/cache/launchd\"" >> config.h
 	test -d /var/db && statedir=/var/db/launchd || statedir=/var/lib/launchd ; \
 		echo "#define PKGSTATEDIR \"$$statedir\"" >> config.h
 
@@ -66,7 +67,7 @@ install-extra:
 install: vars.sh
 	install -s -m 755 launchd $$DESTDIR$(SBINDIR)
 	install -m 755 launchctl $$DESTDIR$(BINDIR)
-	. vars.sh ; install -d -m 700 $$DESTDIR$$PKGSTATEDIR
+	. vars.sh ; install -d -m 700 $$DESTDIR$$PKGSTATEDIR $$DESTDIR$$CACHEDIR
 	install -d -m 755 $$DESTDIR$(SYSCONFDIR)/launchd \
 		$$DESTDIR$(SYSCONFDIR)/launchd/agents \
 		$$DESTDIR$(SYSCONFDIR)/launchd/daemons
