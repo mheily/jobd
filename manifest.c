@@ -155,6 +155,47 @@ static int parse_abandon_process_group(job_manifest_t manifest, const ucl_object
 	return 0;
 }
 
+static int parse_environment_variables(job_manifest_t manifest, const ucl_object_t *obj)
+{
+	const ucl_object_t *tmp = NULL;
+	ucl_object_iter_t it = NULL;
+	cvec_t vector = NULL;
+
+	if (ucl_object_type(obj) != UCL_OBJECT)
+		return -1;
+
+	vector = cvec_new();
+	if (!vector)
+	{
+		log_error("failed to allocate vector");
+		return -1;
+	}
+
+	while ((tmp = ucl_iterate_object (obj, &it, true)))
+	{
+		if (ucl_object_type(tmp) != UCL_STRING)
+		{
+			log_error("unexpected object type while parsing environment variables");
+			cvec_free(vector);
+			return -1;
+		}
+
+		log_debug("adding environment variable: %s=%s", ucl_object_key(tmp), ucl_object_tostring(tmp));
+		cvec_push(vector, ucl_object_key(tmp));
+		cvec_push(vector, ucl_object_tostring(tmp));
+	}
+
+	if (cvec_length(vector) % 2 != 0)
+	{
+		log_error("parsed an odd number of environment variables");
+		cvec_free(vector);
+		return -1;
+	}
+
+	manifest->environment_variables = vector;
+	return 0;
+}
+
 manifest_item_parser_t manifest_parser_map[] = {
 	{ "Label", parse_label },
 	{ "Disabled", parse_not_implemented },
@@ -168,7 +209,7 @@ manifest_item_parser_t manifest_parser_map[] = {
 	{ "RunAtLoad", parse_run_at_load },
 	{ "WorkingDirectory", parse_working_directory },
 	{ "RootDirectory", parse_root_directory },
-	{ "EnvironmentVariables", parse_not_implemented },
+	{ "EnvironmentVariables", parse_environment_variables },
 	{ "Umask", parse_not_implemented },
 	{ "TimeOut", parse_not_implemented },
 	{ "ExitTimeOut", parse_not_implemented },
