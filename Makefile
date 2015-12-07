@@ -16,7 +16,7 @@
 
 include Makefile.inc
 
-launchd_CFLAGS=-std=c99
+launchd_CFLAGS=-std=c99 -Wall -Werror
 launchd_SOURCES=job.c log.c launchd.c manager.c manifest.c socket.c \
                    jsmn/jsmn.c timer.c pidfile.c flopen.c
 DEBUGFLAGS=-g -O0 -DDEBUG

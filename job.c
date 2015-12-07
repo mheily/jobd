@@ -82,8 +82,8 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 	struct job_manifest_socket *jms;
 	cvec_t env = NULL;
 	char *curp, *buf = NULL;
-	char *logname_var, *user_var;
-	int i, j;
+	char *logname_var = NULL, *user_var = NULL;
+	int i;
 	bool found[] = { false, false, false, false, false, false };
 
 	env = cvec_new();
@@ -222,8 +222,6 @@ static inline int exec_job(const job_t job, const struct passwd *pwent) {
 
 static int start_child_process(const job_t job, const struct passwd *pwent, const struct group *grent)
 {
-	int rv;
-
 #ifdef __FreeBSD__
 	if (job->jm->jail_name) {
 		log_debug("entering jail %s", job->jm->jail_name);

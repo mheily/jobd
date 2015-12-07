@@ -44,7 +44,9 @@ struct parser_state {
 typedef struct parser_state *parser_state_t;
 
 static void token_dump(parser_state_t p, jsmntok_t tok) {
+#if DEBUG
 	static const char *type_names[] = { "primitive", "object", "array", "string" };
+#endif
 	char *val;
 
 	if (tok.type == JSMN_STRING) {
@@ -278,8 +280,8 @@ static int parse_StandardErrorPath(parser_state_t p) {
 /* Parse inner key/value pairs for a single Socket entry */
 static int parse_Sockets_inner(parser_state_t p, struct job_manifest_socket *jms, jsmntok_t key_tok, jsmntok_t val_tok) {
 	char *key = NULL, *value_s = NULL;
-	bool value_b;
-	int value_i;
+	//bool value_b;
+	//int value_i;
 
 	key = strndup(p->buf + key_tok.start, key_tok.end - key_tok.start);
 	log_debug("got key: %s", key);
@@ -537,7 +539,6 @@ err_out:
 job_manifest_t job_manifest_new()
 {
 	job_manifest_t jm;
-	char *argv0 = NULL;
 
 	jm = calloc(1, sizeof(*jm));
 	if (jm == NULL) return (NULL);
@@ -614,10 +615,9 @@ err_out:
 int job_manifest_parse(job_manifest_t jm, char *buf, size_t bufsz)
 {
 	jsmn_parser p;
-	//jsmntok_t *tok;
 	const size_t tokcount = 500;
 	size_t keylen;
-	int i, j, rv, parse_status, eaten;
+	int j, rv, eaten;
 	bool match;
 	struct parser_state state;
 

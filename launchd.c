@@ -164,15 +164,18 @@ static void load_jobs(const char *path)
 
 static void load_all_jobs()
 {
-	char *buf, *cur;
-	int i;
+	char *buf;
+
 	if (getuid() == 0) {
 		load_jobs("/usr/share/launchd/daemons");
 		load_jobs("/etc/launchd/daemons");
 	} else {
 		load_jobs("/usr/share/launchd/agents");
 		load_jobs("/etc/launchd/agents");
-		if (getenv("HOME") && asprintf(&buf, "%s/.launchd/agents", getenv("HOME")) < 0) abort();
+		/* FIXME: proper error handling needed here */
+		if (!getenv("HOME")) abort();
+		if (asprintf(&buf, "%s/.launchd/agents", getenv("HOME")) < 0) abort();
+		if (access(buf, F_OK) < 0) abort();
 		load_jobs(buf);
 		free(buf);
 	}
@@ -181,7 +184,6 @@ static void load_all_jobs()
 static void main_loop()
 {
 	struct kevent kev;
-	uset_t new_jobs;
 
 	for (;;) {
 		if (kevent(state.kq, NULL, 0, &kev, 1, NULL) < 1) {
