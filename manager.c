@@ -141,13 +141,10 @@ next_entry:
 	}
 	if (closedir(dirp) < 0) abort();
 	return (found_jobs);
-err_out:
-	return -1;
 }
 
 void update_jobs(void)
 {
-	int i;
 	job_manifest_t jm;
 	job_t job, job_tmp;
 	LIST_HEAD(,job) joblist;
@@ -263,21 +260,21 @@ int manager_unload_job(const char *label)
 
 	if (!job) {
 		log_error("job not found: %s", label);
-		goto err_out;
+		goto out;
 	}
 
 	if (asprintf(&path, "%s/%s.json", options.activedir, label) < 0) {
 		log_errno("asprintf");
-		goto err_out;
+		goto out;
 	}
 
 	if (unlink(path) < 0) {
 		log_errno("unlink(2) of %s", path);
-		goto err_out;
+		goto out;
 	}
 
 	if (job_unload(job) < 0) {
-		goto err_out;
+		goto out;
 	}
 
 	log_debug("job %s unloaded", label);
@@ -286,12 +283,11 @@ int manager_unload_job(const char *label)
 		manager_free_job(job);
 	}
 
-	free(path);
-	return 0;
+	retval = 0;
 
-err_out:
+out:
 	free(path);
-	return -1;;
+	return retval;
 }
 
 void manager_init()

@@ -42,15 +42,16 @@ static uint32_t min_interval = UINT_MAX;
 /* Find the smallest interval that we can wait before waking up at least one job */
 static void update_min_interval()
 {
-	struct kevent kev;
 	job_t job, job_tmp;
-	uint32_t old_value = min_interval;
 
 	SLIST_FOREACH_SAFE(job, &start_interval_list, start_interval_sle, job_tmp) {
 		if (job->jm->start_interval < min_interval)
 			min_interval = job->jm->start_interval;
 	}
 /*
+	struct kevent kev;
+	uint32_t old_value = min_interval;
+
 	if (old_value != min_interval) {
 		EV_SET(&kev, TIMER_TYPE_CONSTANT_INTERVAL, EVFILT_TIMER, EV_ADD, 0, 0, &setup_timers);
 		if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
@@ -77,7 +78,6 @@ static inline void update_job_interval(job_t job)
 
 int setup_timers(int kqfd)
 {
-	struct kevent kev;
 	parent_kqfd = kqfd;
 	SLIST_INIT(&start_interval_list);
 	return 0;
@@ -121,7 +121,7 @@ int timer_unregister_constant_interval(struct job *job)
 int timer_handler()
 {
 	job_t job;
-	time_t now;
+	time_t now = current_time();
 
 	log_debug("waking up after %u seconds", min_interval);
 	SLIST_FOREACH(job, &start_interval_list, start_interval_sle) {
