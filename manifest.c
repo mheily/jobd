@@ -192,6 +192,9 @@ static int parse_environment_variables(job_manifest_t manifest, const ucl_object
 		return -1;
 	}
 
+	if (manifest->environment_variables)
+		cvec_free(manifest->environment_variables);
+	
 	manifest->environment_variables = vector;
 	return 0;
 }
@@ -203,7 +206,7 @@ manifest_item_parser_t manifest_parser_map[] = {
 	{ "GroupName", parse_group_name },
 	{ "inetdCompatibility", parse_not_implemented },
 	{ "Program", parse_program },
-	{ "ProgramArguments", parse_not_implemented },
+	{ "ProgramArguments", parse_not_implemented }, /* TODO */
 	{ "EnableGlobbing", parse_enable_globbing },
 	{ "KeepAlive", parse_not_implemented },
 	{ "RunAtLoad", parse_run_at_load },
@@ -215,10 +218,10 @@ manifest_item_parser_t manifest_parser_map[] = {
 	{ "ExitTimeOut", parse_not_implemented },
 	{ "ThrottleInterval", parse_not_implemented },
 	{ "InitGroups", parse_init_groups },
-	{ "WatchPaths", parse_not_implemented },
-	{ "QueueDirectories", parse_not_implemented },
+	{ "WatchPaths", parse_not_implemented }, /* TODO */
+	{ "QueueDirectories", parse_not_implemented }, /* TODO */
 	{ "StartOnMount", parse_start_on_mount },
-	{ "StartInterval", parse_not_implemented },
+	{ "StartInterval", parse_not_implemented }, /* TODO */
 	{ "StartCalendarInterval", parse_not_implemented },
 	{ "StandardInPath", parse_standard_in_path },
 	{ "StandardOutPath", parse_standard_out_path },
@@ -233,7 +236,7 @@ manifest_item_parser_t manifest_parser_map[] = {
 	{ "HopefullyExitsLast", parse_not_implemented },
 	{ "LowPriorityIO", parse_not_implemented },
 	{ "LaunchOnlyOnce", parse_not_implemented },
-	{ "Sockets", parse_not_implemented },
+	{ "Sockets", parse_not_implemented }, /* TODO */
 
 	/* XXX-experimental */
 	{ "JailName", parse_jail_name },
@@ -428,7 +431,7 @@ int job_manifest_parse(job_manifest_t jm, unsigned char *buf, size_t bufsize)
 				log_debug("parsing value `%s'", ucl_object_tostring_forced(tmp));
 				if (item_parser->parser(jm, tmp))
 				{
-					log_error("failed while parsing key `%s' with value: %s", ucl_object_key(tmp), ucl_object_tostring_forced(tmp));
+					log_error("failed while parsing key `%s' with value: `%s'", ucl_object_key(tmp), ucl_object_tostring_forced(tmp));
 					rc = -1;
 					goto cleanup;
 				}
@@ -437,7 +440,7 @@ int job_manifest_parse(job_manifest_t jm, unsigned char *buf, size_t bufsize)
 		}
 	}
 
- cleanup:
+cleanup:
     
 	if (parser)
 		ucl_parser_free(parser);
