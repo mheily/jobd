@@ -16,12 +16,12 @@
 
 # Flags needed by GCC/glibc
 #CFLAGS+=-std=c99 -D_XOPEN_SOURCE=700 -D_BSD_SOURCE -D_GNU_SOURCE -I/usr/include/kqueue/
-#LDFLAGS+=-lkqueue -lpthread
-
+#LDFLAGS+=-lkqueue -lpthread -lucl
+LDFLAGS+=-lucl
 default: jmtest
 
-jmtest: 
-	$(CC) -include ../config.h -I.. -std=c99 $(CFLAGS) -g -O0 -DDEBUG $(LDFLAGS) -o $@ jmtest.c ../log.c ../job.c ../manifest.c ../manager.c ../jsmn/jsmn.c ../socket.c ../timer.c
+jmtest:
+	$(CC) -include ../config.h -I.. -std=c99 $(CFLAGS) -g -O0 -DDEBUG $(LDFLAGS) -o $@ jmtest.c ../log.c ../job.c ../manifest.c ../manager.c ../socket.c ../timer.c
 
 jail-test: jail-test.c ../jail.c ../jail.h
 	$(CC) -I.. $(CFLAGS) -g -O0 -DDEBUG $(LDFLAGS) -o $@ jail-test.c ../jail.c ../log.c
