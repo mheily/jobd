@@ -1,13 +1,19 @@
 language: c
 
-sudo: false
+# Enable when packages are whitelisted
 
-addons:
-  apt:
-    packages:
-    - bc
-    - libkqueue0
-    - libkqueue-dev
+#sudo: false
+#
+#addons:
+#  apt:
+#    packages:
+#    - bc
+#    - libkqueue0
+#    - libkqueue-dee
+
+before_install:
+- sudo apt-get update -qq
+- sudo apt-get install bc libkqueue-dev libkqueue0 -qq
 
 script:
 - make
