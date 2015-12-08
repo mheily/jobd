@@ -1,8 +1,13 @@
 language: c
 
-before_install:
-- sudo apt-get update -qq
-- sudo apt-get install bc libkqueue-dev -qq
+sudo: false
+
+addons:
+  apt:
+    packages:
+    - bc
+    - libkqueue0
+    - libkqueue-dev
 
 script:
 - make
