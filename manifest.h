@@ -33,6 +33,7 @@ struct job_manifest {
 
 	char 	*label;
 	//not implemented: Disabled key
+	bool     job_is_agent; /* Temporary hack to detect agents v.s. daemons */
 	char 	*user_name;
 	char 	*group_name;
 

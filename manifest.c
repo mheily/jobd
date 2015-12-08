@@ -476,6 +476,12 @@ static inline int job_manifest_set_credentials(job_manifest_t jm)
 	struct passwd *pwent;
 	struct group *grent;
 
+	/* Undocumented heuristic to decide if it is an agent:
+	 *  - agents cannot set the User property
+	 *  - daemons must set the User and Group property
+	 */
+	jm->job_is_agent = (!jm->user_name && !jm->group_name);
+
 	uid = getuid();
 	if (uid == 0) {
 		if (!jm->user_name) jm->user_name = strdup("root");
