@@ -27,10 +27,6 @@
 struct job_manifest {
 	LIST_ENTRY(job_manifest) jm_le;
 
-	/* The original JSON manifest. Will be freed along with this structure */
-	char	*json_buf;
-	size_t	 json_size;
-
 	char 	*label;
 	//not implemented: Disabled key
 	char 	*user_name;
@@ -70,7 +66,7 @@ typedef struct job_manifest *job_manifest_t;
 job_manifest_t job_manifest_new();
 void job_manifest_free(job_manifest_t jm);
 int job_manifest_read(job_manifest_t jm, const char *infile);
-int job_manifest_parse(job_manifest_t jm, char *buf, size_t bufsz);
+int job_manifest_parse(job_manifest_t jm, unsigned char *buf, size_t bufsz);
 static inline void job_manifest_retain(job_manifest_t jm)
 {
 	jm->refcount++;
