@@ -1,9 +1,9 @@
 language: c
 
 before_install:
-	- sudo apt-get update -qq
-	- sudo apt-get install libkqueue-dev -qq
+- sudo apt-get update -qq
+- sudo apt-get install libkqueue-dev -qq
 
 script:
-	- make
-	- make check
+- make
+- make check
