@@ -40,6 +40,43 @@ typedef struct manifest_item_parser {
 	int (*parser)(job_manifest_t, const ucl_object_t *);
 } manifest_item_parser_t;
 
+static int parse_cvec(cvec_t *dst, const ucl_object_t *obj)
+{
+	const ucl_object_t *tmp = NULL;
+	ucl_object_iter_t it = NULL;
+	cvec_t vector = NULL;
+
+	
+	if (ucl_object_type(obj) != UCL_ARRAY)
+		return -1;
+
+	vector = cvec_new();
+	if (!vector)
+	{
+		log_error("unable to allocate vector");
+		return -1;
+	}
+
+	while ((tmp = ucl_iterate_object (obj, &it, true)))
+	{
+		if (ucl_object_type(tmp) != UCL_STRING)
+		{
+			log_error("unexpected object type while parsing environment variables");
+			cvec_free(vector);
+			return -1;
+		}
+
+		log_debug("adding array element: %s", ucl_object_tostring(tmp));
+		cvec_push(vector, (char*)ucl_object_tostring(tmp));
+	}
+
+	if (dst)
+		cvec_free(*dst);
+	
+	*dst = vector;
+	return 0;
+}
+
 static int parse_not_implemented(job_manifest_t manifest, const ucl_object_t *obj)
 {
 	return 0;
@@ -181,8 +218,8 @@ static int parse_environment_variables(job_manifest_t manifest, const ucl_object
 		}
 
 		log_debug("adding environment variable: %s=%s", ucl_object_key(tmp), ucl_object_tostring(tmp));
-		cvec_push(vector, ucl_object_key(tmp));
-		cvec_push(vector, ucl_object_tostring(tmp));
+		cvec_push(vector, (char*)ucl_object_key(tmp));
+		cvec_push(vector, (char*)ucl_object_tostring(tmp));
 	}
 
 	if (cvec_length(vector) % 2 != 0)
@@ -199,6 +236,21 @@ static int parse_environment_variables(job_manifest_t manifest, const ucl_object
 	return 0;
 }
 
+static int parse_program_arguments(job_manifest_t manifest, const ucl_object_t *obj)
+{
+	return parse_cvec(&manifest->program_arguments, obj);
+}
+
+static int parse_watch_paths(job_manifest_t manifest, const ucl_object_t *obj)
+{
+	return parse_cvec(&manifest->watch_paths, obj);
+}
+
+static int parse_queue_directories(job_manifest_t manifest, const ucl_object_t *obj)
+{
+	return parse_cvec(&manifest->queue_directories, obj);
+}
+
 manifest_item_parser_t manifest_parser_map[] = {
 	{ "Label", parse_label },
 	{ "Disabled", parse_not_implemented },
@@ -206,7 +258,7 @@ manifest_item_parser_t manifest_parser_map[] = {
 	{ "GroupName", parse_group_name },
 	{ "inetdCompatibility", parse_not_implemented },
 	{ "Program", parse_program },
-	{ "ProgramArguments", parse_not_implemented }, /* TODO */
+	{ "ProgramArguments", parse_program_arguments },
 	{ "EnableGlobbing", parse_enable_globbing },
 	{ "KeepAlive", parse_not_implemented },
 	{ "RunAtLoad", parse_run_at_load },
@@ -218,8 +270,8 @@ manifest_item_parser_t manifest_parser_map[] = {
 	{ "ExitTimeOut", parse_not_implemented },
 	{ "ThrottleInterval", parse_not_implemented },
 	{ "InitGroups", parse_init_groups },
-	{ "WatchPaths", parse_not_implemented }, /* TODO */
-	{ "QueueDirectories", parse_not_implemented }, /* TODO */
+	{ "WatchPaths", parse_watch_paths },
+	{ "QueueDirectories", parse_queue_directories },
 	{ "StartOnMount", parse_start_on_mount },
 	{ "StartInterval", parse_not_implemented }, /* TODO */
 	{ "StartCalendarInterval", parse_not_implemented },
