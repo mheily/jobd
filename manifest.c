@@ -251,6 +251,15 @@ static int parse_queue_directories(job_manifest_t manifest, const ucl_object_t *
 	return parse_cvec(&manifest->queue_directories, obj);
 }
 
+static int parse_start_interval(job_manifest_t manifest, const ucl_object_t *obj)
+{
+	if (ucl_object_type(obj) != UCL_INT)
+		return -1;
+	
+	manifest->start_interval = ucl_object_toint(obj);
+	return 0;
+}
+
 manifest_item_parser_t manifest_parser_map[] = {
 	{ "Label", parse_label },
 	{ "Disabled", parse_not_implemented },
@@ -273,7 +282,7 @@ manifest_item_parser_t manifest_parser_map[] = {
 	{ "WatchPaths", parse_watch_paths },
 	{ "QueueDirectories", parse_queue_directories },
 	{ "StartOnMount", parse_start_on_mount },
-	{ "StartInterval", parse_not_implemented }, /* TODO */
+	{ "StartInterval", parse_start_interval },
 	{ "StartCalendarInterval", parse_not_implemented },
 	{ "StandardInPath", parse_standard_in_path },
 	{ "StandardOutPath", parse_standard_out_path },
