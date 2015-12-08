@@ -16,6 +16,6 @@
 
 # Flags needed by GCC/glibc
 CFLAGS+=-std=c99 -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE -D_GNU_SOURCE -I/usr/include/kqueue/
-LDFLAGS+=-lkqueue -lpthread
+LDADD+=-lkqueue -lpthread
 
 include Makefile

@@ -21,7 +21,7 @@
 default: jmtest
 
 jmtest: 
-	$(CC) -include ../config.h -I.. -std=c99 $(CFLAGS) -g -O0 -DDEBUG $(LDFLAGS) -o $@ jmtest.c ../log.c ../job.c ../manifest.c ../manager.c ../jsmn/jsmn.c ../socket.c ../timer.c
+	$(CC) -include ../config.h -I.. -std=c99 $(CFLAGS) -g -O0 -DDEBUG -o $@ jmtest.c ../log.c ../job.c ../manifest.c ../manager.c ../jsmn/jsmn.c ../socket.c ../timer.c $(LDADD)
 
 jail-test: jail-test.c ../jail.c ../jail.h
 	$(CC) -I.. $(CFLAGS) -g -O0 -DDEBUG $(LDFLAGS) -o $@ jail-test.c ../jail.c ../log.c
