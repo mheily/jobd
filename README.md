@@ -59,6 +59,9 @@ The basic commands to build and install the software are:
 
 ## Building under Linux
 
+You can check the current build status by visiting the 
+[Travis CI dashboard](https://travis-ci.org/mheily/relaunchd/builds)
+
 There are a few extra steps when building on Linux:
 
 1. Download and install libkqueue. For Debian-based distributions, you can
