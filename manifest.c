@@ -481,7 +481,7 @@ int job_manifest_parse(job_manifest_t jm, unsigned char *buf, size_t bufsize)
 	else {
 		obj = ucl_parser_get_object(parser);
 	}
-	
+
 	while ((tmp = ucl_iterate_object (obj, &it, true)))
 	{
 		log_debug("parsing key `%s'", ucl_object_key(tmp));
