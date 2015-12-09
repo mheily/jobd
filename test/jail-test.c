@@ -17,6 +17,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
+#include <unistd.h>
 
 #include "../log.h"
 #include "../jail.h"
@@ -50,14 +52,22 @@ int test_jail_config() {
 	return 0;
 }
 
-int test_jail_create_and_destroy() {
+int test_jail_create() {
 	jail_config_t jc;
 
 	jc = jail_config_new();
 	jail_config_set_name(jc, "thttpd");
 	jc->package = strdup("thttpd");
+	if (jail_is_installed(jc))
+		fail("jail_is_installed");
+	if (jail_is_running(jc))
+		fail("jail_is_running");
 	if (jail_create(jc) < 0)
 		fail("jail_create");
+	if (!jail_is_installed(jc))
+		fail("jail_is_installed");
+	if (!jail_is_running(jc))
+		fail("jail_is_running");
 	if (jail_destroy(jc) < 0)
 		fail("jail_destroy");
 	jail_config_free(jc);
@@ -67,7 +77,11 @@ int test_jail_create_and_destroy() {
 
 int main()
 {
+	if (getuid() != 0) {
+		puts("jail-test: skipping because not run as root");
+		exit(0);
+	}
 	log_open("jail-test.log");
 	run(test_jail_config);
-	run(test_jail_create_and_destroy);
+	run(test_jail_create);
 }

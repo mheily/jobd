@@ -36,6 +36,8 @@ void jail_config_free(jail_config_t jc);
 int jail_config_set_name(jail_config_t jc, const char *name);
 
 int jail_create(jail_config_t jc);
+bool jail_is_running(jail_config_t jc);
+bool jail_is_installed(jail_config_t jc);
 int jail_destroy(jail_config_t jc);
 
 #endif /* !_RELAUNCHD_JAIL_H_ */

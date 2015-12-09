@@ -22,6 +22,9 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 
+#include <sys/jail.h>
+#include "/usr/include/jail.h"
+
 #include "config.h"
 #include "log.h"
 #include "jail.h"
@@ -277,7 +280,8 @@ int jail_destroy(jail_config_t jc)
 	int retval = -1;
 	char *cmd = NULL;
 
-	if (asprintf(&cmd, "jail -f %s -r %s", jc->config_file, jc->name) < 0) {
+	/* TODO: Capture the output of this and write to the logfile */
+	if (asprintf(&cmd, "jail -f %s -r %s >/dev/null 2>&1", jc->config_file, jc->name) < 0) {
 		log_errno("asprintf(3)");
 		goto out;
 	}
@@ -316,4 +320,14 @@ int jail_destroy(jail_config_t jc)
 out:
 	free(cmd);
 	return retval;
+}
+
+bool jail_is_installed(jail_config_t jc)
+{
+	return (access(jc->rootdir, F_OK) == 0);
+}
+
+bool jail_is_running(jail_config_t jc)
+{
+	return (jail_getid(jc->name) >= 0);
 }
