@@ -28,6 +28,12 @@
 static const uint32_t DEFAULT_EXIT_TIMEOUT = 20;
 static const uint32_t DEFAULT_THROTTLE_INTERVAL = 10;
 
+typedef struct job_manifest_socket_parser {
+	const char *key;
+	ucl_type_t object_type;
+	int (*parser)(struct job_manifest_socket *socket, const ucl_object_t *object);
+} job_manifest_socket_parser_t;
+
 typedef struct job_manifest_item_parser {
 	const char *key;
 	ucl_type_t object_type;
@@ -56,10 +62,12 @@ static int job_manifest_parse_program_arguments(job_manifest_t manifest, const u
 static int job_manifest_parse_watch_paths(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_queue_directories(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_start_interval(job_manifest_t manifest, const ucl_object_t *obj);
-static int job_manifest_parse_sockets(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_cvec(cvec_t *dst, const ucl_object_t *obj);
+static int job_manifest_parse_sockets(job_manifest_t manifest, const ucl_object_t *obj);
+static int job_manifest_parse_sock_service_name(struct job_manifest_socket *socket, const ucl_object_t *object);
 
-static job_manifest_item_parser_t manifest_parser_map[] = {
+
+static const job_manifest_item_parser_t manifest_parser_map[] = {
 	{ "Label",                 UCL_STRING,  job_manifest_parse_label },
 	{ "UserName",              UCL_STRING,  job_manifest_parse_user_name },
 	{ "GroupName",             UCL_STRING,  job_manifest_parse_group_name },
@@ -103,6 +111,11 @@ static job_manifest_item_parser_t manifest_parser_map[] = {
 	{ NULL,                    UCL_NULL,    NULL },
 };
 
+static const job_manifest_socket_parser_t socket_parser_map[] = {
+	{ "SockServiceName",       UCL_STRING,  job_manifest_parse_sock_service_name },
+	{ NULL,                    UCL_NULL,    NULL },
+};
+
 static bool job_manifest_object_is_type(const ucl_object_t *obj, ucl_type_t type)
 {
 	if (ucl_object_type(obj) != type)
@@ -136,7 +149,7 @@ static int job_manifest_parse_cvec(cvec_t *dst, const ucl_object_t *obj)
 		cvec_push(vector, (char*)ucl_object_tostring(tmp));
 	}
 
-	if (dst)
+	if (*dst)
 		cvec_free(*dst);
 	
 	*dst = vector;
@@ -287,12 +300,47 @@ static int job_manifest_parse_start_interval(job_manifest_t manifest, const ucl_
 
 static int job_manifest_parse_sockets(job_manifest_t manifest, const ucl_object_t *obj)
 {
-	/*struct job_manifest_socket *socket = NULL;*/
-	
+	struct job_manifest_socket *socket = NULL;
+	ucl_object_iter_t it = NULL, it_obj = NULL;
+	const ucl_object_t *cur;
+
+	/* Iterate over the object */
+	while ((obj = ucl_iterate_object (obj, &it, true))) {
+		socket = job_manifest_socket_new();
+		socket->label = strdup(ucl_object_key(obj));
+		
+		/* Iterate over the values of a key */
+		while ((cur = ucl_iterate_object (obj, &it_obj, true))) {
+			for (const job_manifest_socket_parser_t *socket_parser = socket_parser_map; socket_parser->key != NULL; socket_parser++)
+			{
+				log_debug("parsing socket value `%s'", ucl_object_tostring_forced(cur));
+				if (!job_manifest_object_is_type(cur, socket_parser->object_type))
+				{
+					log_error("object type mismatch while parsing sockets");
+					job_manifest_socket_free(socket);
+					return -1;
+				}
+				
+				if (socket_parser->parser(socket, cur))
+				{
+					log_error("failed to parse socket child");
+					job_manifest_socket_free(socket);
+					return -1;
+				}
+			}
+		}
+
+		SLIST_INSERT_HEAD(&manifest->sockets, socket, entry);
+	}
 	return 0;
 }
 
-static int job_manifest_set_credentials(job_manifest_t job_manifest)
+static int job_manifest_parse_sock_service_name(struct job_manifest_socket *socket, const ucl_object_t *object)
+{
+	return (socket->sock_service_name = strdup(ucl_object_tostring(object))) ? 0 : -1;
+}
+
+static int job_manifest_rectify(job_manifest_t job_manifest)
 {
 	uid_t uid;
 	struct passwd *pwent;
@@ -461,7 +509,7 @@ static int job_manifest_parse(job_manifest_t job_manifest, unsigned char *buf, s
 	while ((tmp = ucl_iterate_object (obj, &it, true)))
 	{
 		log_debug("parsing key `%s'", ucl_object_key(tmp));
-		for (job_manifest_item_parser_t *item_parser = manifest_parser_map; item_parser->key != NULL; item_parser++)
+		for (const job_manifest_item_parser_t *item_parser = manifest_parser_map; item_parser->key != NULL; item_parser++)
 		{
 			if (!strcmp(item_parser->key, ucl_object_key(tmp)))
 			{
@@ -484,8 +532,8 @@ static int job_manifest_parse(job_manifest_t job_manifest, unsigned char *buf, s
 		}
 	}
 
-	if (job_manifest_set_credentials(job_manifest)) {
-		log_error("unable to set credentials on job %s", job_manifest->label ? job_manifest->label : "unknown");
+	if (job_manifest_rectify(job_manifest)) {
+		log_error("unable to rectify job %s", job_manifest->label ? job_manifest->label : "unknown");
 		rc = -1;
 		goto cleanup;
 	}
