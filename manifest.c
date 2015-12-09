@@ -298,6 +298,12 @@ static int job_manifest_set_credentials(job_manifest_t job_manifest)
 	struct passwd *pwent;
 	struct group *grent;
 
+	/* Undocumented heuristic to decide if it is an agent:
+	 *  - agents cannot set the User property
+	 *  - daemons must set the User and Group property
+	 */
+	job_manifest->job_is_agent = (!job_manifest->user_name && !job_manifest->group_name);
+
 	uid = getuid();
 	if (uid == 0) {
 		if (!job_manifest->user_name)

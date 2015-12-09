@@ -22,9 +22,13 @@ if [ `whoami` = 'root' ] ; then
 		pkgdatadir="/var/lib/launchd"
 	fi
 	pidfile="/var/run/launchd.pid"
+	agentdir="/usr/local/etc/launchd/agents"
+	daemondir="/usr/local/etc/launchd/daemons"
 else
 	pkgdatadir="$HOME/.launchd/run"
 	pidfile="$pkgdatadir/launchd.pid"
+	agentdir="$HOME/.launchd/agents"
+	daemondir="" # N/A
 fi
 watchdir="$pkgdatadir/new"
 
@@ -50,6 +54,21 @@ unload)
 		touch $watchdir/$label.unload
 	done
 	kill -HUP `cat $pidfile`
+	;;
+
+
+install)
+	filespec=`find $* -name '*.json'`
+	for path in $filespec ; do
+		label=`basename "$path" | sed 's/\.json$//'`
+		cp $path $watchdir/$label.install
+	done
+	kill -HUP `cat $pidfile`
+	;;
+
+uninstall)
+	echo "XXX - STUB"
+	exit 1
 	;;
 
 list)

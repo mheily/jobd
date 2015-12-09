@@ -33,6 +33,8 @@ typedef struct job_manifest {
 	char    *user_name;
 	char    *group_name;
 
+	bool     job_is_agent; /* Temporary hack to detect agents v.s. daemons */
+
 	char	*program;
 	cvec_t 	 program_arguments;
 
