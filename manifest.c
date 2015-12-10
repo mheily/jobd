@@ -41,7 +41,12 @@ typedef struct job_manifest_item_parser {
 } job_manifest_item_parser_t;
 
 static bool job_manifest_object_is_type(const ucl_object_t *obj, ucl_type_t object_type);
+static unsigned char* job_manifest_prepare_buf_for_file(const char *filename, size_t *buf_size);
+static int job_manifest_read_from_file(unsigned char *buf, size_t buf_size, const char *filename);
+static ucl_object_t* job_manifest_get_object(unsigned char *buf, size_t buf_size);
+
 static int job_manifest_parse(job_manifest_t job_manifest, unsigned char *buf, size_t bufsize);
+static int job_manifest_parse_child(job_manifest_t job_manifest, const ucl_object_t *tmp);
 static int job_manifest_parse_label(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_user_name(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_group_name(job_manifest_t manifest, const ucl_object_t *obj);
@@ -458,99 +463,130 @@ void job_manifest_free(job_manifest_t job_manifest)
 	free(job_manifest);
 }
 
-int job_manifest_read(job_manifest_t job_manifest, const char *infile)
+static unsigned char* job_manifest_prepare_buf_for_file(const char *filename, size_t *buf_size)
 {
-	unsigned char *buf = NULL;
-	size_t bufsz;
+	unsigned char *buf;
 	struct stat sb;
-	ssize_t bytes_read;
-	FILE *f = NULL;
+	
+	if (stat(filename, &sb))
+		return NULL;
+		
+	*buf_size = sb.st_size + 1;
+	buf = calloc(*buf_size, sizeof(unsigned char));
 
-	if (stat(infile, & sb) != 0) goto err_out;
-	if (sb.st_size > 65535) goto err_out;
-	bufsz = sb.st_size + 1;
-	buf = malloc(bufsz);
-	if (buf == NULL) goto err_out;
-	memset(buf + bufsz, 0, 1);
-	if ((f = fopen(infile, "r")) == NULL) goto err_out;
-	bytes_read = fread(buf, 1, sb.st_size, f);
-	if (bytes_read != sb.st_size) goto err_out;
-	if (fclose(f) != 0) goto err_out;
-
-	return (job_manifest_parse(job_manifest, buf, bufsz));
-
- err_out:
-	if (f) (void)fclose(f);
-	free(buf);
-	return (-1);
+	return buf;
 }
 
-/* NOTE: buf will be owned by job_manifest_t for free() purposes */
-static int job_manifest_parse(job_manifest_t job_manifest, unsigned char *buf, size_t bufsize)
+static int job_manifest_read_from_file(unsigned char *buf, size_t buf_size, const char *filename)
 {
 	int rc = 0;
+	FILE *f = NULL;
+	
+	if (!(f = fopen(filename, "r")))
+		return -1;
+	
+	if (fread(buf, 1, buf_size - 1, f) != buf_size - 1)
+		rc = -1;
+
+	buf[buf_size] = 0;
+
+	fclose(f);
+	return rc;
+}
+
+int job_manifest_read(job_manifest_t job_manifest, const char *filename)
+{
+	unsigned char *buf = NULL;
+	size_t buf_size;
+	int rc = 0;
+
+	if (!(buf = job_manifest_prepare_buf_for_file(filename, &buf_size)))
+		return -1;
+
+	if (job_manifest_read_from_file(buf, buf_size, filename))
+		return -1;
+
+	if (!rc)
+		rc = job_manifest_parse(job_manifest, buf, buf_size);
+
+	free(buf);
+	
+	return rc;
+}
+
+static ucl_object_t* job_manifest_get_object(unsigned char *buf, size_t buf_size)
+{
 	struct ucl_parser *parser = NULL;
 	ucl_object_t *obj = NULL;
-	const ucl_object_t *tmp = NULL;
-	ucl_object_iter_t it = NULL;
-  
+
 	parser = ucl_parser_new(0);
-	ucl_parser_add_chunk(parser, buf, bufsize);
 
-	if (ucl_parser_get_error(parser)) {
+	if (!parser)
+		return NULL;
+	
+	ucl_parser_add_chunk(parser, buf, buf_size);
+
+	if (ucl_parser_get_error(parser))
 		log_error("%s", ucl_parser_get_error(parser));
-		rc = -1;
-		goto cleanup;
-	}
-	else {
+	else
 		obj = ucl_parser_get_object(parser);
-	}
 
-	while ((tmp = ucl_iterate_object (obj, &it, true)))
-	{
-		log_debug("parsing key `%s'", ucl_object_key(tmp));
-		for (const job_manifest_item_parser_t *item_parser = manifest_parser_map; item_parser->key != NULL; item_parser++)
-		{
-			if (!strcmp(item_parser->key, ucl_object_key(tmp)))
-			{
-				if (!job_manifest_object_is_type(tmp, item_parser->object_type))
-				{
-					log_error("failed while validating key `%s' with value: `%s'", ucl_object_key(tmp), ucl_object_tostring_forced(tmp));
-					rc = -1;
-					goto cleanup;
-				}
-				
+	ucl_parser_free(parser);
+
+	return obj;
+}
+
+static int job_manifest_parse_child(job_manifest_t job_manifest, const ucl_object_t *tmp)
+{
+	int rc = 0;
+	log_debug("parsing key `%s'", ucl_object_key(tmp));
+	for (const job_manifest_item_parser_t *item_parser = manifest_parser_map; item_parser->key != NULL; item_parser++) {
+		if (!strcmp(item_parser->key, ucl_object_key(tmp))) {
+			if (!job_manifest_object_is_type(tmp, item_parser->object_type)) {
+				log_error("failed while validating key `%s' with value: `%s'", ucl_object_key(tmp), ucl_object_tostring_forced(tmp));
+				rc = -1;
+			}
+			else {
 				log_debug("parsing value `%s'", ucl_object_tostring_forced(tmp));
-				if (item_parser->parser(job_manifest, tmp))
-				{
+				if (item_parser->parser(job_manifest, tmp)) {
 					log_error("failed while parsing key `%s' with value: `%s'", ucl_object_key(tmp), ucl_object_tostring_forced(tmp));
 					rc = -1;
-					goto cleanup;
 				}
-				break;
 			}
+			break;
 		}
 	}
+	return rc;
+}
+
+static int job_manifest_parse(job_manifest_t job_manifest, unsigned char *buf, size_t buf_size)
+{
+	int rc = 0;
+	const ucl_object_t *tmp = NULL;
+	ucl_object_iter_t it = NULL;
+	ucl_object_t *obj;
+
+	if (!(obj = job_manifest_get_object(buf, buf_size)))
+		return -1;
+  
+	while ((tmp = ucl_iterate_object (obj, &it, true)))
+		if ((rc = job_manifest_parse_child(job_manifest, tmp)))
+			break;
+
+	ucl_object_unref(obj);
+
+	if (rc)
+		return rc;
 
 	if (job_manifest_rectify(job_manifest)) {
 		log_error("unable to rectify job %s", job_manifest->label ? job_manifest->label : "unknown");
-		rc = -1;
-		goto cleanup;
+		return -1;
 	}
 
 	if (job_manifest_validate(job_manifest)) {
 		log_error("job %s failed validation", job_manifest->label ? job_manifest->label : "unknown");
-		rc = -1;
-		goto cleanup;
+		return -1;
 	}
-
-cleanup:
-    
-	if (parser)
-		ucl_parser_free(parser);
-
-	if (obj)
-		ucl_object_unref(obj);
 
 	return rc;
 }
