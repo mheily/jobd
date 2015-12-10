@@ -156,7 +156,7 @@ static int job_manifest_parse_cvec(cvec_t *dst, const ucl_object_t *obj)
 
 	if (*dst)
 		cvec_free(*dst);
-	
+
 	*dst = vector;
 	return 0;
 }
@@ -277,7 +277,7 @@ static int job_manifest_parse_environment_variables(job_manifest_t manifest, con
 
 	if (manifest->environment_variables)
 		cvec_free(manifest->environment_variables);
-	
+
 	manifest->environment_variables = vector;
 	return 0;
 }
@@ -313,7 +313,7 @@ static int job_manifest_parse_sockets(job_manifest_t manifest, const ucl_object_
 	while ((obj = ucl_iterate_object (obj, &it, true))) {
 		socket = job_manifest_socket_new();
 		socket->label = strdup(ucl_object_key(obj));
-		
+
 		/* Iterate over the values of a key */
 		while ((cur = ucl_iterate_object (obj, &it_obj, true))) {
 			for (const job_manifest_socket_parser_t *socket_parser = socket_parser_map; socket_parser->key != NULL; socket_parser++)
@@ -325,7 +325,7 @@ static int job_manifest_parse_sockets(job_manifest_t manifest, const ucl_object_
 					job_manifest_socket_free(socket);
 					return -1;
 				}
-				
+
 				if (socket_parser->parser(socket, cur))
 				{
 					log_error("failed to parse socket child");
@@ -361,17 +361,17 @@ static int job_manifest_rectify(job_manifest_t job_manifest)
 	if (uid == 0) {
 		if (!job_manifest->user_name)
 			job_manifest->user_name = strdup("root");
-		
+
 		if (!job_manifest->group_name)
 			job_manifest->group_name = strdup("wheel");
 	}
 	else {
 		if (job_manifest->user_name)
 			free(job_manifest->user_name);
-		
+
 		if ((pwent = getpwuid(uid)) == NULL)
 			return -1;
-		
+
 		job_manifest->user_name = strdup(pwent->pw_name);
 
 		if ((grent = getgrgid(pwent->pw_gid)) == NULL)
@@ -379,12 +379,12 @@ static int job_manifest_rectify(job_manifest_t job_manifest)
 
 		if (job_manifest->group_name)
 			free(job_manifest->group_name);
-		
+
 		job_manifest->group_name = strdup(grent->gr_name);
 	}
-	
+
 	job_manifest->init_groups = true;
-	
+
 	return 0;
 }
 
@@ -411,7 +411,7 @@ static int job_manifest_validate(job_manifest_t job_manifest)
 		log_error("job %s does not set `group_name'", job_manifest->label);
 		return -1;
 	}
-	
+
 	return 0;
 }
 
@@ -420,14 +420,14 @@ job_manifest_t job_manifest_new(void)
 	job_manifest_t job_manifest;
 
 	job_manifest = calloc(1, sizeof(*job_manifest));
-	
+
 	if (!job_manifest)
 		return (NULL);
-	
+
 	job_manifest->exit_timeout = DEFAULT_EXIT_TIMEOUT;
 	job_manifest->throttle_interval = DEFAULT_THROTTLE_INTERVAL;
 	job_manifest->init_groups = true;
-	
+
 	SLIST_INIT(&job_manifest->sockets);
 
 	return job_manifest;
@@ -454,12 +454,12 @@ void job_manifest_free(job_manifest_t job_manifest)
 	cvec_free(job_manifest->watch_paths);
 	cvec_free(job_manifest->queue_directories);
 	cvec_free(job_manifest->environment_variables);
-	
+
 	SLIST_FOREACH_SAFE(jms, &job_manifest->sockets, entry, jms_tmp) {
 		SLIST_REMOVE(&job_manifest->sockets, jms, job_manifest_socket, entry);
 		job_manifest_socket_free(jms);
 	}
-	
+
 	free(job_manifest);
 }
 
@@ -467,10 +467,10 @@ static unsigned char* job_manifest_prepare_buf_for_file(const char *filename, si
 {
 	unsigned char *buf;
 	struct stat sb;
-	
+
 	if (stat(filename, &sb))
 		return NULL;
-		
+
 	*buf_size = sb.st_size + 1;
 	buf = calloc(*buf_size, sizeof(unsigned char));
 
@@ -481,10 +481,10 @@ static int job_manifest_read_from_file(unsigned char *buf, size_t buf_size, cons
 {
 	int rc = 0;
 	FILE *f = NULL;
-	
+
 	if (!(f = fopen(filename, "r")))
 		return -1;
-	
+
 	if (fread(buf, 1, buf_size - 1, f) != buf_size - 1)
 		rc = -1;
 
@@ -510,7 +510,7 @@ int job_manifest_read(job_manifest_t job_manifest, const char *filename)
 		rc = job_manifest_parse(job_manifest, buf, buf_size);
 
 	free(buf);
-	
+
 	return rc;
 }
 
@@ -523,7 +523,7 @@ static ucl_object_t* job_manifest_get_object(unsigned char *buf, size_t buf_size
 
 	if (!parser)
 		return NULL;
-	
+
 	ucl_parser_add_chunk(parser, buf, buf_size);
 
 	if (ucl_parser_get_error(parser))
@@ -568,7 +568,7 @@ static int job_manifest_parse(job_manifest_t job_manifest, unsigned char *buf, s
 
 	if (!(obj = job_manifest_get_object(buf, buf_size)))
 		return -1;
-  
+
 	while ((tmp = ucl_iterate_object (obj, &it, true)))
 		if ((rc = job_manifest_parse_child(job_manifest, tmp)))
 			break;

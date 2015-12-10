@@ -17,13 +17,15 @@
 # Flags needed by GCC/glibc
 #CFLAGS+=-std=c99 -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE -D_GNU_SOURCE -I/usr/include/kqueue/
 #LDFLAGS+=-lkqueue -lpthread -lucl
-CFLAGS+=`pkg-config --cflags libucl`
-LDADD+=`pkg-config --libs libucl`
 
+jmtest_CFLAGS=-include ../config.h -I.. -I../vendor/libucl/include \
+				-std=c99 $(CFLAGS) -g -O0 -DDEBUG
+jmtest_SOURCES=jmtest.c ../log.c ../job.c ../manifest.c ../manager.c ../socket.c \
+				../timer.c ../libucl.a
 default: jmtest
 
 jmtest: 
-	$(CC) -include ../config.h -I.. -std=c99 $(CFLAGS) -g -O0 -DDEBUG -o $@ jmtest.c ../log.c ../job.c ../manifest.c ../manager.c ../socket.c ../timer.c $(LDADD)
+	$(CC) $(jmtest_CFLAGS) -o $@ $(jmtest_SOURCES) $(LDADD)
 
 jail-test: jail-test.c ../jail.c ../jail.h
 	$(CC) -I.. $(CFLAGS) -g -O0 -DDEBUG $(LDFLAGS) -o $@ jail-test.c ../jail.c ../log.c -ljail

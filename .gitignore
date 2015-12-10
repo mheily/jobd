@@ -7,3 +7,4 @@ vars.sh
 /test/jmtest.log
 *.tar.gz
 *.so
+*.a

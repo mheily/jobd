@@ -74,17 +74,6 @@ There are a few extra steps when building on Linux:
 
 	https://github.com/mheily/libkqueue/
 
-2. Download and install libucl. For Debian-based distributions, you can
-   simply run:
-
-   	sudo apt-get install libucl-dev
-
-   Other distributions will require you to build from source, which is
-   available at:
-
-   	https://github.com/vstakhov/libucl
-
-
 ## Socket activation
 
 relaunchd uses a different mechanism for socket activation than the one that

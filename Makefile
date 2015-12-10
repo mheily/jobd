@@ -16,12 +16,11 @@
 
 include Makefile.inc
 
-launchd_CFLAGS=-include config.h -std=c99 -Wall -Werror
+launchd_CFLAGS=-include config.h -I/usr/local/include -std=c99 -Wall -Werror \
+                -Ivendor/libucl/include
 launchd_SOURCES=job.c log.c launchd.c manager.c manifest.c socket.c \
-                   timer.c pidfile.c flopen.c
+                   timer.c pidfile.c flopen.c libucl.a
 DEBUGFLAGS=-g -O0 -DDEBUG
-CFLAGS+=`pkg-config --cflags libucl`
-LDADD+=`pkg-config --libs libucl`
 
 all: launchd
 
@@ -36,6 +35,10 @@ sa-wrapper/sa-wrapper.so:
 
 launchd-debug:
 	CFLAGS="$(DEBUGFLAGS)" $(MAKE) launchd
+
+libucl.a:
+	cd vendor/libucl && ./autogen.sh && ./configure && make && \
+	cp src/.libs/libucl.a ../..
 
 config.h: Makefile Makefile.inc
 	echo "/* Automatically generated -- do not edit */" > config.h
@@ -52,7 +55,7 @@ vars.sh: config.h
 	egrep '^#define' config.h | sed 's/^#define //; s/ /=/' >> vars.sh
 
 clean:
-	rm -f *.o config.h vars.sh
+	rm -f *.o config.h vars.sh libucl.a
 	rm -f launchd
 	cd test && $(MAKE) clean
 
