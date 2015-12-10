@@ -20,7 +20,8 @@ launchd_CFLAGS=-include config.h -std=c99 -Wall -Werror
 launchd_SOURCES=job.c log.c launchd.c manager.c manifest.c socket.c \
                    timer.c pidfile.c flopen.c
 DEBUGFLAGS=-g -O0 -DDEBUG
-LDADD+=-lucl
+CFLAGS+=`pkg-config --cflags libucl`
+LDADD+=`pkg-config --libs libucl`
 
 all: launchd
 
