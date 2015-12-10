@@ -69,7 +69,5 @@ typedef struct job_manifest {
 job_manifest_t job_manifest_new(void);
 void job_manifest_free(job_manifest_t job_manifest);
 int job_manifest_read(job_manifest_t job_manifest, const char *filename);
-void job_manifest_retain(job_manifest_t job_manifest);
-void job_manifest_release(job_manifest_t job_manifest);
 
 #endif /* _MANIFEST_H_ */

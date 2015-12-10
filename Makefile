@@ -36,7 +36,11 @@ sa-wrapper/sa-wrapper.so:
 launchd-debug:
 	CFLAGS="$(DEBUGFLAGS)" $(MAKE) launchd
 
-libucl.a:
+vendor/libucl/autogen.sh:
+	git submodule init
+	git submodule update
+
+libucl.a: vendor/libucl/autogen.sh
 	cd vendor/libucl && ./autogen.sh && ./configure && make && \
 	cp src/.libs/libucl.a ../..
 

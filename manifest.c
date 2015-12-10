@@ -347,6 +347,8 @@ static int job_manifest_parse_sock_service_name(struct job_manifest_socket *sock
 
 static int job_manifest_rectify(job_manifest_t job_manifest)
 {
+	int i, retval = -1;
+	cvec_t new_argv = NULL;
 	uid_t uid;
 	struct passwd *pwent;
 	struct group *grent;
@@ -383,9 +385,31 @@ static int job_manifest_rectify(job_manifest_t job_manifest)
 		job_manifest->group_name = strdup(grent->gr_name);
 	}
 
+	/* If both Program and ProgramArguments are used, consolidate them into one array */
+	if (job_manifest->program && cvec_length(job_manifest->program_arguments) > 0) {
+		new_argv = cvec_new();
+		if (!new_argv) goto out;
+		if (cvec_push(new_argv, job_manifest->program) < 0) goto out;
+		for (i = 0; i < cvec_length(job_manifest->program_arguments); i++) {
+			if (cvec_push(new_argv, cvec_get(job_manifest->program_arguments, i)) < 0) goto out;
+		}
+		cvec_free(job_manifest->program_arguments);
+		job_manifest->program_arguments = new_argv;
+		new_argv = NULL;
+	}
+
+	/* By convention, argv[0] == Program */
+	if (job_manifest->program && cvec_length(job_manifest->program_arguments) == 0) {
+		if (cvec_push(job_manifest->program_arguments, job_manifest->program) < 0) goto out;
+	}
+
 	job_manifest->init_groups = true;
 
-	return 0;
+	retval = 0;
+
+out:
+	free(new_argv);
+	return retval;
 }
 
 static int job_manifest_validate(job_manifest_t job_manifest)
@@ -395,8 +419,9 @@ static int job_manifest_validate(job_manifest_t job_manifest)
 		return -1;
 	}
 
-	if (!job_manifest->program) {
-		log_error("job %s does not set `program'", job_manifest->label);
+	/* Require Program or ProgramArguments */
+	if (!job_manifest->program && cvec_length(job_manifest->program_arguments) == 0) {
+		log_error("job does not set Program or ProgramArguments");
 		return -1;
 	}
 
@@ -589,16 +614,4 @@ static int job_manifest_parse(job_manifest_t job_manifest, unsigned char *buf, s
 	}
 
 	return rc;
-}
-
-void job_manifest_retain(job_manifest_t job_manifest)
-{
-	job_manifest->refcount++;
-}
-
-void job_manifest_release(job_manifest_t job_manifest)
-{
-	job_manifest->refcount--;
-	if (job_manifest->refcount < 0)
-		job_manifest_free(job_manifest);
 }
