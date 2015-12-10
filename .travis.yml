@@ -13,7 +13,7 @@ language: c
 
 before_install:
 - sudo apt-get update -qq
-- sudo apt-get install bc libkqueue-dev libkqueue0 -qq
+- sudo apt-get install bc libkqueue-dev libkqueue0 libucl-dev -qq
 
 script:
 - make
