@@ -1,0 +1,3 @@
+[submodule "vendor/libucl"]
+	path = vendor/libucl
+	url = https://github.com/vstakhov/libucl.git
