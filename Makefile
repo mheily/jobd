@@ -18,8 +18,10 @@ include Makefile.inc
 
 launchd_CFLAGS=-include config.h -std=c99 -Wall -Werror
 launchd_SOURCES=job.c log.c launchd.c manager.c manifest.c socket.c \
-                   jsmn/jsmn.c timer.c pidfile.c flopen.c
+                   timer.c pidfile.c flopen.c
 DEBUGFLAGS=-g -O0 -DDEBUG
+CFLAGS+=`pkg-config --cflags libucl`
+LDADD+=`pkg-config --libs libucl`
 
 all: launchd
 
@@ -81,7 +83,6 @@ install: vars.sh
 		section=`echo $$manpage | sed 's/.*\.//'` ; \
 		cat $$manpage | gzip > $$DESTDIR$(MANDIR)/man$$section/`basename $$manpage`.gz ; \
 	done
- 	
 	test `uname` = "FreeBSD" && install -m 755 rc.FreeBSD $$DESTDIR/usr/local/etc/rc.d/launchd || true
 
 release:

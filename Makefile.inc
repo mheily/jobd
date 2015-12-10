@@ -32,5 +32,5 @@ LOCALSTATEDIR = /var
 RUNSTATEDIR = $(LOCALSTATEDIR)/run
 
 # Files to include in the tarball
-DISTFILES = *.[ch] rc.* launchctl LICENSE README.md Makefile Makefile.inc include jsmn test
+DISTFILES = *.[ch] rc.* launchctl LICENSE README.md Makefile Makefile.inc include test
 
