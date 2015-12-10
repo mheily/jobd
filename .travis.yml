@@ -14,7 +14,7 @@ language: c
 before_install:
 - sudo apt-get update -qq
 - sudo apt-get install bc libkqueue-dev libkqueue0 git -qq
-- git clone https://github.com/vstakhov/libucl.git && cd libucl && cmake . && make && sudo make install
+- git clone https://github.com/vstakhov/libucl.git && cd libucl && cmake . && ./autogen.sh && ./configure --prefix=/usr && make && sudo make install
 
 script:
 - make
