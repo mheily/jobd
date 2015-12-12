@@ -171,6 +171,7 @@ void update_jobs(void)
 			if (!strcmp(jm->label, job->jm->label)) {
 				log_warning("job `%s' is already running", jm->label);
 				skip = true;
+				break;
 			}
 		}
 
@@ -181,6 +182,7 @@ void update_jobs(void)
 			if (!strcmp(jm->label, job->jm->label)) {
 				log_warning("job `%s' is already loaded", jm->label);
 				skip = true;
+				break;
 			}
 		}
 		
