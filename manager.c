@@ -204,6 +204,18 @@ int manager_activate_job_by_fd(int fd)
 	return -1; //STUB
 }
 
+job_t manager_get_job_by_label(const char *label)
+{
+	job_t job;
+
+	LIST_FOREACH(job, &jobs, joblist_entry) {
+		if (strcmp(label, job->jm->label) == 0) {
+			return job;
+		}
+	}
+	return NULL;
+}
+
 job_t manager_get_job_by_pid(pid_t pid)
 {
 	job_t job;
