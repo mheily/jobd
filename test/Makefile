@@ -26,11 +26,16 @@ jmtest:
 jail-test: jail-test.c ../jail.c ../jail.h
 	$(CC) -I.. $(CFLAGS) -g -O0 -DDEBUG $(LDFLAGS) -o $@ jail-test.c ../jail.c ../log.c -ljail
 
+manifest-test: manifest-test.c
+	$(CC) -I.. -I../vendor/libucl-0.7.3/include $(CFLAGS) -g -O0 -DDEBUG \
+		-o $@ manifest-test.c ../job.c ../manifest.c ../socket.c ../log.c ../vendor/libucl-0.7.3/src/.libs/libucl.a
+
 socket-activation-test:
 	./test-socket-activation.sh
 
-check: jmtest
+check: jmtest manifest-test
 	DEBUG=yes ./jmtest
+	./manifest-test
 
 clean:
 	rm -f *.o
