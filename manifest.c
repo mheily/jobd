@@ -547,7 +547,7 @@ static ucl_object_t* job_manifest_get_object(unsigned char *buf, size_t buf_size
 	struct ucl_parser *parser = NULL;
 	ucl_object_t *obj = NULL;
 
-	parser = ucl_parser_new(0);
+	parser = ucl_parser_new(UCL_PARSER_DEFAULT);
 
 	if (!parser)
 		return NULL;
