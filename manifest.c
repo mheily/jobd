@@ -347,7 +347,7 @@ static int job_manifest_parse_sock_service_name(struct job_manifest_socket *sock
 
 static int job_manifest_rectify(job_manifest_t job_manifest)
 {
-	int i, retval = JOB_MANIFEST_FAILURE;
+	int retval = JOB_MANIFEST_SUCCESS;
 	cvec_t new_argv = NULL;
 	uid_t uid;
 	struct passwd *pwent;
@@ -385,30 +385,33 @@ static int job_manifest_rectify(job_manifest_t job_manifest)
 		job_manifest->group_name = strdup(grent->gr_name);
 	}
 
-	/* If both Program and ProgramArguments are used, consolidate them into one array */
-	if (job_manifest->program && cvec_length(job_manifest->program_arguments) > 0) {
+	/* Ensure program is at the beginning of the program_arguments array */
+	if (job_manifest->program) {
 		new_argv = cvec_new();
-		if (!new_argv) goto out;
-		if (cvec_push(new_argv, job_manifest->program) < 0) goto out;
-		for (i = 0; i < cvec_length(job_manifest->program_arguments); i++) {
-			if (cvec_push(new_argv, cvec_get(job_manifest->program_arguments, i)) < 0) goto out;
+		
+		if (!new_argv)
+			return JOB_MANIFEST_MEMORY_FAILURE;
+		
+		if (cvec_push(new_argv, job_manifest->program)) {
+			cvec_free(new_argv);
+			return JOB_MANIFEST_FAILURE;
 		}
+
+		if (job_manifest->program_arguments) {
+			for (int i = 0; i < cvec_length(job_manifest->program_arguments); i++) {
+				if (cvec_push(new_argv, cvec_get(job_manifest->program_arguments, i))) {
+					cvec_free(new_argv);
+					return JOB_MANIFEST_FAILURE;
+				}
+			}
+		}
+		
 		cvec_free(job_manifest->program_arguments);
 		job_manifest->program_arguments = new_argv;
-		new_argv = NULL;
-	}
-
-	/* By convention, argv[0] == Program */
-	if (job_manifest->program && cvec_length(job_manifest->program_arguments) == 0) {
-		if (cvec_push(job_manifest->program_arguments, job_manifest->program) < 0) goto out;
 	}
 
 	job_manifest->init_groups = true;
 
-	retval = JOB_MANIFEST_SUCCESS;
-
-out:
-	free(new_argv);
 	return retval;
 }
 
