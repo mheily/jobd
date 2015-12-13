@@ -23,12 +23,18 @@
 int manager_activate_job_by_fd(int fd);
 
 /**
- *
  * Given a process ID, find the associated job
  *
  * @return the job, or NULL if there are no matching jobs
  */
 job_t manager_get_job_by_pid(pid_t pid);
+
+/**
+ * Given a label, find the associated job
+ *
+ * @return the job, or NULL if there are no matching jobs
+ */
+job_t manager_get_job_by_label(const char *label);
 
 /**
  * Unload a job with a given <label>
