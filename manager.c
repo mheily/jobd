@@ -167,18 +167,13 @@ void update_jobs(void)
 	/* Pass #1: load all jobs */
 	LIST_FOREACH(jm, &pending, jm_le) {
 		skip = false;
-		LIST_FOREACH(job, &jobs, joblist_entry) {
-			if (!strcmp(jm->label, job->jm->label)) {
-				log_warning("job `%s' is already running", jm->label);
-				skip = true;
-				break;
-			}
-		}
-
-		if (skip)
-			continue;
 		
-		LIST_FOREACH(job, &jobs, joblist_entry) {
+		if (manager_get_job_by_label(jm->label)) {
+			log_warning("job `%s' is already running", jm->label);
+			continue;
+		}
+		
+		LIST_FOREACH(job, &joblist, joblist_entry) {
 			if (!strcmp(jm->label, job->jm->label)) {
 				log_warning("job `%s' is already loaded", jm->label);
 				skip = true;
