@@ -39,7 +39,7 @@ Some things are not implemented yet:
   RunAtLoad, Umask
 
 Some things will probably never be implemented:
-* oddities - LimitLoadToHosts, LimitLoadToHosts
+* oddities - LimitLoadToHosts, LimitLoadFromHosts
 * kernel and launchd debugging - Debug, WaitForDebugger
 * Mach IPC
 * the StartOnMount key - may require kernel support for filesystem mount
