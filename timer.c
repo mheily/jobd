@@ -118,6 +118,7 @@ int timer_unregister_constant_interval(struct job *job)
 }
 */
 
+#ifndef UNIT_TEST
 int timer_handler()
 {
 	job_t job;
@@ -133,3 +134,4 @@ int timer_handler()
 	}
 	return 0;
 }
+#endif
