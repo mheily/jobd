@@ -18,8 +18,8 @@
 #CFLAGS+=-std=c99 -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE -D_GNU_SOURCE -I/usr/include/kqueue/
 #LDFLAGS+=-lkqueue -lpthread
 
-test_CFLAGS+=-g0 -O0 -DUNIT_TEST -DDEBUG -I../vendor/libucl-0.7.3/include
-LIBUCL_A=../vendor/libucl-0.7.3/src/.libs/libucl.a
+test_CFLAGS+=-g0 -O0 -DUNIT_TEST -DDEBUG -I../vendor/libucl/include
+LIBUCL_A=../vendor/libucl/src/.libs/libucl.a
 
 TESTS=jmtest manifest-test
 
