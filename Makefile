@@ -18,7 +18,7 @@ include Makefile.inc
 
 launchd_CFLAGS=-include config.h -std=c99 -Wall -Werror -Ivendor/libucl-0.7.3/include
 launchd_SOURCES=job.c log.c launchd.c manager.c manifest.c socket.c \
-                   jsmn/jsmn.c timer.c pidfile.c flopen.c
+                   timer.c pidfile.c flopen.c
 LIBUCL_A=vendor/libucl-0.7.3/src/.libs/libucl.a
 DEBUGFLAGS=-g -O0 -DDEBUG
 
@@ -31,7 +31,7 @@ launchd: $(launchd_SOURCES) config.h $(LIBUCL_A)
 	$(CC) $(launchd_CFLAGS) $(CFLAGS) -o $@ $(launchd_SOURCES) $(LIBUCL_A) $(LDADD)
 
 $(LIBUCL_A):
-	cd vendor/libucl-0.7.3 && ./configure && make
+	cd vendor/libucl-0.7.3 && ./autogen.sh && ./configure && make
 
 sa-wrapper/sa-wrapper.so:
 	cd sa-wrapper ; $(MAKE)
