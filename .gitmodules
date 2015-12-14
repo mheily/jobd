@@ -1,3 +1,6 @@
 [submodule "vendor/libucl"]
 	path = vendor/libucl
 	url = https://github.com/vstakhov/libucl.git
+[submodule "vendor/libkqueue"]
+	path = vendor/libkqueue
+	url = https://github.com/mheily/libkqueue.git
