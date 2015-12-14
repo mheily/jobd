@@ -18,17 +18,24 @@
 #CFLAGS+=-std=c99 -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE -D_GNU_SOURCE -I/usr/include/kqueue/
 #LDFLAGS+=-lkqueue -lpthread
 
-default: jmtest
+test_CFLAGS+=-g0 -O0 -DUNIT_TEST -DDEBUG -I../vendor/libucl-0.7.3/include
+LIBUCL_A=../vendor/libucl-0.7.3/src/.libs/libucl.a
+
+TESTS=jmtest manifest-test
+
+all: $(TESTS)
 
 jmtest: 
-	$(CC) -include ../config.h -I.. -std=c99 $(CFLAGS) -g -O0 -DDEBUG -o $@ jmtest.c ../log.c ../job.c ../manifest.c ../manager.c ../jsmn/jsmn.c ../socket.c ../timer.c $(LDADD)
+	$(CC) -include ../config.h -I.. -std=c99 $(test_CFLAGS) $(CFLAGS) -o $@ jmtest.c \
+	../log.c ../job.c ../manifest.c ../manager.c ../jsmn/jsmn.c ../socket.c ../timer.c \
+	$(LIBUCL_A) $(LDADD)
 
 jail-test: jail-test.c ../jail.c ../jail.h
-	$(CC) -I.. $(CFLAGS) -g -O0 -DDEBUG $(LDFLAGS) -o $@ jail-test.c ../jail.c ../log.c -ljail
+	$(CC) -I.. $(CFLAGS) o $@ jail-test.c ../jail.c ../log.c -ljail $(LDADD)
 
 manifest-test: manifest-test.c
-	$(CC) -I.. -I../vendor/libucl-0.7.3/include $(CFLAGS) -g -O0 -DDEBUG \
-		-o $@ manifest-test.c ../job.c ../manifest.c ../socket.c ../log.c ../vendor/libucl-0.7.3/src/.libs/libucl.a
+	$(CC) -I.. $(test_CFLAGS) $(CFLAGS) -o $@ manifest-test.c ../job.c ../manifest.c ../socket.c \
+		../timer.c ../log.c $(LIBUCL_A) $(LDADD)
 
 socket-activation-test:
 	./test-socket-activation.sh
@@ -38,7 +45,4 @@ check: jmtest manifest-test
 	./manifest-test
 
 clean:
-	rm -f *.o
-	rm -f jmtest
-	
-.PHONY: jmtest
+	rm -f *.o $(TESTS)

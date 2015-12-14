@@ -50,13 +50,17 @@ static int test_allocator()
 	assert(!m->user_name);
 	assert(!m->group_name);
 	assert(!m->program);
-	assert(cvec_length(m->program_arguments) == 0);
+//	assert(m->program_arguments);
+//	assert(cvec_length(m->program_arguments) == 0);
 	assert(!m->working_directory);
 	assert(!m->root_directory);
 	assert(!m->jail_name);
-	assert(cvec_length(m->environment_variables) == 0);
-	assert(cvec_length(m->watch_paths) == 0);
-	assert(cvec_length(m->queue_directories) == 0);
+//	assert(m->environment_variables);
+//	assert(cvec_length(m->environment_variables) == 0);
+//	assert(m->watch_paths);
+//	assert(cvec_length(m->watch_paths) == 0);
+//	assert(m->queue_directories);
+//	assert(cvec_length(m->queue_directories) == 0);
  	assert(!m->stdin_path);
  	assert(!m->stdout_path);
  	assert(!m->stderr_path);
@@ -78,7 +82,7 @@ static int test_parse_label()
 		"}\n");
 
 	m = job_manifest_new();
-	assert(job_manifest_parse(m, good_label, strlen(good_label) + 1) == 0);
+	assert(job_manifest_parse(m, (u_char *)good_label, strlen(good_label) + 1) == 0);
 	job_manifest_free(m);
 
 #if TODO
@@ -105,23 +109,23 @@ static int test_parse_program()
 		" \"Label\": \"hello.world\"\n"
 		"}\n");
 	m = job_manifest_new();
-	assert(job_manifest_parse(m, manifest, strlen(manifest) + 1) != 0);
+	assert(job_manifest_parse(m, (u_char *)manifest, strlen(manifest) + 1) != 0);
 	job_manifest_free(m);
 
 	manifest = strdup("{\"Label\": \"a\", \"Program\": \"/bin/true\"}");
 	m = job_manifest_new();
-	assert(job_manifest_parse(m, manifest, strlen(manifest) + 1) == 0);
+	assert(job_manifest_parse(m, (u_char *)manifest, strlen(manifest) + 1) == 0);
 	job_manifest_free(m);
 
 	manifest = strdup("{\"Label\": \"a\", \"ProgramArguments\": [\"/bin/true\"]}");
 	m = job_manifest_new();
-	assert(job_manifest_parse(m, manifest, strlen(manifest) + 1) == 0);
+	assert(job_manifest_parse(m, (u_char *)manifest, strlen(manifest) + 1) == 0);
 	job_manifest_free(m);
 
 	manifest = strdup("{\"Label\": \"a\", \"Program\": \"/a\","
  		"\"ProgramArguments\": [\"/b\"]}");
 	m = job_manifest_new();
-	assert(job_manifest_parse(m, manifest, strlen(manifest) + 1) == 0);
+	assert(job_manifest_parse(m, (u_char *)manifest, strlen(manifest) + 1) == 0);
 	assert(strcmp(m->program, "/a") == 0);
 	assert(cvec_length(m->program_arguments) == 2);
 	assert(!strcmp(cvec_get(m->program_arguments, 0), "/a"));
