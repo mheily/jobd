@@ -66,6 +66,13 @@ typedef struct job_manifest {
 	int32_t refcount;
 } *job_manifest_t;
 
+typedef enum job_manifest_return_code {
+	JOB_MANIFEST_PARSE_FAILURE = -3,
+	JOB_MANIFEST_MEMORY_FAILURE = -2,
+	JOB_MANIFEST_FAILURE = -1,
+	JOB_MANIFEST_SUCCESS = 0,
+} job_manifest_return_code_t;
+
 job_manifest_t job_manifest_new(void);
 void job_manifest_free(job_manifest_t job_manifest);
 int job_manifest_read(job_manifest_t job_manifest, const char *filename);
