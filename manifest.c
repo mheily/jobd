@@ -398,7 +398,9 @@ static int job_manifest_rectify(job_manifest_t job_manifest)
 	}
 
 	/* By convention, argv[0] == Program */
-	if (job_manifest->program && cvec_length(job_manifest->program_arguments) == 0) {
+	if (job_manifest->program && !job_manifest->program_arguments) {
+		job_manifest->program_arguments = cvec_new();
+		if (!job_manifest->program_arguments) goto out;
 		if (cvec_push(job_manifest->program_arguments, job_manifest->program) < 0) goto out;
 	}
 

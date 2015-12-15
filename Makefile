@@ -33,7 +33,7 @@ launchd: $(launchd_SOURCES) config.h $(LIBUCL_A)
 $(LIBUCL_A):
 	git submodule init
 	git submodule update
-	cd vendor/libucl && ./autogen.sh && ./configure && make
+	cd vendor/libucl && ./autogen.sh && CFLAGS="-gdwarf-2 -gstrict-dwarf -g -O0" ./configure && make
 
 sa-wrapper/sa-wrapper.so:
 	cd sa-wrapper ; $(MAKE)
