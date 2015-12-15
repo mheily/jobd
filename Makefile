@@ -25,7 +25,7 @@ DEBUGFLAGS=-g -O0 -DDEBUG
 all: launchd
 
 check: launchd
-	cd test && make && ./jmtest
+	cd test && make check
 
 launchd: $(launchd_SOURCES) config.h $(LIBUCL_A)
 	$(CC) $(launchd_CFLAGS) $(CFLAGS) -o $@ $(launchd_SOURCES) $(LIBUCL_A) $(LDADD)

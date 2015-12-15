@@ -421,7 +421,7 @@ static int job_manifest_validate(job_manifest_t job_manifest)
 	}
 
 	/* Require Program or ProgramArguments */
-	if (!job_manifest->program && cvec_length(job_manifest->program_arguments) == 0) {
+	if (!job_manifest->program && !job_manifest->program_arguments) {
 		log_error("job does not set Program or ProgramArguments");
 		return -1;
 	}
