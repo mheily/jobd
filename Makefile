@@ -31,6 +31,8 @@ launchd: $(launchd_SOURCES) config.h $(LIBUCL_A)
 	$(CC) $(launchd_CFLAGS) $(CFLAGS) -o $@ $(launchd_SOURCES) $(LIBUCL_A) $(LDADD)
 
 $(LIBUCL_A):
+	git submodule init
+	git submodule update
 	cd vendor/libucl && ./autogen.sh && ./configure && make
 
 sa-wrapper/sa-wrapper.so:
