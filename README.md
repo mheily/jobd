@@ -146,14 +146,12 @@ unprivileged user may run their own launchd process under their own UID.
 
 ## Contact Information
 
-For questions, comments, or other feedback about relaunchd, you can send an
-email to the author at:
+For questions, comments, or other feedback about relaunchd, please join
+the email discussion list at:
 
-    Mark Heily <mark@heily.com>
+    https://groups.google.com/forum/#!forum/relaunchd-devel
 
-There is also a #relaunchd IRC channel on FreeNode. If you don't have an IRC
-client, there is a [web-based chat client](https://webchat.freenode.net/)
-available.
+There is also a #relaunchd IRC channel on FreeNode.
 
 ## References
 
