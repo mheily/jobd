@@ -30,7 +30,7 @@ There are some new features not found in the original launchd:
   modifying the source code.
    
 Some things are not implemented yet:
-* cron emulation (see issue #17)
+* #17 cron emulation
 * file and directory watches (see issue #25)
 * restarting jobs if they crash (see issue #26)
 * resource limits (see issue #27)
