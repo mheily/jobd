@@ -30,13 +30,15 @@ There are some new features not found in the original launchd:
   modifying the source code.
    
 Some things are not implemented yet:
-* cron emulation via the StartCalendarInterval key
-* file and directory watches - WatchPaths, QueueDirectories
-* restarting jobs if they crash - TimeOut, ExitTimeout, KeepAliveTimeout,
-  ThrottleInterval
-* resource limits - SoftResourceLimits, HardResourceLimits
-* miscellaneous - LaunchOnlyOnce, inetdCompatibility, EnableGlobbing,
-  RunAtLoad, Umask
+* cron emulation (see issue #17)
+* file and directory watches (see issue #25)
+* restarting jobs if they crash (see issue #26)
+* resource limits (see issue #27)
+* miscellaneous
+ * LaunchOnlyOnce (see issue #28)
+ * inetdCompatibility (see issue #29)
+ * RunAtLoad (see issue #30)
+ * Umask (see issue #31)
 
 Some things will probably never be implemented:
 * oddities - LimitLoadToHosts, LimitLoadFromHosts
