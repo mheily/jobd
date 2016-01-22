@@ -17,13 +17,13 @@
 
 SUBDIRS=test
 
-. config.sub
+. ./config.sub
 
 package 'relaunchd' '0.3.2'
 getopt "--help" "echo TODO"
 check_header 'sys/limits.h'
 
-make_define 'libucl_dir' "`realpath ./vendor/libucl-0.7.3`"
+make_define 'libucl_dir' "`pwd`/vendor/libucl-0.7.3`"
 
 check_header 'ucl.h'
 if [ $check_header_ucl_h -eq 0 ] ; then
