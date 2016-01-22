@@ -1,0 +1,74 @@
+#!/bin/sh
+#
+# Copyright (c) 2016 Mark Heily <mark@heily.com>
+#
+# Permission to use, copy, modify, and distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+
+SUBDIRS=test
+
+. config.sub
+
+package 'relaunchd' '0.3.2'
+getopt "--help" "echo TODO"
+check_header 'sys/limits.h'
+
+make_define 'libucl_dir' "`realpath ./vendor/libucl-0.7.3`"
+
+check_header 'ucl.h'
+if [ $check_header_ucl_h -eq 0 ] ; then
+	echo "building a local copy of libucl.. "
+	make_define 'libucl_CFLAGS' "-I$libucl_dir/include"
+	make_define 'libucl_LDADD' "$libucl_dir/src/.libs/libucl.a"
+	make_define 'libucl_DEPENDS' "$libucl_dir/src/.libs/libucl.a"
+	tar -C vendor -xf ./vendor/libucl-0.7.3.tar.gz
+	target "vendor/libucl-0.7.3/src/.libs/libucl.a:
+	cd vendor/libucl-0.7.3 && ./autogen.sh && CFLAGS=\"-gdwarf-2 -gstrict-dwarf -g -O0\" ./configure && make"
+else
+	make_define 'libucl_CFLAGS' ''
+	make_define 'libucl_LDADD' '-lucl'
+	make_define 'libucl_DEPENDS' ''	
+fi
+
+check_header 'sys/event.h'
+if [ $check_header_sys_event_h -eq 0 ] ; then
+	echo "building a local copy of libkqueue.. "
+	make_define 'kqueue_CFLAGS' '-I$kqueue_dir/include'
+	make_define 'kqueue_LDADD' '-lpthread -lrt' # FIXME: need path to .a file
+	make_define 'kqueue_DEPENDS' ''	# FIXME: need path to .a file
+else
+	make_define 'kqueue_CFLAGS' ''
+	make_define 'kqueue_LDADD' ''
+	make_define 'kqueue_DEPENDS' ''	
+fi
+
+if [ `uname` = 'Linux' ] ; then
+	make_define '_GNU_SOURCE' '1'
+fi
+ 
+sbin_PROGRAMS=launchd
+bin_SCRIPTS=launchctl
+launchd_CFLAGS="-include config.h -std=c99 -Wall -Werror -I/usr/local/include $libucl_CFLAGS"
+launchd_LDFLAGS="-L/usr/local/lib"
+launchd_LDADD="$libucl_LDADD"
+launchd_SOURCES="job.c log.c launchd.c manager.c manifest.c socket.c 
+                 timer.c pidfile.c flopen.c"
+launchd_DEPENDS="$libucl_DEPENDS"
+                 
+write_makefile
+
+#getopt "--cachedir" "??" "/var/cache/launchd"
+echo "#define CACHEDIR \"/var/cache/launchd\"" >> config.h
+
+test -d /var/db && statedir=/var/db/launchd || statedir=/var/lib/launchd
+echo "#define PKGSTATEDIR \"$statedir\"" >> config.h

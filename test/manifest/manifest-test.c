@@ -21,8 +21,8 @@
 #include <stdbool.h>
 #include <unistd.h>
 
-#include "../log.h"
-#include "../manifest.h"
+#include "../../log.h"
+#include "../../manifest.h"
 
 //FIXME: copypaste from jmtest.c
 #define run(test) do { \

@@ -1,9 +1,11 @@
-config.h
+Makefile
+config.*
 vars.sh
 .cproject
 .project
 /launchd
 .settings/
 /test/jmtest.log
-*.tar.gz
+./*.tar.gz
 *.so
+*.o

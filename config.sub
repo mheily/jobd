@@ -1,0 +1,327 @@
+#
+# Copyright (c) 2016 Mark Heily <mark@heily.com>
+#
+# Permission to use, copy, modify, and distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+
+###### PRIVATE ######
+
+ARGV=$*
+PACKAGE_NAME=myprogram
+PACKAGE_VERSION=0.0.1
+# TOPDIR=""
+# DISTFILES=""
+# SUBDIRS=""
+
+# Sections within the makefile
+_mf_vars=""
+_mf_default_target="all: "
+_mf_targets=""
+_mf_install_rules="install:"
+_mf_dependencies=""
+_mf_clean_files=""
+
+log_debug() {
+	message="[DEBUG] $*"
+	printf "%s\n" "$message" >> config.log
+}
+
+###### PUBLIC #######
+
+init_maketool() {
+	rm -f config.log
+	test -n "$CC" || CC="cc"
+	echo "/* Automatically generated -- do not edit */" > config.h
+	echo "# Automatically generated -- do not edit" > config.mk
+	echo "# Automatically generated -- do not edit" > vars.sh
+}
+
+package_version() {
+	_version=$1
+	PACKAGE_VERSION=$_version
+	MAJOR_VERSION=`echo $_version | cut -f1 -d.`
+	MINOR_VERSION=`echo $_version | cut -f2 -d.`
+	PATCH_VERSION=`echo $_version | cut -f3 -d.`
+}
+
+package() {
+	PACKAGE_NAME=$1
+	package_version $2
+}
+
+getopt() {
+	match=$1
+	handler=$2
+	for arg in $ARGV ; do
+		if [ $arg = $match ] ; then
+			eval "$handler"
+			break
+		fi
+	done	
+}
+
+# A custom target supplied by the user
+target() {
+	_body=$1
+	
+	EXTRA_TARGETS="$EXTRA_TARGETS
+$_body
+
+"
+}
+
+# A variable definition in the Makefile
+make_define() {
+    _ident=$1
+    shift
+	printf "%s=%s\n" "$_ident" "$*" >> config.mk
+	printf "%s=\"%s\"\n" "$_ident" "$*" >> vars.sh
+	eval "$_ident=\"$*\""
+}
+
+check_header() {
+	_header=$1
+	_sym=`echo $_header | tr 'a-z' 'A-Z' | sed 's/[\-\.\/]/_/g'`
+	_lc_sym=`echo $_sym | tr 'A-Z' 'a-z'`
+	
+	printf "checking for the existence of <$_header>.. "
+	printf "#include <sys/types.h>\n#include <$_header>\nint main() {}\n" > test-$$.c
+	eval "$CC -I/usr/local/include $CFLAGS -o /dev/null test-$$.c >> config.log 2>&1"
+ 	if [ $? -eq 0 ] ; then 
+		echo yes ; val=1 
+	else 
+		echo no ; val=0 
+	fi
+	rm -f test-$$.c
+
+	echo "#define HAVE_$_sym $val" >> config.h
+	eval "check_header_${_lc_sym}=$val"
+}
+
+emit_scripts() {
+	for _prog in $bin_SCRIPTS ; do
+		DISTFILES="$DISTFILES $program"
+		_mf_install_rules="$_mf_install_rules
+	\$(INSTALL) -m 755 $TOPDIR$_prog \$\$DESTDIR\$(BINDIR)"
+	done
+	for _prog in $sbin_SCRIPTS ; do
+		DISTFILES="$DISTFILES $program"
+		_mf_install_rules="$_mf_install_rules
+	\$(INSTALL) -m 755 $TOPDIR$_prog \$\$DESTDIR\$(SBINDIR)"
+	done
+}
+
+emit_programs() {
+	# All of the dependencies for each translation unit
+	_all_mkdeps=""
+
+	# Build a list of all of the programs along with
+	# where to install them
+	_all_programs=""
+	for program in $bin_PROGRAMS ; do
+		_all_programs="$_all_programs \$(BINDIR)|$program"
+	done
+	for program in $sbin_PROGRAMS ; do
+		_all_programs="$_all_programs \$(SBINDIR)|$program"
+	done
+	for program in $TESTS ; do
+		_all_programs="$_all_programs /dev/null|$program"
+	done
+	
+	for _rec in $bin_PROGRAMS $sbin_PROGRAMS $TESTS; do
+		program=`echo $_rec | cut -f1 -d\|`
+		_install_to=`echo $_rec | cut -f2 -d\|`
+
+		if [ "$_install_to" != "/dev/null" ] ; then
+		_mf_install_rules="$_mf_install_rules
+	\$(INSTALL) -s -m 755 $TOPDIR$program \$\$DESTDIR\$(SBINDIR)"
+		fi
+
+	eval "sources=\$${program}_SOURCES"
+	eval "cflags=\$${program}_CFLAGS"
+	eval "ldflags=\$${program}_LDFLAGS"
+	eval "ldadd=\$${program}_LDADD"
+	eval "depends=\$${program}_DEPENDS"
+	_objs=`echo $sources | sort | sed 's/\.c/.o/g'`
+	_curdir_objs=`for x in $_objs ; do basename $x ; done | tr '\n' ' '`
+#	_mf_vars="$_mf_vars
+#${program}_SOURCES=`echo $sources | sort `
+#${program}_CFLAGS=$cflags"
+
+	_mf_default_target="$_mf_default_target $program"
+	_mf_clean_files="$_mf_clean_files $program"
+	_mf_targets="$mf_targets
+$TOPDIR$program: $_curdir_objs $depends
+	\$(CC) -o \$@ $ldflags \$(LDFLAGS) $_curdir_objs $ldadd \$(LDADD)
+
+"
+		for source in $sources ; do
+			_obj=`echo $source | sed 's/\.c\$/.o/' | sed 's/.*\///'`
+			_mkdep_command="$CC $cflags $CFLAGS -MM -MT $_obj"
+			log_debug "checking dependencies of ${_obj}:\\n + ${_mkdep_command} ${source}"
+			_mkdeps=`${_mkdep_command} $source 2>>config.log`
+			if [ $? -ne 0 ] ; then
+				echo "*** ERROR: Unable to generate dependencies for $source"
+				exit 1
+			fi
+			_all_mkdeps="$_all_mkdeps `echo $_mkdeps | head -1 | sed 's/.*: //'`"
+			_mf_dependencies="$_mf_dependencies
+$TOPDIR$_mkdeps
+	\$(CC) -c $cflags \$(CFLAGS) -o \$@ $source
+"
+		done
+	done
+
+	for dep in `echo $_all_mkdeps | tr ' ' '\n' | sort | uniq` ; do
+		if [ "$dep" = "config.h" ] ; then continue ; fi
+		echo $dep | egrep -q "\\.[ch]\$"
+		if [ $? -eq 0 ] ; then
+			DISTFILES="$DISTFILES $TOPDIR$dep"
+		fi
+	done
+	
+	# Add any vendor tarballs to the distribution
+	if [ -x ./vendor ] ; then
+		for dep in `find ./vendor -depth 1 -name '*.gz' -o -name '*.tgz'` ; do
+			DISTFILES="$DISTFILES $dep"
+		done
+	fi
+}
+
+emit_tests() {
+	if [ -z "$TOPDIR" ] ; then
+		_topdir="./"
+	else
+		_topdir="./$TOPDIR"
+	fi
+
+#	_mf_vars="$_mf_vars
+#TESTS=$TESTS"
+	_test_rules=`echo $TESTS | tr ' ' '\n' | sed "s,^,	$_topdir,"`
+	if [ -n "$TESTS" ] ; then
+		_mf_targets="$_mf_targets
+
+check: $TESTS
+$_test_rules
+"
+	else
+	_mf_targets="$_mf_targets
+
+check:
+"
+	fi
+	if [ -n "$SUBDIRS" ] ; then
+		_mf_targets="$_mf_targets
+	for dir in $SUBDIRS ; do cd \$\$dir && \$(MAKE) check && cd .. ; done
+"
+	fi
+}
+
+emit_packaging() {
+	if [ -n "$TOPDIR" ] ; then return ; fi
+	_mf_packaging="PACKAGE_NAME=$PACKAGE_NAME
+PACKAGE_VERSION=$PACKAGE_VERSION
+MAJOR_VERSION=$MAJOR_VERSION
+MINOR_VERSION=$MINOR_VERSION
+PATCH_VERSION=$PATCH_VERSION
+
+PREFIX ?= /usr/local
+LIBDIR = \$(PREFIX)/lib
+BINDIR = \$(PREFIX)/bin
+SBINDIR = \$(PREFIX)/sbin
+LIBEXECDIR = \$(PREFIX)/libexec
+MANDIR = \$(PREFIX)/man
+SYSCONFDIR = \$(PREFIX)/etc
+DATADIR = \$(PREFIX)/share
+LOCALSTATEDIR = /var
+RUNSTATEDIR = \$(LOCALSTATEDIR)/run
+
+INSTALL ?= /usr/bin/install
+"
+}
+
+emit_distribution() {
+	if [ -n "$TOPDIR" ] ; then return ; fi
+	_mf_distribution="dist:
+	mkdir \$(PACKAGE_NAME)-\$(PACKAGE_VERSION)
+	for file in \$(DISTFILES) ; do \
+		install -d \$(PACKAGE_NAME)-\$(PACKAGE_VERSION)/\`dirname \$\$file\` ; \
+		install \$\$file \$(PACKAGE_NAME)-\$(PACKAGE_VERSION)/\$\$file ; \
+	done
+	tar cf \$(PACKAGE_NAME)-\$(PACKAGE_VERSION).tar.gz \$(PACKAGE_NAME)-\$(PACKAGE_VERSION)
+	rm -rf \$(PACKAGE_NAME)-\$(PACKAGE_VERSION)
+"
+}
+
+emit_cleanup() {
+	_mf_clean_rules="clean:
+	rm -f *.o $_mf_clean_files"
+	if [ -n "$SUBDIRS" ] ; then
+		_mf_clean_rules="$_mf_clean_rules
+	for dir in $SUBDIRS ; do cd \$\$dir && \$(MAKE) clean && cd .. ; done
+"
+	fi
+}
+
+emit_subdir_rules() {
+	if [ -z "$SUBDIRS" ] ; then return ; fi
+	_mf_default_target="$_mf_default_target
+	for dir in $SUBDIRS ; do cd \$\$dir && \$(MAKE) all && cd .. ; done
+"
+}
+
+write_makefile() {
+	emit_packaging
+	emit_programs
+	emit_scripts
+	emit_tests
+	emit_distribution
+	emit_cleanup
+	emit_subdir_rules
+	
+	if [ -z "$TOPDIR" ] ; then
+		_outfile="Makefile"
+	else
+		_outfile="Makefile.inc"
+	fi
+
+	echo "creating $_outfile"
+	cat <<__EOF__ >$_outfile
+# Automatically generated -- do not edit
+$_mf_packaging
+$_mf_vars
+
+# Files to include in the tarball
+DISTFILES = ${TOPDIR}configure ${TOPDIR}config.sub $DISTFILES
+
+$_mf_default_target
+$_mf_targets
+$_mf_distribution
+$_mf_install_rules
+$_mf_clean_rules
+$_mf_dependencies
+$EXTRA_TARGETS
+
+.PHONY: clean check
+__EOF__
+
+	# Convert C preprocessor definitions into shell variables
+        egrep '^#define' config.h | sed 's/^#define //; s/ /=/' >> vars.sh
+}
+
+
+#
+# MAIN()
+#
+
+init_maketool
