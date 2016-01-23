@@ -22,6 +22,10 @@ PACKAGE_VERSION=0.0.1
 # TOPDIR=""
 # DISTFILES=""
 # SUBDIRS=""
+# LIBRARIES=""
+
+# If set to "yes", this is the top-level ./configure script within the project
+TOP_LEVEL="yes"
 
 # Sections within the makefile
 _mf_vars=""
@@ -51,6 +55,11 @@ init_maketool() {
 	echo "/* Automatically generated -- do not edit */" > config.h
 	echo "# Automatically generated -- do not edit" > config.mk
 	echo "# Automatically generated -- do not edit" > vars.sh
+	
+	# Assume that all subdirectories share a common "config.sub"
+	# at the top-level. Use this assumption to detect what level we
+	# are at
+	test -f config.sub || TOP_LEVEL="no"
 }
 
 package_version() {
@@ -128,10 +137,88 @@ emit_scripts() {
 	done
 }
 
-emit_programs() {
-	# All of the dependencies for each translation unit
+emit_compilation_units() {
+	_prefix=$1
+	
 	_all_mkdeps=""
+	for source in $sources ; do
+		_obj=`echo $source | sed 's/\.c\$/.o/' | sed 's/.*\///'`
+		test -n "$_prefix" && _obj="${_prefix}${_obj}"
+		_mkdep_command="$CC $cflags $CFLAGS -MM -MT $_obj"
+		log_debug "checking dependencies of ${_obj}:\\n + ${_mkdep_command} ${source}"
+		_mkdeps=`${_mkdep_command} $source 2>>config.log`
+		test $? -eq 0 || err "Unable to generate dependencies for $source"
+		_all_mkdeps="$_all_mkdeps `echo $_mkdeps | head -1 | sed 's/.*: //'`"
+		_mf_dependencies="$_mf_dependencies
+$_mkdeps
+	\$(CC) -c $cflags \$(CFLAGS) -o \$@ $source
+"
+	done
 
+	DISTFILES="$DISTFILES $_all_mkdeps"	
+}
+
+emit_static_library() {
+	_mf_install_rules="$_mf_install_rules
+	\$(INSTALL) -m 755 ${_library}.a \$\$DESTDIR\$(LIBDIR)"
+
+	_objs=`echo $sources | sort | sed 's/\.c/.o/g'`
+	_curdir_objs=`for x in $_objs ; do basename $x ; done | sed 's/^/static-/g' | tr '\n' ' '`
+
+	_mf_default_target="$_mf_default_target ${_library}.a"
+	_mf_clean_files="$_mf_clean_files ${_library}.a"
+	_mf_targets="$_mf_targets
+${_library}.a: $_curdir_objs $depends
+	\$(AR) rcs ${_library}.a $_curdir_objs
+"
+	emit_compilation_units 'static-'
+}
+
+emit_shared_library() {
+	_saved_cflags=$cflags
+		
+	_mf_install_rules="$_mf_install_rules
+	\$(INSTALL) -s -m 755 $realname \$\$DESTDIR\$(LIBDIR)
+	\$(INSTALL) -ls $realname \$\$DESTDIR\$(LIBDIR)/$soname
+	\$(INSTALL) -ls $realname \$\$DESTDIR\$(LIBDIR)/$_library.so
+"
+
+	_objs=`echo $sources | sort | sed 's/\.c/.o/g'`
+	_curdir_objs=`for x in $_objs ; do basename $x ; done | tr '\n' ' '`
+
+	_mf_default_target="$_mf_default_target $realname"
+	_mf_clean_files="$_mf_clean_files $realname $soname $_library.so"
+	_mf_targets="$_mf_targets
+$realname: $_curdir_objs $depends
+	\$(CC) -shared -fvisibility=hidden -Wl,-soname,$soname -o \$@ \\
+	    $ldflags \$(LDFLAGS) $_curdir_objs $ldadd \$(LDADD)
+
+"
+
+	cflags="$cflags -fpic -fvisibility=hidden"
+	emit_compilation_units ''
+	cflags=$_saved_cflags
+}
+
+emit_libraries() {
+	for _library in $LIBRARIES; do
+		# common to all targets
+		eval "sources=\$${_library}_SOURCES"
+		eval "cflags=\$${_library}_CFLAGS"
+		eval "ldflags=\$${_library}_LDFLAGS"
+		eval "ldadd=\$${_library}_LDADD"
+		eval "depends=\$${_library}_DEPENDS"
+		# specific to libraries
+		eval "soname=\$${_library}_SONAME"
+		eval "realname=\$${_library}_REALNAME"
+		
+	
+		emit_static_library
+		emit_shared_library
+	done
+}
+
+emit_programs() {
 	# Build a list of all of the programs along with
 	# where to install them
 	_all_programs=""
@@ -154,47 +241,27 @@ emit_programs() {
 	\$(INSTALL) -s -m 755 $TOPDIR$program \$\$DESTDIR\$(SBINDIR)"
 		fi
 
-	eval "sources=\$${program}_SOURCES"
-	eval "cflags=\$${program}_CFLAGS"
-	eval "ldflags=\$${program}_LDFLAGS"
-	eval "ldadd=\$${program}_LDADD"
-	eval "depends=\$${program}_DEPENDS"
-	_objs=`echo $sources | sort | sed 's/\.c/.o/g'`
-	_curdir_objs=`for x in $_objs ; do basename $x ; done | tr '\n' ' '`
-#	_mf_vars="$_mf_vars
-#${program}_SOURCES=`echo $sources | sort `
-#${program}_CFLAGS=$cflags"
+		eval "sources=\$${program}_SOURCES"
+		eval "cflags=\$${program}_CFLAGS"
+		eval "ldflags=\$${program}_LDFLAGS"
+		eval "ldadd=\$${program}_LDADD"
+		eval "depends=\$${program}_DEPENDS"
+		_objs=`echo $sources | sort | sed 's/\.c/.o/g'`
+		_curdir_objs=`for x in $_objs ; do basename $x ; done | tr '\n' ' '`
 
-	_mf_default_target="$_mf_default_target $program"
-	_mf_clean_files="$_mf_clean_files $program"
-	_mf_targets="$mf_targets
+		_mf_default_target="$_mf_default_target $program"
+		_mf_clean_files="$_mf_clean_files $program"
+		_mf_targets="$mf_targets
 $TOPDIR$program: $_curdir_objs $depends
 	\$(CC) -o \$@ $ldflags \$(LDFLAGS) $_curdir_objs $ldadd \$(LDADD)
 
 "
-		for source in $sources ; do
-			_obj=`echo $source | sed 's/\.c\$/.o/' | sed 's/.*\///'`
-			_mkdep_command="$CC $cflags $CFLAGS -MM -MT $_obj"
-			log_debug "checking dependencies of ${_obj}:\\n + ${_mkdep_command} ${source}"
-			_mkdeps=`${_mkdep_command} $source 2>>config.log`
-			test $? -eq 0 || err "Unable to generate dependencies for $source"
-			_all_mkdeps="$_all_mkdeps `echo $_mkdeps | head -1 | sed 's/.*: //'`"
-			_mf_dependencies="$_mf_dependencies
-$TOPDIR$_mkdeps
-	\$(CC) -c $cflags \$(CFLAGS) -o \$@ $source
-"
-		done
+		emit_compilation_units
 	done
+}
 
-	for dep in `echo $_all_mkdeps | tr ' ' '\n' | sort | uniq` ; do
-		if [ "$dep" = "config.h" ] ; then continue ; fi
-		echo $dep | egrep -q "\\.[ch]\$"
-		if [ $? -eq 0 ] ; then
-			DISTFILES="$DISTFILES $TOPDIR$dep"
-		fi
-	done
-	
-	# Add any vendor tarballs to the distribution
+# Add any vendor tarballs to the distribution
+emit_vendored_items() {
 	if [ -x ./vendor ] ; then
 		for dep in `find ./vendor -depth 1 -name '*.gz' -o -name '*.tgz'` ; do
 			DISTFILES="$DISTFILES $dep"
@@ -232,7 +299,8 @@ check:
 }
 
 emit_packaging() {
-	if [ -n "$TOPDIR" ] ; then return ; fi
+	if [ "$TOP_LEVEL" = "no" ] ; then return ; fi
+	
 	_mf_packaging="PACKAGE_NAME=$PACKAGE_NAME
 PACKAGE_VERSION=$PACKAGE_VERSION
 MAJOR_VERSION=$MAJOR_VERSION
@@ -255,10 +323,12 @@ INSTALL ?= /usr/bin/install
 }
 
 emit_distribution() {
-	if [ -n "$TOPDIR" ] ; then return ; fi
+	if [ "$TOP_LEVEL" = "no" ] ; then return ; fi
+	
+	_distfiles=`echo "$DISTFILES" | tr ' ' '\n' | sort | uniq | tr '\n' ' '`
 	_mf_distribution="dist:
 	mkdir \$(PACKAGE_NAME)-\$(PACKAGE_VERSION)
-	for file in \$(DISTFILES) ; do \
+	for file in $_distfiles ; do \
 		install -d \$(PACKAGE_NAME)-\$(PACKAGE_VERSION)/\`dirname \$\$file\` ; \
 		install \$\$file \$(PACKAGE_NAME)-\$(PACKAGE_VERSION)/\$\$file ; \
 	done
@@ -294,11 +364,13 @@ CFLAGS+=-D_GNU_SOURCE"
 write_makefile() {
 	emit_packaging
 	emit_programs
+	emit_libraries
 	emit_scripts
 	emit_tests
 	emit_distribution
 	emit_cleanup
 	emit_subdir_rules
+	emit_vendored_items
 	emit_platform_tweaks
 	
 	if [ -z "$TOPDIR" ] ; then
