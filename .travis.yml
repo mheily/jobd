@@ -6,14 +6,12 @@ addons:
   apt:
     packages:
     - bc
-    - autoconf
-    - automake
-    - libtool
     - libcurl4-openssl-dev
 
-#before_install:
-#- sudo apt-get update -qq
-#- sudo apt-get install bc libkqueue-dev libkqueue0 git autoconf libcurl4-openssl-dev automake libtool -qq
+cache:
+  directories:
+    - vendor/libucl-0.7.3
+    - vendor/libkqueue-2.0.3
 
 script:
 - ./configure
