@@ -22,9 +22,9 @@ SUBDIRS="jmtest manifest"
 
 # These are common to all tests
 #
-make_define 'TEST_CFLAGS' "-g -O0 -DUNIT_TEST -DDEBUG -I../.. $libucl_CFLAGS"
-make_define 'TEST_LDFLAGS' "$libucl_LDFLAGS"
-make_define 'TEST_LDADD' "$libucl_LDADD"
-make_define 'TEST_DEPENDS' "$libucl_DEPENDS"
+make_define 'TEST_CFLAGS' "-g -O0 -std=c99 -DUNIT_TEST -DDEBUG -I../.. $libucl_CFLAGS $kqueue_CFLAGS"
+make_define 'TEST_LDFLAGS' "$libucl_LDFLAGS $kqueue_LDFLAGS"
+make_define 'TEST_LDADD' "$libucl_LDADD $kqueue_LDADD"
+make_define 'TEST_DEPENDS' "$libucl_DEPENDS $kqueue_DEPENDS"
 
 write_makefile

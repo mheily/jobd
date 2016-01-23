@@ -23,17 +23,18 @@ package 'relaunchd' '0.3.2'
 getopt "--help" "echo TODO"
 check_header 'sys/limits.h'
 
-make_define 'libucl_dir' "`pwd`/vendor/libucl-0.7.3`"
 
 check_header 'ucl.h'
 if [ $check_header_ucl_h -eq 0 ] ; then
 	echo "building a local copy of libucl.. "
+	make_define 'libucl_dir' "`pwd`/vendor/libucl-0.7.3"
 	make_define 'libucl_CFLAGS' "-I$libucl_dir/include"
 	make_define 'libucl_LDADD' "$libucl_dir/src/.libs/libucl.a"
 	make_define 'libucl_DEPENDS' "$libucl_dir/src/.libs/libucl.a"
 	tar -C vendor -xf ./vendor/libucl-0.7.3.tar.gz
-	target "vendor/libucl-0.7.3/src/.libs/libucl.a:
-	cd vendor/libucl-0.7.3 && ./autogen.sh && CFLAGS=\"-gdwarf-2 -gstrict-dwarf -g -O0\" ./configure && make"
+	target "$libucl_dir/src/.libs/libucl.a:
+	cd $libucl_dir && ./autogen.sh && CFLAGS=\"-gdwarf-2 -gstrict-dwarf -g -O0\" ./configure && make
+"
 else
 	make_define 'libucl_CFLAGS' ''
 	make_define 'libucl_LDADD' '-lucl'
@@ -43,27 +44,29 @@ fi
 check_header 'sys/event.h'
 if [ $check_header_sys_event_h -eq 0 ] ; then
 	echo "building a local copy of libkqueue.. "
-	make_define 'kqueue_CFLAGS' '-I$kqueue_dir/include'
-	make_define 'kqueue_LDADD' '-lpthread -lrt' # FIXME: need path to .a file
-	make_define 'kqueue_DEPENDS' ''	# FIXME: need path to .a file
+	tar -C vendor -xf ./vendor/libkqueue-2.0.3.tar.gz
+	make_define 'kqueue_dir' "`pwd`/vendor/libkqueue-2.0.3"
+	make_define 'kqueue_CFLAGS' "-I$kqueue_dir/include"
+	make_define 'kqueue_LDADD' '$kqueue_dir/.libs/libkqueue.a -lpthread -lrt'
+	make_define 'kqueue_DEPENDS' "$kqueue_dir/.libs/libkqueue.a"
+	target "$kqueue_dir/.libs/libkqueue.a:
+	cd $kqueue_dir && ./configure && make
+
+"
 else
 	make_define 'kqueue_CFLAGS' ''
 	make_define 'kqueue_LDADD' ''
 	make_define 'kqueue_DEPENDS' ''	
 fi
 
-if [ `uname` = 'Linux' ] ; then
-	make_define '_GNU_SOURCE' '1'
-fi
- 
 sbin_PROGRAMS=launchd
 bin_SCRIPTS=launchctl
-launchd_CFLAGS="-include config.h -std=c99 -Wall -Werror -I/usr/local/include $libucl_CFLAGS"
+launchd_CFLAGS="-include config.h -std=c99 -Wall -Werror -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
 launchd_LDFLAGS="-L/usr/local/lib"
-launchd_LDADD="$libucl_LDADD"
+launchd_LDADD="$libucl_LDADD $kqueue_LDADD"
 launchd_SOURCES="job.c log.c launchd.c manager.c manifest.c socket.c 
                  timer.c pidfile.c flopen.c"
-launchd_DEPENDS="$libucl_DEPENDS"
+launchd_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS"
                  
 write_makefile
 

@@ -36,6 +36,13 @@ log_debug() {
 	printf "%s\n" "$message" >> config.log
 }
 
+err() {
+	message="[ERROR] $*"
+	printf "%s\n" "$message" >> config.log
+	echo "*** ERROR *** $*"
+	exit 1
+}
+
 ###### PUBLIC #######
 
 init_maketool() {
@@ -170,10 +177,7 @@ $TOPDIR$program: $_curdir_objs $depends
 			_mkdep_command="$CC $cflags $CFLAGS -MM -MT $_obj"
 			log_debug "checking dependencies of ${_obj}:\\n + ${_mkdep_command} ${source}"
 			_mkdeps=`${_mkdep_command} $source 2>>config.log`
-			if [ $? -ne 0 ] ; then
-				echo "*** ERROR: Unable to generate dependencies for $source"
-				exit 1
-			fi
+			test $? -eq 0 || err "Unable to generate dependencies for $source"
 			_all_mkdeps="$_all_mkdeps `echo $_mkdeps | head -1 | sed 's/.*: //'`"
 			_mf_dependencies="$_mf_dependencies
 $TOPDIR$_mkdeps
@@ -280,6 +284,13 @@ emit_subdir_rules() {
 "
 }
 
+emit_platform_tweaks() {
+	if [ `uname` = 'Linux' ] ; then
+		_mf_vars="$mf_vars
+CFLAGS+=-D_GNU_SOURCE"
+	fi
+}
+
 write_makefile() {
 	emit_packaging
 	emit_programs
@@ -288,6 +299,7 @@ write_makefile() {
 	emit_distribution
 	emit_cleanup
 	emit_subdir_rules
+	emit_platform_tweaks
 	
 	if [ -z "$TOPDIR" ] ; then
 		_outfile="Makefile"
@@ -317,6 +329,17 @@ __EOF__
 
 	# Convert C preprocessor definitions into shell variables
         egrep '^#define' config.h | sed 's/^#define //; s/ /=/' >> vars.sh
+
+	# Perform recursive ./configure invocation
+	if [ -n "$SUBDIRS" ] ; then
+		for x in $SUBDIRS ; do
+			echo "configuring ./$x"
+			cd $x
+			./configure
+			test $? -eq 0 || err "Unable to run configure in ./$x/"
+			cd ..
+		done
+	fi
 }
 
 
