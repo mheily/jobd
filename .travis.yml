@@ -1,20 +1,21 @@
 language: c
 
-# Enable when packages are whitelisted
+sudo: false
 
-#sudo: false
-#
-#addons:
-#  apt:
-#    packages:
-#    - bc
-#    - libkqueue0
-#    - libkqueue-dee
+addons:
+  apt:
+    packages:
+    - bc
+    - autoconf
+    - automake
+    - libtool
+    - libcurl4-openssl-dev
 
-before_install:
-- sudo apt-get update -qq
-- sudo apt-get install bc libkqueue-dev libkqueue0 git autoconf libcurl4-openssl-dev automake libtool -qq
+#before_install:
+#- sudo apt-get update -qq
+#- sudo apt-get install bc libkqueue-dev libkqueue0 git autoconf libcurl4-openssl-dev automake libtool -qq
 
 script:
+- ./configure
 - make
 - make check
