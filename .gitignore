@@ -1,5 +1,7 @@
 Makefile
-config.*
+config.h
+config.mk
+config.log
 vars.sh
 .cproject
 .project
