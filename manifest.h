@@ -25,6 +25,17 @@
 #include "cvec.h"
 #include "socket.h"
 
+/** A wildcard value in a crontab(5) specification */
+#define CRON_SPEC_WILDCARD UINT32_MAX
+
+struct cron_spec {
+	uint32_t minute;
+	uint32_t hour;
+	uint32_t day;
+	uint32_t weekday;
+	uint32_t month;
+};
+
 typedef struct job_manifest {
 	LIST_ENTRY(job_manifest) jm_le;
 
@@ -60,8 +71,10 @@ typedef struct job_manifest {
 	char	*stdout_path;
 	char    *stderr_path;
 	bool	 abandon_process_group;
-	
-	// TODO: ResourceLimits, HopefullyExits*, KeepAlive, inetd, cron, LowPriorityIO, LaunchOnlyOnce
+	bool     start_calendar_interval;
+	struct cron_spec calendar_interval;
+
+	// TODO: ResourceLimits, HopefullyExits*, KeepAlive, inetd, LowPriorityIO, LaunchOnlyOnce
 	SLIST_HEAD(,job_manifest_socket) sockets;
 	int32_t refcount;
 } *job_manifest_t;

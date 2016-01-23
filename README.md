@@ -146,6 +146,9 @@ accessible to all user accounts.  In relaunchd, there is a "system launchd"
 process that runs as root and is not accessible by unprivileged users.  Each
 unprivileged user may run their own launchd process under their own UID.
 
+In the Darwin implementation, the StartCalendarInterval key can be a hash
+or an array of hashes. In relaunchd, only a hash is acceptable.
+
 ## Contact Information
 
 For questions, comments, or other feedback about relaunchd, please join

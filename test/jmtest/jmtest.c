@@ -89,6 +89,16 @@ int test_start_interval() {
 	return 0;
 }
 
+int test_start_calendar_interval() {
+	job_manifest_t jm;
+
+	jm = job_manifest_new();
+	if (job_manifest_read(jm, "fixtures/start_calendar_interval.json") < 0)
+		return -1;
+
+	return 0;
+}
+
 int test_env() {
 	job_manifest_t jm;
 
@@ -116,6 +126,7 @@ int main() {
 	test_run(test_env);
 	test_run(test_env2);
 	test_run(test_start_interval);
+	test_run(test_start_calendar_interval);
 	test_run(test_get_file_extension);
 	test_cvec();
 	test_sockets();

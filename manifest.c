@@ -69,7 +69,7 @@ static int job_manifest_parse_start_interval(job_manifest_t manifest, const ucl_
 static int job_manifest_parse_cvec(cvec_t *dst, const ucl_object_t *obj);
 static int job_manifest_parse_sockets(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_sock_service_name(struct job_manifest_socket *socket, const ucl_object_t *object);
-
+static int job_manifest_parse_start_calendar_interval(job_manifest_t manifest, const ucl_object_t *obj);
 
 static const job_manifest_item_parser_t manifest_parser_map[] = {
 	{ "Label",                 UCL_STRING,  job_manifest_parse_label },
@@ -93,6 +93,7 @@ static const job_manifest_item_parser_t manifest_parser_map[] = {
 	{ "AbandonProcessGroup",   UCL_BOOLEAN, job_manifest_parse_abandon_process_group },
 	{ "JailName",              UCL_STRING,  job_manifest_parse_jail_name },
 	{ "Sockets",               UCL_OBJECT,  job_manifest_parse_sockets },
+	{ "StartCalendarInterval", UCL_OBJECT,  job_manifest_parse_start_calendar_interval },
 	/*
 	{ "inetdCompatibility",    SKIP_ITEM,   NULL },
 	{ "KeepAlive",             SKIP_ITEM,   NULL },
@@ -101,7 +102,6 @@ static const job_manifest_item_parser_t manifest_parser_map[] = {
 	{ "ExitTimeOut",           SKIP_ITEM,   NULL },
 	{ "Disabled",              SKIP_ITEM,   NULL },
 	{ "ThrottleInterval",      SKIP_ITEM,   NULL },
-	{ "StartCalendarInterval", SKIP_ITEM,   NULL },
 	{ "Debug",                 SKIP_ITEM,   NULL },
 	{ "WaitForDebugger",       SKIP_ITEM,   NULL },
 	{ "SoftResourceLimits",    SKIP_ITEM,   NULL },
@@ -299,6 +299,61 @@ static int job_manifest_parse_queue_directories(job_manifest_t manifest, const u
 static int job_manifest_parse_start_interval(job_manifest_t manifest, const ucl_object_t *obj)
 {
 	manifest->start_interval = ucl_object_toint(obj);
+	return 0;
+}
+
+/** Parse a field within a crontab(5) specification */
+static int
+parse_cron_field(uint32_t *dst, const ucl_object_t *obj, const char *key, int64_t start, int64_t end)
+{
+	const ucl_object_t *cur;
+	int64_t val;
+
+	if ((cur = ucl_object_find_key(obj, key))) {
+		if (!ucl_object_toint_safe(cur, &val)) {
+			log_error("wrong type for %s; expected integer", key);
+			return -1;
+		}
+		if (val < start || val > end) {
+			log_error("illegal value for %s; expecting %ld-%ld but got %ld",
+					key, start, end, val);
+			return -1;
+		}
+		*dst = val;
+		/*log_debug("%s=%ld", key, val);*/
+	} else {
+		*dst = CRON_SPEC_WILDCARD;
+	}
+
+	return 0;
+}
+
+static int job_manifest_parse_start_calendar_interval(job_manifest_t manifest, const ucl_object_t *obj)
+{
+	struct cron_spec cron;
+
+	if (parse_cron_field(&cron.minute, obj, "Minute", 0, 59) < 0)
+		return -1;
+
+	if (parse_cron_field(&cron.hour, obj, "Hour", 0, 23) < 0)
+		return -1;
+
+	if (parse_cron_field(&cron.day, obj, "Day", 1, 31) < 0)
+		return -1;
+
+	if (parse_cron_field(&cron.weekday, obj, "Weekday", 0, 7) < 0)
+		return -1;
+
+	if (parse_cron_field(&cron.month, obj, "Month", 1, 12) < 0)
+		return -1;
+
+	/* Normalize Sunday to always be 0 */
+	if (cron.weekday == 7)
+		cron.weekday = 0;
+
+	manifest->start_calendar_interval = true;
+	manifest->calendar_interval = cron;
+
 	return 0;
 }
 
