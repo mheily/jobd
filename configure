@@ -15,14 +15,11 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-SUBDIRS=test
-
 . ./config.sub
 
 package 'relaunchd' '0.3.2'
 getopt "--help" "echo TODO"
 check_header 'sys/limits.h'
-
 
 check_header 'ucl.h'
 if [ $check_header_ucl_h -eq 0 ] ; then
@@ -58,6 +55,8 @@ else
 	make_define 'kqueue_LDADD' ''
 	make_define 'kqueue_DEPENDS' ''	
 fi
+
+SUBDIRS=test
 
 sbin_PROGRAMS=launchd
 bin_SCRIPTS=launchctl
