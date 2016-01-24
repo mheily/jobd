@@ -15,7 +15,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-if [ `whoami` = 'root' ] ; then
+if [ `id -u` -eq 0 ] ; then
 	if [ -d /var/db ] ; then
 		pkgdatadir="/var/db/launchd"
 	else
