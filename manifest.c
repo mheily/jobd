@@ -493,6 +493,13 @@ static int job_manifest_validate(job_manifest_t job_manifest)
 		return -1;
 	}
 
+	if (job_manifest->start_calendar_interval && job_manifest->start_interval)
+	{
+		log_error("job %s has both a calendar and a non-calendar interval",
+			job_manifest->label);
+		return -1;
+	}
+
 	return 0;
 }
 

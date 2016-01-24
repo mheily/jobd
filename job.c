@@ -305,6 +305,13 @@ job_t job_new(job_manifest_t jm)
 	if (!j) return NULL;
 	j->jm = jm;
 	j->state = JOB_STATE_DEFINED;
+	if (jm->start_interval > 0) {
+		j->schedule = JOB_SCHEDULE_PERIODIC;
+	} else if (jm->start_calendar_interval) {
+		j->schedule = JOB_SCHEDULE_CALENDAR;
+	} else {
+		j->schedule = JOB_SCHEDULE_NONE;
+	}
 	return (j);
 }
 
@@ -322,7 +329,6 @@ int job_load(job_t job)
 	/* TODO: This is the place to setup on-demand watches for the following keys:
 			WatchPaths
 			QueueDirectories
-			StartCalendarInterval
 	*/
 	if (!SLIST_EMPTY(&job->jm->sockets)) {
 		SLIST_FOREACH(jms, &job->jm->sockets, entry) {
@@ -336,9 +342,9 @@ int job_load(job_t job)
 		return (0);
 	}
 
-	if (job->jm->start_interval > 0) {
-		if (timer_register_constant_interval(job) < 0) {
-			log_error("failed to register the interval timer");
+	if (job->schedule != JOB_SCHEDULE_NONE) {
+		if (timer_register_job(job) < 0) {
+			log_error("failed to register the timer for job");
 			return -1;
 		}
 	}

@@ -23,6 +23,7 @@ struct job;
 
 int setup_timers(int kqfd);
 int timer_handler();
-int timer_register_constant_interval(struct job *);
+int timer_register_job(struct job *);
+int timer_unregister_job(struct job *);
 
 #endif /* RELAUNCHD_TIMER_H_ */

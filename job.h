@@ -25,6 +25,12 @@
 
 #include "manifest.h"
 
+typedef enum {
+	JOB_SCHEDULE_NONE = 0,
+	JOB_SCHEDULE_PERIODIC,
+	JOB_SCHEDULE_CALENDAR
+} job_schedule_t;
+
 struct job {
 	LIST_ENTRY(job)	joblist_entry;
 	SLIST_ENTRY(job) start_interval_sle;
@@ -40,6 +46,7 @@ struct job {
 	pid_t pid;
 	int last_exit_status, term_signal;
 	time_t  next_scheduled_start;
+	job_schedule_t schedule;
 };
 typedef struct job *job_t;
 
