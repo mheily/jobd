@@ -59,7 +59,7 @@ int	job_run(job_t job);
 static inline int
 job_is_runnable(job_t job)
 {
-	return (job->state == JOB_STATE_LOADED);
+	return (job->state == JOB_STATE_LOADED && job->jm->run_at_load);
 }
 
 #endif /* JOB_H_ */
