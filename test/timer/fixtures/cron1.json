@@ -12,5 +12,6 @@
 	"StartCalendarInterval": {
 		"Minute": 5,
 	},
+	"RunAtLoad": true,
 	"Label": "test.cron1",
 }

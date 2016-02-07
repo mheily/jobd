@@ -11,4 +11,5 @@
 "StandardInPath": "/dev/stdin",
 "StandardOutPath": "/dev/stdout",
 "StandardErrorPath": "/dev/stderr",
+"RunAtLoad": true,
 }

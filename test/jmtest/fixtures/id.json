@@ -6,4 +6,5 @@
 "StandardInPath": "/dev/null",
 "StandardOutPath": "/tmp/idjob.out",
 "StandardErrorPath": "/tmp/idjob.err",
+"RunAtLoad": true,
 }

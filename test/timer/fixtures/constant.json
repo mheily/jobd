@@ -11,4 +11,5 @@
 	"StandardErrorPath": "/dev/null",
 	"StartInterval": 2,
 	"Label": "test.constant_interval",
+	"RunAtLoad": true,
 }

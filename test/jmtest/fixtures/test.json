@@ -9,4 +9,5 @@
 "StandardInPath": "/dev/null",
 "StandardOutPath": "/dev/null",
 "StandardErrorPath": "/dev/null",
+"RunAtLoad": true,
 }
