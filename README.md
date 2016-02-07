@@ -37,7 +37,6 @@ Some things are not implemented yet:
 * miscellaneous
  * LaunchOnlyOnce (see issue #28)
  * inetdCompatibility (see issue #29)
- * RunAtLoad (see issue #30)
  * Umask (see issue #31)
 
 Some things will probably never be implemented:
