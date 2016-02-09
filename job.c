@@ -27,6 +27,7 @@
 #include <sys/jail.h>
 #endif
 
+#include "calendar.h"
 #include "job.h"
 #include "log.h"
 #include "socket.h"
@@ -342,9 +343,14 @@ int job_load(job_t job)
 		return (0);
 	}
 
-	if (job->schedule != JOB_SCHEDULE_NONE) {
+	if (job->schedule == JOB_SCHEDULE_PERIODIC) {
 		if (timer_register_job(job) < 0) {
 			log_error("failed to register the timer for job");
+			return -1;
+		}
+	} else if (job->schedule == JOB_SCHEDULE_CALENDAR) {
+		if (calendar_register_job(job) < 0) {
+			log_error("failed to register the calendar job");
 			return -1;
 		}
 	}

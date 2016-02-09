@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Mark Heily <mark@heily.com>
+ * Copyright (c) 2016 Mark Heily <mark@heily.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,14 +14,42 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef RELAUNCHD_TIMER_H_
-#define RELAUNCHD_TIMER_H_
+#ifndef RELAUNCHD_CLOCK_H_
+#define RELAUNCHD_CLOCK_H_
 
-struct job;
+#include <stdlib.h>
+#include <time.h>
+#include <sys/time.h>
 
-int setup_timers(int kqfd);
-int timer_handler();
-int timer_register_job(struct job *);
-int timer_unregister_job(struct job *);
+#include "log.h"
 
-#endif /* RELAUNCHD_TIMER_H_ */
+/*
+ * Provide a mock clock object that can be manipulated when running unit tests.
+ */
+#ifdef UNIT_TEST
+
+static struct timespec mock_clock = {0, 0};
+
+void set_current_time(time_t sec)
+{
+	mock_clock.tv_sec = sec;
+	mock_clock.tv_nsec = 0;
+}
+
+static inline time_t current_time() {
+	return mock_clock.tv_sec;
+}
+
+#else
+
+static inline time_t current_time() {
+	struct timespec now;
+	if (clock_gettime(CLOCK_MONOTONIC, &now) < 0) {
+		log_errno("clock_gettime(2)");
+		abort();
+	}
+	return now.tv_sec;
+}
+
+#endif /* UNIT_TEST */
+#endif /* RELAUNCHD_CLOCK_H_ */

@@ -25,6 +25,7 @@
 #include <sys/time.h>
 #include <time.h>
 
+#include "clock.h"
 #include "log.h"
 #include "manager.h"
 #include "timer.h"
@@ -33,11 +34,7 @@
 /* The main kqueue descriptor used by launchd */
 static int parent_kqfd;
 
-#define TIMER_TYPE_CONSTANT_INTERVAL 1
-//#define TIMER_TYPE_CALENDAR_INTERVAL 2
-
 static SLIST_HEAD(, job) start_interval_list;
-//static SLIST_HEAD(, job) calendar_list;
 
 static uint32_t min_interval = UINT_MAX;
 
@@ -52,7 +49,7 @@ static void update_min_interval()
 		if (min_interval == 0) {
 			return;
 		}
-		EV_SET(&kev, TIMER_TYPE_CONSTANT_INTERVAL, EVFILT_TIMER, EV_ADD | EV_DISABLE, 0, 0, &setup_timers);
+		EV_SET(&kev, JOB_SCHEDULE_PERIODIC, EVFILT_TIMER, EV_ADD | EV_DISABLE, 0, 0, &setup_timers);
 		if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
 			log_errno("kevent(2)");
 			abort();
@@ -64,7 +61,7 @@ static void update_min_interval()
 				min_interval = job->jm->start_interval;
 		}
 		if (min_interval > 0 && saved_interval == 0) {
-			EV_SET(&kev, TIMER_TYPE_CONSTANT_INTERVAL, EVFILT_TIMER,
+			EV_SET(&kev, JOB_SCHEDULE_PERIODIC, EVFILT_TIMER,
 					EV_ADD | EV_ENABLE, 0, (1000 * min_interval), &setup_timers);
 			if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
 				log_errno("kevent(2)");
@@ -74,110 +71,9 @@ static void update_min_interval()
 	}
 }
 
-/*
- * Provide a mock clock object that can be manipulated when running unit tests.
- */
-#ifdef UNIT_TEST
-
-static struct timespec mock_clock = {0, 0};
-
-void set_current_time(time_t sec)
-{
-	mock_clock.tv_sec = sec;
-	mock_clock.tv_nsec = 0;
-}
-
-static inline time_t current_time() {
-	return mock_clock.tv_sec;
-}
-
-#else
-
-static inline time_t current_time() {
-	struct timespec now;
-	if (clock_gettime(CLOCK_MONOTONIC, &now) < 0) {
-		log_errno("clock_gettime(2)");
-		abort();
-	}
-	return now.tv_sec;
-}
-
-#endif /* UNIT_TEST */
-
-static inline time_t
-find_next_time(const struct cron_spec *cron, const struct tm *now)
-{
-	uint32_t hour, minute;
-
-	if (cron->hour == CRON_SPEC_WILDCARD) {
-		hour = now->tm_hour;
-	} else {
-		hour = cron->hour;
-	}
-
-	if (cron->minute == CRON_SPEC_WILDCARD) {
-		minute = now->tm_min;
-	} else {
-		minute = cron->minute;
-	}
-
-	return ((60 * hour) + minute);
-}
-
-static inline time_t
-schedule_calendar_job(job_t job)
-{
-	const struct cron_spec *cron = &job->jm->calendar_interval;
-	time_t t0 = current_time();
-	struct tm tm;
-	time_t result;
-
-	localtime_r(&t0, &tm);
-
-	/* Try to disqualify the job from running based on the current day */
-	if (cron->month != CRON_SPEC_WILDCARD && cron->month != tm.tm_mon) {
-		return 0;
-	}
-	if (cron->day != CRON_SPEC_WILDCARD && cron->day != tm.tm_mday) {
-		return 0;
-	}
-	if (cron->weekday != CRON_SPEC_WILDCARD && cron->weekday != tm.tm_wday) {
-		return 0;
-	}
-
-	/* Get the offset in minutes of the current time and the next job time,
-	 * where 0 represents 00:00 of the current day.
-	 */
-	time_t cur_offset = (60 * tm.tm_hour) + tm.tm_min;
-	time_t job_offset = find_next_time(cron, &tm);
-
-	/* Disqualify jobs that are scheduled in the past */
-	if (cur_offset > job_offset) {
-		return 0;
-	}
-
-	result = job_offset - cur_offset;
-	if (min_interval < result) {
-		min_interval = result;
-	}
-
-	/* KLUDGE: this is ugly, b/c the manifest did not actually set StartInterval.
-	 * We should really have a job_t field for this instead.
-	 */
-	job->jm->start_interval = result;
-
-	log_debug("job %s scheduled to run in %ld minutes", job->jm->label, result);
-
-	return current_time() + (60 * result);
-}
-
 static inline void update_job_interval(job_t job)
 {
-	if (job->schedule == JOB_SCHEDULE_PERIODIC) {
-		job->next_scheduled_start = current_time() + job->jm->start_interval;
-	} else if (job->schedule == JOB_SCHEDULE_CALENDAR) {
-		job->next_scheduled_start = schedule_calendar_job(job);
-	}
+	job->next_scheduled_start = current_time() + job->jm->start_interval;
 	log_debug("job %s will start after T=%lu", job->jm->label, job->next_scheduled_start);
 }
 
@@ -185,7 +81,6 @@ int setup_timers(int kqfd)
 {
 	parent_kqfd = kqfd;
 	SLIST_INIT(&start_interval_list);
-	//SLIST_INIT(&calendar_list);
 	return 0;
 }
 
@@ -196,11 +91,6 @@ int timer_register_job(struct job *job)
 	update_job_interval(job);
 	update_min_interval();
 	return 0;
-}
-
-int timer_register_calendar_interval(struct job *job)
-{
-	return timer_register_job(job);
 }
 
 int timer_unregister_job(struct job *job)

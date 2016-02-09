@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Mark Heily <mark@heily.com>
+ * Copyright (c) 2016 Mark Heily <mark@heily.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,14 +14,16 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef RELAUNCHD_TIMER_H_
-#define RELAUNCHD_TIMER_H_
+#ifndef RELAUNCHD_CALENDAR_H_
+#define RELAUNCHD_CALENDAR_H_
+
+#include <time.h>
 
 struct job;
 
-int setup_timers(int kqfd);
-int timer_handler();
-int timer_register_job(struct job *);
-int timer_unregister_job(struct job *);
+int calendar_init(int kqfd);
+int calendar_handler();
+int calendar_register_job(struct job *);
+int calendar_unregister_job(struct job *);
 
-#endif /* RELAUNCHD_TIMER_H_ */
+#endif /* RELAUNCHD_CALENDAR_H_ */
