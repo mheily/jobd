@@ -67,6 +67,7 @@ static int test_constant_interval()
         return 0;
 }
 
+#if DISABLED
 static int test_calendar_interval_1()
 {
         job_manifest_t jm;
@@ -99,6 +100,7 @@ static int test_calendar_interval_1()
         job_free(job);
         return 0;
 }
+#endif
 
 int main()
 {
@@ -106,6 +108,6 @@ int main()
 	test_kqfd = kqueue();
 	run(test_setup_timers);
 	run(test_constant_interval);
-	run(test_calendar_interval_1);
+	//TODO: split to separate calendar test: run(test_calendar_interval_1);
 	exit(0);
 }

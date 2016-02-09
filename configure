@@ -26,6 +26,7 @@ if [ $check_header_ucl_h -eq 0 ] ; then
 	echo "building a local copy of libucl.. "
 	make_define 'libucl_dir' "`pwd`/vendor/libucl-0.7.3"
 	make_define 'libucl_CFLAGS' "-I$libucl_dir/include"
+	make_define 'libucl_LDFLAGS' ""
 	make_define 'libucl_LDADD' "$libucl_dir/src/.libs/libucl.a"
 	make_define 'libucl_DEPENDS' "$libucl_dir/src/.libs/libucl.a"
 	tar -C vendor -xf ./vendor/libucl-0.7.3.tar.gz
@@ -33,7 +34,9 @@ if [ $check_header_ucl_h -eq 0 ] ; then
 	cd $libucl_dir && ./autogen.sh && CFLAGS=\"-gdwarf-2 -gstrict-dwarf -g -O0\" ./configure && make
 "
 else
-	make_define 'libucl_CFLAGS' ''
+	# KLUDGE: assumes libucl is installed in /usr/local, like on FreeBSD
+	make_define 'libucl_CFLAGS' '-I /usr/local/include'
+	make_define 'libucl_LDFLAGS' '-L /usr/local/lib'
 	make_define 'libucl_LDADD' '-lucl'
 	make_define 'libucl_DEPENDS' ''	
 fi
@@ -61,10 +64,10 @@ SUBDIRS=test
 sbin_PROGRAMS=launchd
 bin_SCRIPTS=launchctl
 launchd_CFLAGS="-include config.h -std=c99 -Wall -Werror -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
-launchd_LDFLAGS="-L/usr/local/lib"
+launchd_LDFLAGS="$libucl_LDFLAGS"
 launchd_LDADD="$libucl_LDADD $kqueue_LDADD"
 launchd_SOURCES="job.c log.c launchd.c manager.c manifest.c socket.c 
-                 timer.c pidfile.c flopen.c"
+                 calendar.c timer.c pidfile.c flopen.c"
 launchd_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS"
                  
 write_makefile

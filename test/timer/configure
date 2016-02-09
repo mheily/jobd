@@ -23,7 +23,7 @@ TESTS="timer"
 
 timer_CFLAGS="$TEST_CFLAGS -Wall -Werror"
 timer_LDFLAGS=$TEST_LDFLAGS
-timer_SOURCES="timer-test.c ../../job.c ../../manifest.c ../../socket.c ../../log.c"
+timer_SOURCES="timer-test.c ../../job.c ../../calendar.c ../../manifest.c ../../socket.c ../../log.c"
 timer_LDADD=$TEST_LDADD
 timer_DEPENDS="$TEST_DEPENDS"
 

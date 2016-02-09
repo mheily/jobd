@@ -24,7 +24,8 @@ TESTS="jmtest"
 
 jmtest_CFLAGS="$TEST_CFLAGS"
 jmtest_LDFLAGS="$TEST_LDFLAGS"
-jmtest_SOURCES="jmtest.c ../../log.c ../../job.c ../../manifest.c ../../manager.c ../../socket.c ../../timer.c"
+jmtest_SOURCES="jmtest.c ../../log.c ../../job.c ../../manifest.c ../../manager.c ../../socket.c 
+../../timer.c ../../calendar.c"
 jmtest_LDADD="$TEST_LDADD"
 jmtest_DEPENDS="$TEST_DEPENDS"
 

@@ -30,7 +30,8 @@
 
 static struct timespec mock_clock = {0, 0};
 
-void set_current_time(time_t sec)
+static void  __attribute__((unused))
+set_current_time(time_t sec)
 {
 	mock_clock.tv_sec = sec;
 	mock_clock.tv_nsec = 0;
