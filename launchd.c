@@ -32,6 +32,7 @@
 #include <unistd.h>
 
 #include "config.h"
+#include "calendar.h"
 #include "log.h"
 #include "manager.h"
 #include "manifest.h"
@@ -218,6 +219,8 @@ static void main_loop()
 			if (socket_activation_handler() < 0) abort();
 		} else if (kev.udata == &setup_timers) {
 			if (timer_handler() < 0) abort();
+		} else if (kev.udata == &calendar_init) {
+			if (calendar_handler() < 0) abort();
 		} else {
 			log_warning("spurious wakeup, no known handlers");
 		}
@@ -304,6 +307,7 @@ main(int argc, char *argv[])
 	setup_signal_handlers();
 	setup_socket_activation(state.kq);
 	if (setup_timers(state.kq) < 0) abort();
+	if (calendar_init(state.kq) < 0) abort();
 	load_all_jobs();
 	manager_update_jobs();
 	main_loop();
