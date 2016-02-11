@@ -160,11 +160,30 @@ void update_jobs(void)
 	job_manifest_t jm;
 	job_t job, job_tmp;
 	LIST_HEAD(,job) joblist;
+	bool skip;
 
 	LIST_INIT(&joblist);
 
 	/* Pass #1: load all jobs */
 	LIST_FOREACH(jm, &pending, jm_le) {
+		skip = false;
+		
+		if (manager_get_job_by_label(jm->label)) {
+			log_warning("job `%s' is already running", jm->label);
+			continue;
+		}
+		
+		LIST_FOREACH(job, &joblist, joblist_entry) {
+			if (!strcmp(jm->label, job->jm->label)) {
+				log_warning("job `%s' is already loaded", jm->label);
+				skip = true;
+				break;
+			}
+		}
+		
+		if (skip)
+			continue;
+		
 		job = job_new(jm);
 		LIST_INSERT_HEAD(&joblist, job, joblist_entry);
 		if (!job) abort();
