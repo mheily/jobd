@@ -22,7 +22,7 @@ SUBDIRS="jmtest manifest timer calendar"
 
 # These are common to all tests
 #
-make_define 'TEST_CFLAGS' "-g -O0 -std=c99 -DUNIT_TEST -DDEBUG -I../.. -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
+make_define 'TEST_CFLAGS' "-g -O0 -std=c99 -DUNIT_TEST -DDEBUG -I../../src -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
 make_define 'TEST_LDFLAGS' "$libucl_LDFLAGS $kqueue_LDFLAGS"
 make_define 'TEST_LDADD' "$libucl_LDADD $kqueue_LDADD"
 make_define 'TEST_DEPENDS' "$libucl_DEPENDS $kqueue_DEPENDS"

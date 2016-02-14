@@ -8,6 +8,7 @@ vars.sh
 /launchd
 .settings/
 /test/jmtest.log
-./*.tar.gz
+*.tar.gz
 *.so
 *.o
+*.log

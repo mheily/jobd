@@ -21,9 +21,11 @@ TESTS="manifest"
 . ../../vars.sh
 . ../vars.sh
 
+srcdir="../../src"
+
 manifest_CFLAGS=$TEST_CFLAGS
 manifest_LDFLAGS=$TEST_LDFLAGS
-manifest_SOURCES="manifest-test.c ../../job.c ../../manifest.c ../../socket.c ../../timer.c ../../calendar.c ../../log.c"
+manifest_SOURCES="manifest-test.c $srcdir/job.c $srcdir/manifest.c $srcdir/socket.c $srcdir/timer.c $srcdir/calendar.c $srcdir/log.c"
 manifest_LDADD=$TEST_LDADD
 manifest_DEPENDS="$TEST_DEPENDS"
 

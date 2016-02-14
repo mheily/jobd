@@ -21,7 +21,7 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include "vendor/FreeBSD/sys/queue.h"
+#include "../vendor/FreeBSD/sys/queue.h"
 #include "cvec.h"
 #include "socket.h"
 

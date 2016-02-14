@@ -21,11 +21,12 @@ TESTS="jmtest"
 . ../../vars.sh
 . ../vars.sh
 
+srcdir="../../src"
 
 jmtest_CFLAGS="$TEST_CFLAGS"
 jmtest_LDFLAGS="$TEST_LDFLAGS"
-jmtest_SOURCES="jmtest.c ../../log.c ../../job.c ../../manifest.c ../../manager.c ../../socket.c 
-../../timer.c ../../calendar.c"
+jmtest_SOURCES="jmtest.c $srcdir/log.c $srcdir/job.c $srcdir/manifest.c $srcdir/manager.c $srcdir/socket.c 
+$srcdir/timer.c $srcdir/calendar.c"
 jmtest_LDADD="$TEST_LDADD"
 jmtest_DEPENDS="$TEST_DEPENDS"
 
