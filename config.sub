@@ -299,7 +299,6 @@ check:
 }
 
 emit_packaging() {
-	if [ "$TOP_LEVEL" = "no" ] ; then return ; fi
 	
 	_mf_packaging="PACKAGE_NAME=$PACKAGE_NAME
 PACKAGE_VERSION=$PACKAGE_VERSION
