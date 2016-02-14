@@ -41,7 +41,7 @@ int log_open(const char *path);
 #define log_warning(format,...) _log_all(LOG_WARNING, "WARNING: "format, ## __VA_ARGS__)
 #define log_notice(format,...) _log_all(LOG_NOTICE, format, ## __VA_ARGS__)
 #define log_info(format,...) _log_all(LOG_INFO, format, ## __VA_ARGS__)
-#ifdef DEBUG
+#if !defined(NDEBUG)
 #define log_debug(format,...) _log_all(LOG_DEBUG, format, ## __VA_ARGS__)
 #else
 #define log_debug(format,...) do { (void)format; } while (0)
