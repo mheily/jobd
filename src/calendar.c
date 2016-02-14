@@ -142,7 +142,7 @@ int calendar_handler()
 	job_t job;
 	time_t now = current_time();
 
-	log_debug("waking up after %u seconds", min_interval);
+	//log_debug("waking up after %u seconds", min_interval);
 	SLIST_FOREACH(job, &calendar_list, start_interval_sle) {
 		if (now >= job->next_scheduled_start) {
 			log_debug("job %s starting due to timer interval", job->jm->label);

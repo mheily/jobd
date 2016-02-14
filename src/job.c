@@ -410,7 +410,7 @@ int job_run(job_t job)
     		exit(127);
     	}
     } else {
-    	log_debug("running %s", job->jm->label);
+    	log_debug("job %s started with pid %d", job->jm->label, pid);
     	job->pid = pid;
     	job->state = JOB_STATE_RUNNING;
 	SLIST_FOREACH(jms, &job->jm->sockets, entry) {

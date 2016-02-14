@@ -118,11 +118,13 @@ static void reap_child() {
 		if (errno == ECHILD) return;
 		log_errno("waitpid");
 		abort();
+	} else if (pid == 0) {
+		return;
 	}
 
 	job = manager_get_job_by_pid(pid);
 	if (!job) {
-		log_error("child exited but no job found");
+		log_error("child pid %d exited but no job found", pid);
 		return;
 	}
 
@@ -231,10 +233,14 @@ static inline void setup_logging()
 {
        char *path = NULL;
 
-       if (getuid() == 0) {
-               path = strdup("/var/log/launchd.log");
+       if (options.daemon) {
+	       if (getuid() == 0) {
+		       path = strdup("/var/log/launchd.log");
+	       } else {
+		       asprintf(&path, "%s/.launchd/launchd.log", getenv("HOME"));
+	       }
        } else {
-               asprintf(&path, "%s/.launchd/launchd.log", getenv("HOME"));
+	       path = strdup("/dev/stdout");
        }
        if (log_open(path) < 0) abort();
        free(path);
