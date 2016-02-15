@@ -70,6 +70,7 @@ static int job_manifest_parse_cvec(cvec_t *dst, const ucl_object_t *obj);
 static int job_manifest_parse_sockets(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_sock_service_name(struct job_manifest_socket *socket, const ucl_object_t *object);
 static int job_manifest_parse_start_calendar_interval(job_manifest_t manifest, const ucl_object_t *obj);
+static int job_manifest_parse_fork_count(job_manifest_t manifest, const ucl_object_t *obj);
 
 static const job_manifest_item_parser_t manifest_parser_map[] = {
 	{ "Label",                 UCL_STRING,  job_manifest_parse_label },
@@ -94,6 +95,7 @@ static const job_manifest_item_parser_t manifest_parser_map[] = {
 	{ "JailName",              UCL_STRING,  job_manifest_parse_jail_name },
 	{ "Sockets",               UCL_OBJECT,  job_manifest_parse_sockets },
 	{ "StartCalendarInterval", UCL_OBJECT,  job_manifest_parse_start_calendar_interval },
+	{ "ForkCount",             UCL_INT,     job_manifest_parse_fork_count },
 	/*
 	{ "inetdCompatibility",    SKIP_ITEM,   NULL },
 	{ "KeepAlive",             SKIP_ITEM,   NULL },
@@ -299,6 +301,12 @@ static int job_manifest_parse_queue_directories(job_manifest_t manifest, const u
 static int job_manifest_parse_start_interval(job_manifest_t manifest, const ucl_object_t *obj)
 {
 	manifest->start_interval = ucl_object_toint(obj);
+	return 0;
+}
+
+static int job_manifest_parse_fork_count(job_manifest_t manifest, const ucl_object_t *obj)
+{
+	manifest->fork_count = ucl_object_toint(obj);
 	return 0;
 }
 

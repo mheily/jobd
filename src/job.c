@@ -306,6 +306,7 @@ job_t job_new(job_manifest_t jm)
 	if (!j) return NULL;
 	j->jm = jm;
 	j->state = JOB_STATE_DEFINED;
+	j->fork_count = jm->fork_count;
 	if (jm->start_interval > 0) {
 		j->schedule = JOB_SCHEDULE_PERIODIC;
 	} else if (jm->start_calendar_interval) {

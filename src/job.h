@@ -45,6 +45,7 @@ struct job {
 	} state;
 	pid_t pid;
 	int last_exit_status, term_signal;
+        uint32_t fork_count;
 	time_t  next_scheduled_start;
 	job_schedule_t schedule;
 };

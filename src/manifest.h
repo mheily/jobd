@@ -73,6 +73,7 @@ typedef struct job_manifest {
 	bool	 abandon_process_group;
 	bool     start_calendar_interval;
 	struct cron_spec calendar_interval;
+	uint32_t fork_count; //XXX-TESTING; can be 0,1, or 2. This helps track daemons that double-fork()
 
 	// TODO: ResourceLimits, HopefullyExits*, KeepAlive, inetd, LowPriorityIO, LaunchOnlyOnce
 	SLIST_HEAD(,job_manifest_socket) sockets;
