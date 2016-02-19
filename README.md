@@ -148,6 +148,14 @@ unprivileged user may run their own launchd process under their own UID.
 In the Darwin implementation, the StartCalendarInterval key can be a hash
 or an array of hashes. In relaunchd, only a hash is acceptable.
 
+## Static Analysis 
+
+Coverity scan reports for relaunchd are available at:
+https://scan.coverity.com/projects/mheily-relaunchd?tab=overview
+
+When new releases are created, they will be submitted to Coverity
+to re-run the static analyzer.
+
 ## Contact Information
 
 For questions, comments, or other feedback about relaunchd, please join

@@ -1,3 +1,6 @@
+# TODO: add Coverity scan automation here
+#	see: https://scan.coverity.com/travis_ci
+
 language: c
 
 sudo: false
