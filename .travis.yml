@@ -18,7 +18,7 @@ addons:
       name: "mheily/relaunchd"
       description: "A service management daemon similar to the launchd(8)"
     notification_email: mark@heily.com
-    build_command_prepend: "./configure ; make clean"
+    build_command_prepend: "./configure"
     build_command:   "make"
     branch_pattern: coverity_scan
 
