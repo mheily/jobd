@@ -15,7 +15,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-SUBDIRS="jmtest manifest timer calendar"
+SUBDIRS="jmtest manifest timer calendar clang-analyzer"
 
 . ../config.sub
 . ../vars.sh
