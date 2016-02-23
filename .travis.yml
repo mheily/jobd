@@ -1,5 +1,8 @@
-# TODO: add Coverity scan automation here
-#	see: https://scan.coverity.com/travis_ci
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "nvExTll4Y2lGPBYqKHeyUDlzKYKcSv3mHwsq5B3rfGVf683m4Gpq3zR7W0LDEfLtFJdRYHNJ3OizYQH6uqzEjqMVir2nZ4OXYW70K8Q6ZPNMyTDOKYjngOq28RZyILiJt4jHm9r3jNOyaZo6tKRKhnFZMTBZxCX/Hp2/Rbp/slXqK/IN0stSLtWW5hRPKupjY9fWfyiDQ93vPVm6kd++e5qoETN8OdiMH2Nk7TIoKqpTjzf9SR3NrxFSIwfzCQQdrvZIefFQOQidchQY4myD8al+PIVykoo36dGRhPiAe7mNF0/ZTnYR0N3gZubbsnM6svu/pmXTGf9Ma0fCzxbH9kfA3suhjAOgSYjYeWo+UsWFKa0oG9O/uhjoglJSyVTEG9O+8w0BjpmaAEzCYi2lCHXC6NsRpz9gVULiglAh7SLUaKvxxIPzDVhvdbTwXZAjAjMf2RdejB99CYmgYfuc0CR12sAQv0XIQZvDnsfBM1IqZGGO64kMB6D8YGhuHKoC24UauW7o0OJDhhDppXLbG53GmyvkkaiVSVJR71LKulQ0Ev3TQ9MkuJtJZD1Vaze98CCffVl1NVsBFN1fvzv4J0C2PalUOjbQpfGb0mgzWqJAaaR0TH3NZLXD0/JmghJm1MTy9wkyvf8e1UZoK56J9nO/rhvKuzAL+cZJD7mYKPI="
 
 language: c
 
@@ -10,6 +13,14 @@ addons:
     packages:
     - bc
     - libcurl4-openssl-dev
+  coverity_scan:
+    project:
+      name: "mheily/relaunchd"
+      description: "A service management daemon similar to the launchd(8)"
+    notification_email: mark@heily.com
+    build_command_prepend: "./configure ; make clean"
+    build_command:   "make"
+    branch_pattern: coverity_scan
 
 cache:
   directories:
