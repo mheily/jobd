@@ -259,7 +259,6 @@ int manager_write_status_file()
 	}
 	if (close(fd) < 0) abort();
 	free(path);
-	free(buf);
 	return 0;
 }
 

@@ -122,7 +122,10 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 				goto err_out;
 			if (asprintf(&keypair, "%s=%s", curp, value) < 0)
 				goto err_out;
-			if (cvec_push(env, keypair) < 0) goto err_out;
+			if (cvec_push(env, keypair) < 0) {
+				free(keypair);
+				goto err_out;
+			}
 			log_debug("set keypair: %s", keypair);
 			free(keypair);
 		}
@@ -137,6 +140,7 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 		if (asprintf(&buf, "HOME=%s", pwent->pw_dir) < 0) goto err_out;
 		if (cvec_push(env, buf) < 0) goto err_out;
 		free(buf);
+		buf = NULL;
 	}
 	if (!found[3]) {
 		if (cvec_push(env, "PATH=/usr/bin:/bin:/usr/local/bin") < 0) goto err_out;
@@ -145,12 +149,11 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 		if (asprintf(&buf, "SHELL=%s", pwent->pw_shell) < 0) goto err_out;
 		if (cvec_push(env, buf) < 0) goto err_out;
 		free(buf);
+		buf = NULL;
 	}
 	if (!found[5]) {
 		if (cvec_push(env, "TMPDIR=/tmp") < 0) goto err_out;
 	}
-	free(logname_var);
-	free(user_var);
 
 	size_t offset = 0;
 	SLIST_FOREACH(jms, &job->jm->sockets, entry) {
@@ -160,9 +163,12 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 		if (asprintf(&buf, "LISTEN_FDS=%zu", offset) < 0) goto err_out;
 		if (cvec_push(env, buf) < 0) goto err_out;
 		free(buf);
+		buf = NULL;
+
 		if (asprintf(&buf, "LISTEN_PID=%d", getpid()) < 0) goto err_out;
 		if (cvec_push(env, buf) < 0) goto err_out;
 		free(buf);
+		buf = NULL;
 	}
 
 	return (env);
@@ -190,15 +196,14 @@ static inline int exec_job(const job_t job, const struct passwd *pwent) {
 	cvec_free(final_env);
 
 	argv = cvec_to_array(job->jm->program_arguments);
-	path = argv[0];
 	if (job->jm->program) {
 		path = job->jm->program;
 	} else {
 		path = argv[0];
 	}
 	if (job->jm->enable_globbing) {
-    	//TODO: globbing
-    }
+		//TODO: globbing
+	}
 	log_debug("exec: %s", path);
 #if DEBUG
 	log_debug("argv[]:");
