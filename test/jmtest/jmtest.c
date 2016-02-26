@@ -59,22 +59,22 @@ void test_sockets() {
 	}
 }
 
+/* This used to be a more complex function named get_file_extension()
+ * but has been replaced with strrchr().
+ */
 char * get_file_extension(const char *filename);
 int test_get_file_extension() {
 	int retval = 0;
 	char *res;
 
-	res = get_file_extension("foo.json");
+	res = strrchr("foo.json", '.');
 	if (strcmp(res, ".json") != 0) { printf("fail 1: %s", res); retval = -1; }
-	free(res);
 
-	res = get_file_extension("foo");
-	if (strcmp(res, "") != 0)  { puts("fail 2"); retval = -1; }
-	free(res);
+	res = strrchr("foo", '.');
+	if (res)  { puts("fail 2"); retval = -1; }
 
-	res = get_file_extension("foo.");
-	if (strcmp(res, "") != 0)  { puts("fail 3"); retval = -1; }
-	free(res);
+	res = strrchr("foo.", '.');
+	if (strcmp(res, ".") != 0)  { puts("fail 3"); retval = -1; }
 
 	return retval;
 }
