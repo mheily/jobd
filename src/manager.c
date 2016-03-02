@@ -42,8 +42,8 @@ static job_manifest_t read_job(const char *filename)
 	job_manifest_t jm = NULL;
 
 	jm = job_manifest_new();
-	asprintf(&path, "%s/%s", options.watchdir, filename);
-	asprintf(&rename_to, "%s/%s", options.activedir, filename);
+	if (asprintf(&path, "%s/%s", options.watchdir, filename) < 0) abort();
+	if (asprintf(&rename_to, "%s/%s", options.activedir, filename) < 0) abort();
 	if (!jm || !path || !rename_to) {
 		log_warning("malloc error");
 		goto out;
