@@ -287,7 +287,11 @@ static int start_child_process(const job_t job, const struct passwd *pwent, cons
     	log_debug("setting stderr path to %s", job->jm->stderr_path);
     	int fd = open(job->jm->stderr_path, O_CREAT | O_WRONLY, 0600);
     	if (fd < 0) goto err_out;
-    	if (dup2(fd, 2) < 0) goto err_out;
+    	if (dup2(fd, 2) < 0) {
+            log_errno("dup2(2)");
+            (void) close(fd);
+            goto err_out;
+        }
     	if (close(fd) < 0) goto err_out;
     }
 
