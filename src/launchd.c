@@ -231,19 +231,24 @@ static void main_loop()
 
 static inline void setup_logging()
 {
-       char *path = NULL;
+       char path[PATH_MAX + 1];
+       int rv;
 
        if (options.daemon) {
 	       if (getuid() == 0) {
-		       path = strdup("/var/log/launchd.log");
+                rv = snprintf(path, sizeof(path), "/var/log/launchd.log");
 	       } else {
-		       asprintf(&path, "%s/.launchd/launchd.log", getenv("HOME"));
+                rv = snprintf(path, sizeof(path), 
+                        "%s/.launchd/launchd.log", getenv("HOME"));
 	       }
        } else {
-	       path = strdup("/dev/stdout");
+           rv = snprintf(path, sizeof(path), "/dev/stdout");
+       }
+       if (rv < 0) {
+           log_errno("snprintf(3)");
+           abort();
        }
        if (log_open(path) < 0) abort();
-       free(path);
 }
 
 void create_pid_file()
