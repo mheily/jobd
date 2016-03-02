@@ -35,33 +35,6 @@ extern struct launchd_options options;
 static LIST_HEAD(,job_manifest) pending; /* Jobs that have been submitted but not loaded */
 static LIST_HEAD(,job) jobs;			/* All active jobs */
 
-//TODO: static'ize this once there is a way for the testsuite to un-static private functions.
-/* NOTE: the caller must free the returned string */
-char * get_file_extension(const char *filename)
-{
-        char *token, *prev, *fncopy;
-        char *result;
-
-        /* Special case: no occurance of the delimiter */
-        if (strchr(filename, '.') == NULL)
-		return strdup("");
-
-        fncopy = strdup(filename);
-        if (fncopy == NULL) abort();
-        prev = NULL;
-        while ((token = strsep(&fncopy, ".")) != NULL) {
-                prev = token;
-        }
-        if (strlen(prev) > 0) {
-		asprintf(&result, ".%s", prev); //TODO: error checking
-        } else {
-		/* Special case: trailing dot, e.g. "foo." */
-		result = strdup(prev);
-        }
-        free(fncopy);
-        return result;
-}
-
 static job_manifest_t read_job(const char *filename)
 {
 	job_manifest_t retval = NULL;
@@ -115,7 +88,11 @@ static ssize_t poll_watchdir()
 		if (strcmp(entry.d_name, ".") == 0 || strcmp(entry.d_name, "..") == 0) {
 			continue;
 		}
-		ext = get_file_extension(entry.d_name);
+		ext = strrchr(entry.d_name, '.');
+		if (!ext) {
+			log_error("skipping %s: no file extension", entry.d_name);
+			continue;
+		}
 		if (strcmp(ext, ".json") == 0) {
 			jm = read_job(entry.d_name);
 			if (jm) {
@@ -130,12 +107,12 @@ static ssize_t poll_watchdir()
 			char *path;
 			if (asprintf(&path, "%s/%s", options.watchdir, entry.d_name) < 0) {
 				log_errno("asprintf");
-				goto next_entry;
+				continue;
 			}
 			if (unlink(path) < 0) {
 				log_errno("unlink(2) of %s", path);
 				free(path);
-				goto next_entry;
+				continue;
 			}
 			free(path);
 			char *dot = strrchr(entry.d_name, '.');
@@ -148,8 +125,6 @@ static ssize_t poll_watchdir()
 		} else {
 			log_error("skipping %s: unsupported file extension", entry.d_name);
 		}
-next_entry:
-		free(ext);
 	}
 	if (closedir(dirp) < 0) abort();
 	return (found_jobs);
@@ -166,6 +141,12 @@ void update_jobs(void)
 	/* Pass #1: load all jobs */
 	LIST_FOREACH(jm, &pending, jm_le) {
 		job = job_new(jm);
+		/* Check for duplicate jobs */
+		if (manager_get_job_by_label(jm->label)) {
+			log_error("tried to load a duplicate job with label %s", jm->label);
+			job_free(job);
+			continue;
+		}
 		LIST_INSERT_HEAD(&joblist, job, joblist_entry);
 		if (!job) abort();
 		(void) job_load(job); // FIXME failure handling?
@@ -259,7 +240,6 @@ int manager_write_status_file()
 	}
 	if (close(fd) < 0) abort();
 	free(path);
-	free(buf);
 	return 0;
 }
 

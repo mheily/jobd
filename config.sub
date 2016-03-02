@@ -19,7 +19,10 @@
 ARGV=$*
 PACKAGE_NAME=myprogram
 PACKAGE_VERSION=0.0.1
-# TOPDIR=""
+if [ -z "$TOPDIR" ] ; then
+    TOPDIR=`pwd`
+fi
+export TOPDIR
 # DISTFILES=""
 # SUBDIRS=""
 # LIBRARIES=""
@@ -52,9 +55,10 @@ err() {
 init_maketool() {
 	rm -f config.log
 	test -n "$CC" || CC="cc"
-	echo "/* Automatically generated -- do not edit */" > config.h
-	echo "# Automatically generated -- do not edit" > config.mk
-	echo "# Automatically generated -- do not edit" > vars.sh
+	printf "/* Automatically generated -- do not edit */" > config.h
+	printf "# Automatically generated -- do not edit\n\n" > config.mk
+	printf "# Automatically generated -- do not edit\n\n" > depends.mk
+	printf "# Automatically generated -- do not edit\n\n" > vars.sh
 	
 	# Assume that all subdirectories share a common "config.sub"
 	# at the top-level. Use this assumption to detect what level we
@@ -96,6 +100,13 @@ $_body
 "
 }
 
+# A custom dependency
+make_depend() {
+    _target=$1
+    _rule=$2
+    printf "$_target:\n\t$_rule\n\n" >> depends.mk
+}
+
 # A variable definition in the Makefile
 make_define() {
     _ident=$1
@@ -128,12 +139,12 @@ emit_scripts() {
 	for _prog in $bin_SCRIPTS ; do
 		DISTFILES="$DISTFILES $program"
 		_mf_install_rules="$_mf_install_rules
-	\$(INSTALL) -m 755 $TOPDIR$_prog \$\$DESTDIR\$(BINDIR)"
+	\$(INSTALL) -m 755 $_prog \$\$DESTDIR\$(BINDIR)"
 	done
 	for _prog in $sbin_SCRIPTS ; do
 		DISTFILES="$DISTFILES $program"
 		_mf_install_rules="$_mf_install_rules
-	\$(INSTALL) -m 755 $TOPDIR$_prog \$\$DESTDIR\$(SBINDIR)"
+	\$(INSTALL) -m 755 $_prog \$\$DESTDIR\$(SBINDIR)"
 	done
 }
 
@@ -238,7 +249,7 @@ emit_programs() {
 
 		if [ "$_install_to" != "/dev/null" ] ; then
 		_mf_install_rules="$_mf_install_rules
-	\$(INSTALL) -s -m 755 $TOPDIR$program \$\$DESTDIR\$(SBINDIR)"
+	\$(INSTALL) -s -m 755 $program \$\$DESTDIR\$(SBINDIR)"
 		fi
 
 		eval "sources=\$${program}_SOURCES"
@@ -252,7 +263,7 @@ emit_programs() {
 		_mf_default_target="$_mf_default_target $program"
 		_mf_clean_files="$_mf_clean_files $program"
 		_mf_targets="$mf_targets
-$TOPDIR$program: $_curdir_objs $depends
+$program: $_curdir_objs $depends
 	\$(CC) -o \$@ $ldflags \$(LDFLAGS) $_curdir_objs $ldadd \$(LDADD)
 
 "
@@ -270,15 +281,8 @@ emit_vendored_items() {
 }
 
 emit_tests() {
-	if [ -z "$TOPDIR" ] ; then
-		_topdir="./"
-	else
-		_topdir="./$TOPDIR"
-	fi
-
-#	_mf_vars="$_mf_vars
-#TESTS=$TESTS"
-	_test_rules=`echo $TESTS | tr ' ' '\n' | sed "s,^,	$_topdir,"`
+    _cwd=`pwd`
+	_test_rules=`echo $TESTS | tr ' ' '\n' | sed "s,^,	${_cwd}/,"`
 	if [ -n "$TESTS" ] ; then
 		_mf_targets="$_mf_targets
 
@@ -372,11 +376,7 @@ write_makefile() {
 	emit_vendored_items
 	emit_platform_tweaks
 	
-	if [ -z "$TOPDIR" ] ; then
-		_outfile="Makefile"
-	else
-		_outfile="Makefile.inc"
-	fi
+	_outfile="Makefile"
 
 	echo "creating $_outfile"
 	cat <<__EOF__ >$_outfile
@@ -385,7 +385,7 @@ $_mf_packaging
 $_mf_vars
 
 # Files to include in the tarball
-DISTFILES = ${TOPDIR}configure ${TOPDIR}config.sub $DISTFILES
+DISTFILES = configure config.sub $DISTFILES
 
 $_mf_default_target
 $_mf_targets
@@ -394,6 +394,8 @@ $_mf_install_rules
 $_mf_clean_rules
 $_mf_dependencies
 $EXTRA_TARGETS
+
+include ${TOPDIR}/depends.mk
 
 .PHONY: clean check
 __EOF__

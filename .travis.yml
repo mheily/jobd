@@ -22,10 +22,11 @@ addons:
     build_command:   "make"
     branch_pattern: coverity_scan
 
-cache:
-  directories:
-    - vendor/libucl-0.7.3
-    - vendor/libkqueue-2.0.3
+# TESTING: trying to fix the build
+#cache:
+#  directories:
+#    - vendor/libucl-0.7.3
+#    - vendor/libkqueue-2.0.3
 
 script:
 - ./configure

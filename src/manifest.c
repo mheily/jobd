@@ -591,8 +591,10 @@ int job_manifest_read(job_manifest_t job_manifest, const char *filename)
 	if (!(buf = job_manifest_prepare_buf_for_file(filename, &buf_size)))
 		return -1;
 
-	if (job_manifest_read_from_file(buf, buf_size, filename))
+	if (job_manifest_read_from_file(buf, buf_size, filename)) {
+		free(buf);
 		return -1;
+	}
 
 	if (!rc)
 		rc = job_manifest_parse(job_manifest, buf, buf_size);
