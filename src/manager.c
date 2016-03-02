@@ -141,14 +141,16 @@ void update_jobs(void)
 	/* Pass #1: load all jobs */
 	LIST_FOREACH(jm, &pending, jm_le) {
 		job = job_new(jm);
+		if (!job) abort();
+
 		/* Check for duplicate jobs */
 		if (manager_get_job_by_label(jm->label)) {
 			log_error("tried to load a duplicate job with label %s", jm->label);
 			job_free(job);
 			continue;
 		}
+
 		LIST_INSERT_HEAD(&joblist, job, joblist_entry);
-		if (!job) abort();
 		(void) job_load(job); // FIXME failure handling?
 		log_debug("loaded job: %s", job->jm->label);
 	}
