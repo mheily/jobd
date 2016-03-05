@@ -78,6 +78,41 @@ static inline int modify_credentials(job_t const job, const struct passwd *pwent
 	return (0);
 }
 
+
+/* Add the standard set of environment variables that most programs expect.
+ * See: http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html
+ * TODO: should cache these getenv() calls, so we don't do this dance for every
+ * job invocation.
+ */
+static int
+add_standard_environment_variables(cvec_t env)
+{
+	static const char *keys[] = { 
+		"DISPLAY",
+		/* Locale-related variables */
+		"LC_ALL", "LC_COLLATE", "LC_CTYPE", "LC_MESSAGES", "LC_MONETARY",
+		"LC_NUMERIC", "LC_TIME", "NLSPATH", "LANG",
+		/* Misc */
+		"TZ",
+		NULL };
+	const char **key = NULL, *envp = NULL;
+	char *buf = NULL;
+
+	for (key = keys; *key != NULL; key++) {
+		if ((envp = getenv(*key))) {
+			log_debug("setting %s=%s", *key, envp);
+			if (asprintf(&buf, "%s=%s", *key, envp) < 0) goto err_out;
+			if (cvec_push(env, buf) < 0) goto err_out;
+		}
+	}
+
+	return 0;
+
+err_out:
+	free(buf);
+	return -1;
+}
+
 static inline cvec_t setup_environment_variables(const job_t job, const struct passwd *pwent)
 {
 	struct job_manifest_socket *jms;
@@ -92,6 +127,9 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 
 	if (asprintf(&logname_var, "LOGNAME=%s", job->jm->user_name) < 0) goto err_out;
 	if (asprintf(&user_var, "USER=%s", job->jm->user_name) < 0) goto err_out;
+
+	if (!job->jm->environment_variables)
+		goto job_has_no_environment;
 
 	/* Convert the flat array into an array of key=value pairs */
 	/* Follow the crontab(5) convention of overriding LOGNAME and USER
@@ -130,6 +168,10 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 			free(keypair);
 		}
 	}
+
+	/* TODO: refactor this to avoid goto */
+job_has_no_environment:
+
 	if (!found[0]) {
 		if (cvec_push(env, logname_var) < 0) goto err_out;
 	}
@@ -154,6 +196,9 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 	if (!found[5]) {
 		if (cvec_push(env, "TMPDIR=/tmp") < 0) goto err_out;
 	}
+
+	if (add_standard_environment_variables(env) < 0)
+		goto err_out;
 
 	size_t offset = 0;
 	SLIST_FOREACH(jms, &job->jm->sockets, entry) {
@@ -416,6 +461,10 @@ int job_run(job_t job)
 
 	// temporary for debugging
 #ifdef NOFORK
+	/* These are unused */
+	(void) pid;
+	(void) jms;
+
 	(void) start_child_process(job, pwent, grent);
 #else
     pid = fork();
