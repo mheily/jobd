@@ -190,7 +190,7 @@ static int job_manifest_parse_umask(job_manifest_t manifest, const ucl_object_t 
 {
 	int result;
 
-	result = sscanf(ucl_object_tostring(obj), "%hi", &manifest->umask);
+	result = sscanf(ucl_object_tostring(obj), "%hi", (unsigned short *) &manifest->umask);
 	return (result >= 0) ? 0 : -1;
 }
 
