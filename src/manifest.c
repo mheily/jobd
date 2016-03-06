@@ -51,6 +51,7 @@ static int job_manifest_parse_user_name(job_manifest_t manifest, const ucl_objec
 static int job_manifest_parse_group_name(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_program(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_jail_name(job_manifest_t manifest, const ucl_object_t *obj);
+static int job_manifest_parse_umask(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_working_directory(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_root_directory(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_standard_in_path(job_manifest_t manifest, const ucl_object_t *obj);
@@ -94,10 +95,10 @@ static const job_manifest_item_parser_t manifest_parser_map[] = {
 	{ "JailName",              UCL_STRING,  job_manifest_parse_jail_name },
 	{ "Sockets",               UCL_OBJECT,  job_manifest_parse_sockets },
 	{ "StartCalendarInterval", UCL_OBJECT,  job_manifest_parse_start_calendar_interval },
+	{ "Umask",                 UCL_STRING,  job_manifest_parse_umask },
 	/*
 	{ "inetdCompatibility",    SKIP_ITEM,   NULL },
 	{ "KeepAlive",             SKIP_ITEM,   NULL },
-	{ "Umask",                 SKIP_ITEM,   NULL },
 	{ "TimeOut",               SKIP_ITEM,   NULL },
 	{ "ExitTimeOut",           SKIP_ITEM,   NULL },
 	{ "Disabled",              SKIP_ITEM,   NULL },
@@ -183,6 +184,14 @@ static int job_manifest_parse_program(job_manifest_t manifest, const ucl_object_
 static int job_manifest_parse_jail_name(job_manifest_t manifest, const ucl_object_t *obj)
 {
 	return (manifest->jail_name = strdup(ucl_object_tostring(obj))) ? 0 : -1;
+}
+
+static int job_manifest_parse_umask(job_manifest_t manifest, const ucl_object_t *obj)
+{
+	int result;
+
+	result = sscanf(ucl_object_tostring(obj), "%hi", &manifest->umask);
+	return (result >= 0) ? 0 : -1;
 }
 
 static int job_manifest_parse_working_directory(job_manifest_t manifest, const ucl_object_t *obj)
@@ -515,6 +524,7 @@ job_manifest_t job_manifest_new(void)
 	job_manifest->exit_timeout = DEFAULT_EXIT_TIMEOUT;
 	job_manifest->throttle_interval = DEFAULT_THROTTLE_INTERVAL;
 	job_manifest->init_groups = true;
+	job_manifest->umask = S_IWGRP | S_IWOTH;
 
 	SLIST_INIT(&job_manifest->sockets);
 

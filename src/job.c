@@ -307,15 +307,13 @@ static int start_child_process(const job_t job, const struct passwd *pwent, cons
 		}
 	}
 	if (modify_credentials(job, pwent, grent) < 0) {
-    	log_error("unable to modify credentials");
-    	goto err_out;
+		log_error("unable to modify credentials");
+		goto err_out;
 	}
-    if (job->jm->umask) {
-    	//TODO: umask
-    }
-    if (job->jm->stdin_path) {
-    	log_debug("setting stdin path to %s", job->jm->stdin_path);
-    	int fd = open(job->jm->stdin_path, O_RDONLY);
+	(void) umask(job->jm->umask);
+	if (job->jm->stdin_path) {
+		log_debug("setting stdin path to %s", job->jm->stdin_path);
+		int fd = open(job->jm->stdin_path, O_RDONLY);
     	if (fd < 0) goto err_out;
     	if (dup2(fd, 0) < 0) {
             log_errno("dup2(2)");
@@ -323,7 +321,7 @@ static int start_child_process(const job_t job, const struct passwd *pwent, cons
             goto err_out;
         }
     	if (close(fd) < 0) goto err_out;
-    }
+	}
     if (job->jm->stdout_path) {
     	log_debug("setting stdout path to %s", job->jm->stdout_path);
     	int fd = open(job->jm->stdout_path, O_CREAT | O_WRONLY, 0600);

@@ -21,6 +21,7 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include "../vendor/FreeBSD/sys/queue.h"
 #include "cvec.h"
 #include "socket.h"
@@ -57,7 +58,7 @@ typedef struct job_manifest {
 
 	cvec_t	 environment_variables;
 
-	uint32_t umask;
+	mode_t   umask;
 	uint32_t timeout;
 	uint32_t exit_timeout;
 	uint32_t start_interval;
