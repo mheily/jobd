@@ -226,7 +226,9 @@ err_out:
 	return NULL;
 }
 
-static inline int exec_job(const job_t job, const struct passwd *pwent) {
+static inline int
+exec_job(const job_t job, const struct passwd *pwent) 
+{
 	int rv;
 	char *path;
 	char **argv, **envp;
@@ -238,7 +240,6 @@ static inline int exec_job(const job_t job, const struct passwd *pwent) {
 		return (-1);
 	}
 	envp = cvec_to_array(final_env);
-	cvec_free(final_env);
 
 	argv = cvec_to_array(job->jm->program_arguments);
 	if (job->jm->program) {
@@ -262,13 +263,20 @@ static inline int exec_job(const job_t job, const struct passwd *pwent) {
 #endif
 
 	fclose(logfile);
-    rv = execve(path, argv, envp);
-    if (rv < 0) {
-    	log_error("failed to call execve(2)");
-    	return (-1);
-    }
-    log_notice("executed job");
-    return (0);
+
+	rv = execve(path, argv, envp);
+	if (rv < 0) {
+		log_error("failed to call execve(2)");
+		goto err_out;
+    	}
+	log_notice("executed job");
+
+	cvec_free(final_env);
+	return (0);
+
+err_out:
+	cvec_free(final_env);
+	return -1;
 }
 
 static int start_child_process(const job_t job, const struct passwd *pwent, const struct group *grent)
