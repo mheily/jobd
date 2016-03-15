@@ -262,7 +262,7 @@ exec_job(const job_t job, const struct passwd *pwent)
 	}
 #endif
 
-	fclose(logfile);
+	closelog();
 
 	rv = execve(path, argv, envp);
 	if (rv < 0) {

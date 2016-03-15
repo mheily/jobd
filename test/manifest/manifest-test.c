@@ -137,7 +137,6 @@ static int test_parse_program()
 
 int main()
 {
-	log_open("manifest-test.log");
 	run(test_allocator);
 	run(test_parse_label);
 	run(test_parse_program);

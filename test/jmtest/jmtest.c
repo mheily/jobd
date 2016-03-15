@@ -127,11 +127,6 @@ int test_umask() {
 int main() {
 	job_manifest_t jm;
 
-	if (getenv("DEBUG")) {
-		logfile = stdout;
-	} else {
-		log_open("jmtest.log");
-	}
 	test_run(test_env);
 	test_run(test_env2);
 	test_run(test_start_interval);

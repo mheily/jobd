@@ -249,7 +249,7 @@ static inline void setup_logging()
            log_errno("snprintf(3)");
            abort();
        }
-       if (log_open(path) < 0) abort();
+       openlog("launchd", LOG_PID | LOG_NDELAY, LOG_DAEMON);
 }
 
 void create_pid_file()
