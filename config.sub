@@ -135,17 +135,37 @@ check_header() {
 	eval "check_header_${_lc_sym}=$val"
 }
 
+# Install a run control script
+rc_script() {
+	_name=$1
+	_prog=$2
+	
+	# Detect where rc scripts should go.
+	if [ -x '/usr/local/etc/rc.d' ] ; then
+		RC_SCRIPT_DIR="/usr/local/etc/rc.d"
+	elif [ -x '/etc/init.d' ] ; then
+		RC_SCRIPT_DIR="/etc/init.d"
+	else
+		err 'Unable to determine RC_SCRIPT_DIR'
+	fi
+	DISTFILES="$DISTFILES $_prog"
+	_mf_install_rules="$_mf_install_rules
+	\$(INSTALL) -m 755 $_prog \$\$DESTDIR${RC_SCRIPT_DIR}/${_name}"
+}
+
 emit_scripts() {
 	for _prog in $bin_SCRIPTS ; do
 		DISTFILES="$DISTFILES $program"
 		_mf_install_rules="$_mf_install_rules
 	\$(INSTALL) -m 755 $_prog \$\$DESTDIR\$(BINDIR)"
 	done
+
 	for _prog in $sbin_SCRIPTS ; do
 		DISTFILES="$DISTFILES $program"
 		_mf_install_rules="$_mf_install_rules
 	\$(INSTALL) -m 755 $_prog \$\$DESTDIR\$(SBINDIR)"
 	done
+
 }
 
 emit_compilation_units() {

@@ -58,6 +58,12 @@ fi
 
 SUBDIRS="src test"
                  
+if [ -x /usr/local/etc/rc.d ] ; then
+	rc_script 'launchd' 'rc.FreeBSD'
+elif [ `uname` = 'Linux' ] ; then
+	rc_script 'launchd' 'rc.Linux'
+fi
+
 write_makefile
 
 #getopt "--cachedir" "??" "/var/cache/launchd"
