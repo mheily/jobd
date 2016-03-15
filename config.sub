@@ -352,9 +352,13 @@ emit_cleanup() {
 
 emit_subdir_rules() {
 	if [ -z "$SUBDIRS" ] ; then return ; fi
+
 	_mf_default_target="$_mf_default_target
 	for dir in $SUBDIRS ; do cd \$\$dir && \$(MAKE) all && cd .. ; done
 "
+
+	_mf_install_rules="$_mf_install_rules
+	for dir in $SUBDIRS ; do cd \$\$dir && \$(MAKE) install && cd .. ; done"
 }
 
 emit_platform_tweaks() {
