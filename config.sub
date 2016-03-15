@@ -26,6 +26,7 @@ export TOPDIR
 # DISTFILES=""
 # SUBDIRS=""
 # LIBRARIES=""
+# install_DIRS=""
 
 # If set to "yes", this is the top-level ./configure script within the project
 TOP_LEVEL="yes"
@@ -55,7 +56,7 @@ err() {
 init_maketool() {
 	rm -f config.log
 	test -n "$CC" || CC="cc"
-	printf "/* Automatically generated -- do not edit */" > config.h
+	printf "/* Automatically generated -- do not edit */\n\n" > config.h
 	printf "# Automatically generated -- do not edit\n\n" > config.mk
 	printf "# Automatically generated -- do not edit\n\n" > depends.mk
 	printf "# Automatically generated -- do not edit\n\n" > vars.sh
@@ -88,6 +89,33 @@ getopt() {
 			break
 		fi
 	done	
+}
+
+# Get a directory that can be installed into
+get_install_directory() {
+	_option=$1
+	_helptext=$2
+	_default=$3
+
+	_argv=$ARGV
+	set -- $_argv
+
+	_final_val=$_default
+	while true; do
+		if [ -z "$1" ] ; then break ; fi
+		_key=`echo $1 | sed 's/=.*//'`
+		_val=`echo $1 | sed 's/.*=//'`
+		if [ "$_key" = "--${_option}" ] ; then
+			eval "_final_val=\"$val\""
+			break
+		fi
+		shift 
+	done
+
+	make_define $_option $_final_val
+	echo "#define `echo $_option | tr '[a-z]' '[A-Z]'` \"$_final_val\"" >> config.h
+	echo "setting \$$_option to $_final_val"
+	install_DIRS="$install_DIRS $_final_val"
 }
 
 # A custom target supplied by the user
@@ -166,6 +194,14 @@ emit_scripts() {
 	\$(INSTALL) -m 755 $_prog \$\$DESTDIR\$(SBINDIR)"
 	done
 
+}
+
+# Write rules for creating directories during 'make install'
+emit_directories() {
+	for _dir in $install_DIRS ; do
+		_mf_install_rules="$_mf_install_rules
+	\$(INSTALL) -d -m 755 \$\$DESTDIR$_dir"
+	done
 }
 
 emit_compilation_units() {
@@ -393,6 +429,7 @@ write_makefile() {
 	emit_programs
 	emit_libraries
 	emit_scripts
+	emit_directories
 	emit_tests
 	emit_distribution
 	emit_cleanup
