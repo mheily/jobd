@@ -12,6 +12,7 @@
 name="launchd"
 rcvar="launchd_enable"
 command="/usr/local/sbin/${name}"
+start_postcmd="/usr/local/bin/launchctl load /usr/local/etc/launchd/daemons"
 
 load_rc_config $name
 run_rc_command "$1"
