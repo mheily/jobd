@@ -115,34 +115,24 @@ int test_env2() {
 	return 0;
 }
 
+int test_umask() {
+	job_manifest_t jm;
+
+	jm = job_manifest_new();
+	if (job_manifest_read(jm, "fixtures/test.json") < 0) return -1;
+	if (jm->umask != 63) return -1;
+	return 0;
+}
+
 int main() {
 	job_manifest_t jm;
 
-	if (getenv("DEBUG")) {
-		logfile = stdout;
-	} else {
-		log_open("jmtest.log");
-	}
 	test_run(test_env);
 	test_run(test_env2);
 	test_run(test_start_interval);
 	test_run(test_start_calendar_interval);
 	test_run(test_get_file_extension);
+	test_run(test_umask);
 	test_cvec();
 	test_sockets();
-	exit(0);
-
-	//FIXME: refactor this
-	jm = job_manifest_new();
-	if (job_manifest_read(jm, "fixtures/test.json") == 0) {
-printf("program arguments:\n");
-		cvec_debug(jm->program_arguments);
-		printf("environment:\n");
-		cvec_debug(jm->environment_variables);
-		printf("whee");
-	} else {
-		printf("failed");
-		exit(1);
-	}
-
 }

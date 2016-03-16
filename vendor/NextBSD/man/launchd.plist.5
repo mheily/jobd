@@ -212,10 +212,10 @@ This optional key is used to specify a directory to
 to before running the job.
 .It Sy EnvironmentVariables <dictionary of strings>
 This optional key is used to specify additional environmental variables to be set before running the job.
-.It Sy Umask <integer>
+.It Sy Umask <string>
 This optional key specifies what value should be passed to
 .Xr umask 2
-before running the job. Known bug: Property lists don't support octal, so please convert the value to decimal.
+before running the job. It should be specified in octal notation using a string.
 .It Sy TimeOut <integer>
 The recommended idle time out (in seconds) to pass to the job. If no value is specified, a default time out will be supplied by
 .Nm launchd

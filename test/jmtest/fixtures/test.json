@@ -4,6 +4,7 @@
 "Program": "/bin/sh",
 "ProgramArguments": ["-c", "/usr/bin/touch /tmp/hello123"],
 "EnableGlobbing": true,
+"Umask": "077",
 "WorkingDirectory": "/",
 "RootDirectory": "/",
 "StandardInPath": "/dev/null",

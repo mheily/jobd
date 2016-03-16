@@ -34,10 +34,8 @@ Some things are not implemented yet:
 * file and directory watches (see issue #25)
 * restarting jobs if they crash (see issue #26)
 * resource limits (see issue #27)
-* miscellaneous
- * LaunchOnlyOnce (see issue #28)
- * inetdCompatibility (see issue #29)
- * Umask (see issue #31)
+* LaunchOnlyOnce (see issue #28)
+* inetdCompatibility (see issue #29)
 
 Some things will probably never be implemented:
 * oddities - LimitLoadToHosts, LimitLoadFromHosts
@@ -147,6 +145,9 @@ unprivileged user may run their own launchd process under their own UID.
 
 In the Darwin implementation, the StartCalendarInterval key can be a hash
 or an array of hashes. In relaunchd, only a hash is acceptable.
+
+In the Darwin implementation, the Umask key is a decimal integer.
+In relaunchd, octal notation is used, but converted to a string.
 
 ## Static Analysis 
 

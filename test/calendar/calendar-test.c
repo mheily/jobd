@@ -87,7 +87,6 @@ static int test_calendar_interval_1()
 
 int main()
 {
-	log_open("calendar-test.log");
 	test_kqfd = kqueue();
 	run(test_calendar_init);
 	//FIXME: run(test_calendar_interval_1);

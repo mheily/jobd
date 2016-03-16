@@ -69,7 +69,6 @@ static int test_constant_interval()
 
 int main()
 {
-	log_open("timer-test.log");
 	test_kqfd = kqueue();
 	run(test_setup_timers);
 	run(test_constant_interval);
