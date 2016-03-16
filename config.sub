@@ -108,26 +108,42 @@ get_install_directory() {
 	_option=$1
 	_helptext=$2
 	_default=$3
+	_options=$4
+
+	# Available options:
+	#	config_h	Add to config.h
+	#	noinstall	Don't create the directory during 'make install'
+	#	none		No special options
+	if [ -z "$_options" ] ; then
+		_options="config_h"
+	fi
 
 	_argv=$ARGV
 	set -- $_argv
 
-	_final_val=$_default
+	_lc_option=`echo "$_option" | tr '[A-Z]' '[a-z]'`
+
+	_final_val="$_default"
 	while true; do
 		if [ -z "$1" ] ; then break ; fi
 		_key=`echo $1 | sed 's/=.*//'`
 		_val=`echo $1 | sed 's/.*=//'`
-		if [ "$_key" = "--${_option}" ] ; then
-			eval "_final_val=\"$val\""
+		if [ "$_key" = "--${_lc_option}" ] ; then
+			eval "_final_val=\"$_val\""
 			break
 		fi
 		shift 
 	done
 
 	make_define $_option $_final_val
-	echo "#define `echo $_option | tr '[a-z]' '[A-Z]'` \"$_final_val\"" >> config.h
-	echo "setting \$$_option to $_final_val"
-	install_DIRS="$install_DIRS $_final_val"
+	if [ -n "`echo $_options | grep config_h`" ] ; then
+		echo "#define `echo $_option | tr '[a-z]' '[A-Z]'` \"$_final_val\"" >> config.h
+	fi
+	eval "install_directory__${_option}=\"$_final_val\""
+	echo "setting \$$_option to $_final_val" >> config.log
+	if [ -z "`echo $_options | grep noinstall`" ] ; then
+		install_DIRS="$install_DIRS $_final_val"
+	fi
 }
 
 # A custom target supplied by the user
@@ -371,6 +387,16 @@ check:
 }
 
 emit_packaging() {
+	get_install_directory 'prefix' 'Installation prefix' '/usr/local' 'noinstall'
+	get_install_directory 'libdir' 'Library directory' '\$(PREFIX)/lib' 'noinstall'
+	get_install_directory 'bindir' 'Executable directory' '\$(PREFIX)/bin' 'noinstall'
+	get_install_directory 'sbindir' 'Executable directory (superuser)' '\$(PREFIX)/sbin' 'noinstall'
+	get_install_directory 'libexecdir' 'Executable directory (private)' '\$(PREFIX)/libexec' 'noinstall'
+	get_install_directory 'mandir' 'Manual pages' '\$(PREFIX)/man' 'noinstall'
+	get_install_directory 'sysconfdir' 'Configuration files' '\$(PREFIX)/etc' 'noinstall'
+	get_install_directory 'datadir' 'Datafiles' '\$(PREFIX)/share' 'noinstall'
+	get_install_directory 'localstatedir' 'Machine-specific data' '/var' 'noinstall'
+	get_install_directory 'runstatedir' 'Machine-specific data (transient)' '\$(LOCALSTATEDIR)/run' 'noinstall'
 	
 	_mf_packaging="PACKAGE_NAME=$PACKAGE_NAME
 PACKAGE_VERSION=$PACKAGE_VERSION
@@ -378,16 +404,16 @@ MAJOR_VERSION=$MAJOR_VERSION
 MINOR_VERSION=$MINOR_VERSION
 PATCH_VERSION=$PATCH_VERSION
 
-PREFIX ?= /usr/local
-LIBDIR = \$(PREFIX)/lib
-BINDIR = \$(PREFIX)/bin
-SBINDIR = \$(PREFIX)/sbin
-LIBEXECDIR = \$(PREFIX)/libexec
-MANDIR = \$(PREFIX)/man
-SYSCONFDIR = \$(PREFIX)/etc
-DATADIR = \$(PREFIX)/share
-LOCALSTATEDIR = /var
-RUNSTATEDIR = \$(LOCALSTATEDIR)/run
+PREFIX ?= ${install_directory__prefix}
+LIBDIR = ${install_directory__libdir}
+BINDIR = ${install_directory__bindir}
+SBINDIR = ${install_directory__sbindir}
+LIBEXECDIR = ${install_directory__libexecdir}
+MANDIR = ${install_directory__mandir}
+SYSCONFDIR = ${install_directory__sysconfdir}
+DATADIR = ${install_directory__datadir}
+LOCALSTATEDIR = ${install_directory__localstatedir}
+RUNSTATEDIR = ${install_directory__runstatedir}
 
 INSTALL ?= /usr/bin/install
 "
