@@ -91,6 +91,18 @@ getopt() {
 	done	
 }
 
+# Install a manpage
+manpage() {
+	_path=$1
+
+	# Assume the section is the last part of the filename
+	_section=`echo "$_path" | sed 's/.*\.//'`
+
+	_output_file="`basename $_path`.gz"
+	_mf_install_rules="$_mf_install_rules
+	cat $_path | gzip > \$\$DESTDIR\$(MANDIR)/man${_section}/${_output_file}"
+}
+
 # Get a directory that can be installed into
 get_install_directory() {
 	_option=$1
