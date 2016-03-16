@@ -100,7 +100,6 @@ add_standard_environment_variables(cvec_t env)
 
 	for (key = keys; *key != NULL; key++) {
 		if ((envp = getenv(*key))) {
-			log_debug("setting %s=%s", *key, envp);
 			if (asprintf(&buf, "%s=%s", *key, envp) < 0) goto err_out;
 			if (cvec_push(env, buf) < 0) goto err_out;
 		}
