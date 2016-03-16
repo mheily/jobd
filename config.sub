@@ -314,40 +314,31 @@ emit_libraries() {
 }
 
 emit_programs() {
-	# Build a list of all of the programs along with
-	# where to install them
-	_all_programs=""
-	for program in $bin_PROGRAMS ; do
-		_all_programs="$_all_programs \$(BINDIR)|$program"
-	done
-	for program in $sbin_PROGRAMS ; do
-		_all_programs="$_all_programs \$(SBINDIR)|$program"
-	done
-	for program in $TESTS ; do
-		_all_programs="$_all_programs /dev/null|$program"
-	done
-	
-	for _rec in $bin_PROGRAMS $sbin_PROGRAMS $TESTS; do
-		program=`echo $_rec | cut -f1 -d\|`
-		_install_to=`echo $_rec | cut -f2 -d\|`
+	for _program in $bin_PROGRAMS $sbin_PROGRAMS $TESTS; do
 
-		if [ "$_install_to" != "/dev/null" ] ; then
+		# KLUDGE: only needed because this function does too much
+		_should_install=yes
+		for _x in $TESTS ; do
+			if [ "$_x" = "$_rec" ] ; then _should_install=no ; break ; fi
+		done
+
+		if [ "$_should_install" = "yes" ] ; then
 		_mf_install_rules="$_mf_install_rules
-	\$(INSTALL) -s -m 755 $program \$\$DESTDIR\$(SBINDIR)"
+	\$(INSTALL) -s -m 755 $_program \$\$DESTDIR\$(SBINDIR)"
 		fi
 
-		eval "sources=\$${program}_SOURCES"
-		eval "cflags=\$${program}_CFLAGS"
-		eval "ldflags=\$${program}_LDFLAGS"
-		eval "ldadd=\$${program}_LDADD"
-		eval "depends=\$${program}_DEPENDS"
+		eval "sources=\$${_program}_SOURCES"
+		eval "cflags=\$${_program}_CFLAGS"
+		eval "ldflags=\$${_program}_LDFLAGS"
+		eval "ldadd=\$${_program}_LDADD"
+		eval "depends=\$${_program}_DEPENDS"
 		_objs=`echo $sources | sort | sed 's/\.c/.o/g'`
 		_curdir_objs=`for x in $_objs ; do basename $x ; done | tr '\n' ' '`
 
-		_mf_default_target="$_mf_default_target $program"
-		_mf_clean_files="$_mf_clean_files $program"
+		_mf_default_target="$_mf_default_target $_program"
+		_mf_clean_files="$_mf_clean_files $_program"
 		_mf_targets="$mf_targets
-$program: $_curdir_objs $depends
+$_program: $_curdir_objs $depends
 	\$(CC) -o \$@ $ldflags \$(LDFLAGS) $_curdir_objs $ldadd \$(LDADD)
 
 "
