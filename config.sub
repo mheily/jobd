@@ -319,7 +319,7 @@ emit_programs() {
 		# KLUDGE: only needed because this function does too much
 		_should_install=yes
 		for _x in $TESTS ; do
-			if [ "$_x" = "$_rec" ] ; then _should_install=no ; break ; fi
+			if [ "$_x" = "$_program" ] ; then _should_install=no ; break ; fi
 		done
 
 		if [ "$_should_install" = "yes" ] ; then
