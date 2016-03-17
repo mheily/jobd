@@ -468,7 +468,12 @@ write_makefile() {
 	
 	_outfile="Makefile"
 
-	echo "creating $_outfile"
+	if [ -n "$SUBDIR" ] ; then
+		echo "creating $SUBDIR/$_outfile"
+	else
+		echo "creating $_outfile"
+	fi
+
 	cat <<__EOF__ >$_outfile
 # Automatically generated -- do not edit
 $_mf_packaging
@@ -496,9 +501,12 @@ __EOF__
 	# Perform recursive ./configure invocation
 	if [ -n "$SUBDIRS" ] ; then
 		for x in $SUBDIRS ; do
-			echo "configuring ./$x"
 			cd $x
-			./configure
+			if [ -n "$SUBDIR" ] ; then
+				SUBDIR="$SUBDIR/$x" ./configure
+			else
+				SUBDIR="$x" ./configure
+			fi
 			test $? -eq 0 || err "Unable to run configure in ./$x/"
 			cd ..
 		done
