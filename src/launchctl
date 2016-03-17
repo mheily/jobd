@@ -35,6 +35,18 @@ watchdir="$pkgdatadir/new"
 command=$1
 shift
 
+# Start launchd if necessary
+if [ ! -f $pidfile ] ; then
+	self=`realpath $0`		# FIXME: not portable
+	bindir=`dirname $self`
+	launchd="$bindir/../sbin/launchd"
+	$launchd
+	if [ $? -ne 0 ] ; then
+		echo "ERROR: $launchd failed to start" > /dev/stderr
+		exit 1
+	fi
+fi
+
 for path in $*
 do
 	if [ ! -e "$path" ] ; then
