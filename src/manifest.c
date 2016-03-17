@@ -325,7 +325,7 @@ parse_cron_field(uint32_t *dst, const ucl_object_t *obj, const char *key, int64_
 		}
 		if (val < start || val > end) {
 			log_error("illegal value for %s; expecting %ld-%ld but got %ld",
-					key, start, end, val);
+					key, (long)start, (long)end, (long)val);
 			return -1;
 		}
 		*dst = val;

@@ -100,7 +100,7 @@ schedule_calendar_job(job_t job)
 	 */
 	job->jm->start_interval = result;
 
-	log_debug("job %s scheduled to run in %ld minutes", job->jm->label, result);
+	log_debug("job %s scheduled to run in %ld minutes", job->jm->label, (long)result);
 
 	return current_time() + (60 * result);
 }
@@ -108,7 +108,7 @@ schedule_calendar_job(job_t job)
 static inline void update_job_interval(job_t job)
 {
 	job->next_scheduled_start = schedule_calendar_job(job);
-	log_debug("job %s will start after T=%lu", job->jm->label, job->next_scheduled_start);
+	log_debug("job %s will start after T=%lu", job->jm->label, (unsigned long)job->next_scheduled_start);
 }
 
 int calendar_init(int kqfd)

@@ -43,6 +43,9 @@
 
 #ifdef __GLIBC__
 #define getprogname() program_invocation_short_name
+#endif
+
+#ifndef EDOOFUS
 #define EDOOFUS (1)
 #endif
 

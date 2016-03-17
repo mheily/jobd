@@ -24,14 +24,22 @@ check_header 'sys/limits.h'
 check_header 'ucl.h'
 if [ $check_header_ucl_h -eq 0 ] ; then
 	echo "building a local copy of libucl.. "
+
+	# KLUDGE: OpenBSD does not support -gstrict-dwarf
+	if [ `uname` = 'OpenBSD' ] ; then
+		dwarf_options="-gdwarf-2"
+	else
+		dwarf_options="-gdwarf-2 -gstrict-dwarf"
+	fi
+
 	make_define 'libucl_dir' "`pwd`/vendor/libucl-0.7.3"
 	make_define 'libucl_CFLAGS' "-I$libucl_dir/include"
 	make_define 'libucl_LDFLAGS' ""
 	make_define 'libucl_LDADD' "$libucl_dir/src/.libs/libucl.a"
     make_define 'libucl_DEPENDS' "$libucl_dir/src/.libs/libucl.a"
-	tar -C vendor -xf ./vendor/libucl-0.7.3.tar.gz
+	tar -C vendor -zxf ./vendor/libucl-0.7.3.tar.gz
 	make_depend "$libucl_dir/src/.libs/libucl.a" \
-        "cd $libucl_dir && ./autogen.sh && CFLAGS=\"-gdwarf-2 -gstrict-dwarf -g -O0\" ./configure && make"
+        "cd $libucl_dir && ./autogen.sh && CFLAGS=\"$dwarf_options -g -O0\" ./configure && make"
 else
 	# KLUDGE: assumes libucl is installed in /usr/local, like on FreeBSD
 	make_define 'libucl_CFLAGS' '-I /usr/local/include'
@@ -43,7 +51,7 @@ fi
 check_header 'sys/event.h'
 if [ $check_header_sys_event_h -eq 0 ] ; then
 	echo "building a local copy of libkqueue.. "
-	tar -C vendor -xf ./vendor/libkqueue-2.0.3.tar.gz
+	tar -C vendor -zxf ./vendor/libkqueue-2.0.3.tar.gz
 	make_define 'kqueue_dir' "`pwd`/vendor/libkqueue-2.0.3"
 	make_define 'kqueue_CFLAGS' "-I$kqueue_dir/include"
 	make_define 'kqueue_LDADD' '$kqueue_dir/.libs/libkqueue.a -lpthread -lrt'

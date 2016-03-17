@@ -14,7 +14,12 @@ software.
 
 ## Status
 
-relaunchd is primarily developed for FreeBSD and Linux.
+relaunchd is known to work on the following platforms:
+	* FreeBSD 9
+	* FreeBSD 10
+	* FreeBSD 11
+	* OpenBSD 5.8
+	* Linux (various flavors)
 
 The core functionality is working:
 * loading and unloading jobs with launchctl
@@ -71,6 +76,24 @@ There are a few extra steps when building on Linux:
    available at:
 
 	https://github.com/mheily/libkqueue/
+
+## Building under OpenBSD
+
+You will need to build libucl, which means installing GNU Autotools:
+```
+# pkg_add autoconf-2.69p1 automake-1.15 libtool
+```
+
+Run the configure script:
+```
+./configure
+```
+
+Since libucl will try to run autoconf/automake, you will need to provide
+the environment variables to make(1):
+```
+AUTOCONF_VERSION=2.69 AUTOMAKE_VERSION=1.15 make
+```
 
 ## Socket activation
 

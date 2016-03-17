@@ -74,7 +74,7 @@ static void update_min_interval()
 static inline void update_job_interval(job_t job)
 {
 	job->next_scheduled_start = current_time() + job->jm->start_interval;
-	log_debug("job %s will start after T=%lu", job->jm->label, job->next_scheduled_start);
+	log_debug("job %s will start after T=%lu", job->jm->label, (unsigned long)job->next_scheduled_start);
 }
 
 int setup_timers(int kqfd)
