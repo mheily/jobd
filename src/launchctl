@@ -35,14 +35,19 @@ watchdir="$pkgdatadir/new"
 command=$1
 shift
 
+for path in $*
+do
+	if [ ! -e "$path" ] ; then
+		echo "ERROR: $path does not exist" > /dev/stderr
+		exit 1
+	fi
+done
+
 case $command in
 load)
-	for path in $* ; do
-		if [ -d $path ] ; then
-			cp -R $path/*.json $watchdir
-		else
-			cp $path $watchdir
-		fi
+	filespec=`find $* -name '*.json'`
+	for path in $filespec ; do
+		cp $path $watchdir
 	done
 	kill -HUP `cat $pidfile`
 	;;
@@ -56,26 +61,19 @@ unload)
 	kill -HUP `cat $pidfile`
 	;;
 
-
-install)
-	filespec=`find $* -name '*.json'`
-	for path in $filespec ; do
-		label=`basename "$path" | sed 's/\.json$//'`
-		cp $path $watchdir/$label.install
-	done
-	kill -HUP `cat $pidfile`
-	;;
-
-uninstall)
-	echo "XXX - STUB"
-	exit 1
-	;;
-
 list)
 	listfile="$pkgdatadir/launchctl.list"
 	rm -f $listfile
 	kill -USR1 `cat $pidfile`
-	while [ ! -f $listfile ] ; do sleep 0.2 ; done
+	count=0
+	while [ ! -f $listfile ] ; do
+		sleep 0.2
+		count=$((count + 1))
+		if [ $count -eq 50 ] ; then
+			echo "ERROR: no response from launchd" > /dev/stderr
+			exit 1
+		fi
+	done
 	cat $listfile
 	;;
 

@@ -28,8 +28,6 @@
 #include "socket.h"
 #include "options.h"
 
-static void manager_install_job(const char *filename);
-
 extern struct launchd_options options;
 
 static LIST_HEAD(,job_manifest) pending; /* Jobs that have been submitted but not loaded */
@@ -101,8 +99,6 @@ static ssize_t poll_watchdir()
 			} else {
 				// note the failure?
 			}
-		} else if (strcmp(ext, ".install") == 0) {
-			manager_install_job(entry.d_name);
 		} else if (strcmp(ext, ".unload") == 0) {
 			char *path;
 			if (asprintf(&path, "%s/%s", options.watchdir, entry.d_name) < 0) {
@@ -306,68 +302,4 @@ void manager_update_jobs()
 	if (poll_watchdir() > 0) {
 		update_jobs();
 	}
-}
-
-/* Copy the job to the appropriate directory to cause it to start at the next
- * system boot. Also, install any prerequisites such as packages. Create jails
- * as needed.
- */
-static void manager_install_job(const char *filename)
-{
-	job_manifest_t jm = NULL;
-	char *buf = NULL;
-	char *destdir = NULL;
-
-	jm = read_job(filename);
-	if (!jm) {
-		log_error("unable to read job");
-		goto out;
-	}
-
-	if (jm->job_is_agent) {
-		if (getuid() == 0) {
-			destdir = strdup("/usr/local/etc/launchd/agents");
-		} else {
-			asprintf(&destdir, "%s/.launchd/agents", getenv("HOME"));
-		}
-	} else {
-		if (getuid() == 0) {
-			destdir = strdup("/usr/local/etc/launchd/daemons");
-		} else {
-			log_error("tried to install a daemon as a non-root user");
-			goto out;
-		}
-	}
-	if (!destdir) {
-		log_error("unable to set destdir");
-		goto out;
-	}
-
-	if (asprintf(&buf, "/bin/mv %s/%s %s/%s.json", options.activedir, filename, destdir, jm->label) < 0) {
-		log_errno("asprintf");
-		goto out;
-	}
-	log_debug("installing manifest: %s", buf);
-	if (system(buf) < 0) {
-		log_errno("command failed: %s", buf);
-		goto out;
-	}
-
-	/* TODO: install packages, create jails */
-
-	free(buf); buf = NULL;
-	if (asprintf(&buf, "/usr/local/bin/launchctl load %s/%s.json", destdir, jm->label) < 0) {
-		log_errno("asprintf");
-		goto out;
-	}
-	log_debug("loading manifest: %s", buf);
-	if (system(buf) < 0) {
-		log_errno("command failed: %s", buf);
-		goto out;
-	}
-
-out:
-	job_manifest_free(jm);
-	free(buf);
-	free(destdir);
 }
