@@ -14,8 +14,7 @@ software.
 
 ## Status
 
-relaunchd is primarily developed on FreeBSD, but it compiles under Linux and
-should work there as well.
+relaunchd is primarily developed for FreeBSD and Linux.
 
 The core functionality is working:
 * loading and unloading jobs with launchctl
@@ -82,7 +81,7 @@ TODO -- document this
 
 ## Installation 
 
-Currently, relaunchd has only been tested on FreeBSD 10, but should be portable
+Currently, relaunchd has only been tested on FreeBSD, but should be portable
 to other BSD operating systems. 
 
 To install relaunchd, run the following commands:
@@ -102,18 +101,14 @@ It will also install the following manpages:
 
 ## Usage
 
-To start launchd, run the following command:
+To start launchd, run the following command as root:
 
-	/usr/local/sbin/launchd
+	service launchd start
 
-If you want to run jobs as your own user account, add the following line to
-your .xinitrc file:
+If you want to run jobs in your graphical user session, add the following lines to
+your session startup file:
 
-	/usr/local/sbin/launchd
-
-If you don't have an .xinitrc file, refer to the documentation for your desktop
-environment to determine the best way to automatically execute a command when
-you login.
+	launchctl load ~/.launchd/agents /usr/local/etc/launchd/agents /usr/local/etc/launchd/agents   
 
 ## Differences with Darwin launchd
 

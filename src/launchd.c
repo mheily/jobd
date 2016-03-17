@@ -154,37 +154,6 @@ static void reap_child() {
 	return;
 }
 
-static void load_jobs(const char *path)
-{
-	char *buf;
-	if (asprintf(&buf, "/usr/bin/find %s -type f -exec cp {} %s \\;", path, options.watchdir) < 0) abort();
-	log_debug("loading: %s", buf);
-	if (system(buf) < 0) {
-		log_errno("system");
-		abort();
-	}
-	free(buf);
-}
-
-static void load_all_jobs()
-{
-	char *buf;
-
-	if (getuid() == 0) {
-		load_jobs("/usr/share/launchd/daemons");
-		load_jobs("/etc/launchd/daemons");
-	} else {
-		load_jobs("/usr/share/launchd/agents");
-		load_jobs("/etc/launchd/agents");
-		/* FIXME: proper error handling needed here */
-		if (!getenv("HOME")) abort();
-		if (asprintf(&buf, "%s/.launchd/agents", getenv("HOME")) < 0) abort();
-		if (access(buf, F_OK) < 0) abort();
-		load_jobs(buf);
-		free(buf);
-	}
-}
-
 static void main_loop()
 {
 	struct kevent kev;
@@ -320,7 +289,6 @@ main(int argc, char *argv[])
 	setup_socket_activation(state.kq);
 	if (setup_timers(state.kq) < 0) abort();
 	if (calendar_init(state.kq) < 0) abort();
-	load_all_jobs();
 	manager_update_jobs();
 	main_loop();
 
