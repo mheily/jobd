@@ -1,7 +1,7 @@
 # $FreeBSD$
 
 PORTNAME=	relaunchd
-PORTVERSION=	0.4.0rc3
+PORTVERSION=	0.4.0rc5
 DISTVERSIONPREFIX=v
 CATEGORIES=	sysutils
 
@@ -12,5 +12,7 @@ LICENSE=	ISCL
 
 USE_GITHUB=	YES
 GH_ACCOUNT=	mheily
+
+LIB_DEPENDS=	libucl.so:${PORTSDIR}/textproc/libucl
 
 .include <bsd.port.mk>
