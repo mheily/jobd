@@ -57,7 +57,7 @@ static inline int cvec_resize(cvec_t cv, const size_t new_size)
 	return (0);
 }
 
-static inline int cvec_push(cvec_t cv, char *item) {
+static inline int cvec_push(cvec_t cv, const char *item) {
 	if (cv->length == SIZE_MAX) return (-1);
 	if (cv->length + 1 >= cv->allocated) {
 		if (cvec_resize(cv, cv->allocated + 50) < 0) return (-1);
