@@ -18,7 +18,9 @@ relaunchd is known to work on the following platforms:
 	* FreeBSD 9
 	* FreeBSD 10
 	* FreeBSD 11
+	* PC-BSD 10
 	* OpenBSD 5.8
+	* NetBSD 7.0
 	* Linux (various flavors)
 
 The core functionality is working:
@@ -93,6 +95,14 @@ Since libucl will try to run autoconf/automake, you will need to provide
 the environment variables to make(1):
 ```
 AUTOCONF_VERSION=2.69 AUTOMAKE_VERSION=1.15 make
+```
+
+
+## Building under NetBSD
+
+You will need to build libucl, which means installing GNU Autotools:
+```
+# pkg_add autoconf automake libtool pkg-config
 ```
 
 ## Socket activation
