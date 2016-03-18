@@ -51,7 +51,7 @@ int test_simple() {
 	if (job_run(job) < 0)
 		return -1;
 
-	result = system("grep 'hello world' /tmp/jobtest.out");
+	result = system("grep -q 'hello world' /tmp/jobtest.out");
 	if (WEXITSTATUS(result) != 0) {
 		printf("job output not correct; exit status %d\n", result);
 		return -1;
