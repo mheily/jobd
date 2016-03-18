@@ -167,7 +167,7 @@ static void main_loop()
 				abort();
 			}
 		}
-		if (kev.udata == &setup_signal_handlers) {
+		if ((void *)kev.udata == &setup_signal_handlers) {
 			switch (kev.ident) {
 			case SIGHUP:
 				manager_update_jobs();
@@ -187,11 +187,11 @@ static void main_loop()
 			default:
 				log_error("caught unexpected signal");
 			}
-		} else if (kev.udata == &setup_socket_activation) {
+		} else if ((void *)kev.udata == &setup_socket_activation) {
 			if (socket_activation_handler() < 0) abort();
-		} else if (kev.udata == &setup_timers) {
+		} else if ((void *)kev.udata == &setup_timers) {
 			if (timer_handler() < 0) abort();
-		} else if (kev.udata == &calendar_init) {
+		} else if ((void *)kev.udata == &calendar_init) {
 			if (calendar_handler() < 0) abort();
 		} else {
 			log_warning("spurious wakeup, no known handlers");
