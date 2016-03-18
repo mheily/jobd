@@ -1,0 +1,7 @@
+{ 
+	"Label": "echo",
+	"ProgramArguments": ["/bin/echo", "hello world"],
+	"StandardInPath": "/dev/null",
+	"StandardOutPath": "/tmp/jobtest.out",
+	"StandardErrorPath": "/dev/null",
+}

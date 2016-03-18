@@ -15,16 +15,19 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-SUBDIRS="jmtest job manifest timer calendar clang-analyzer"
+TESTS="jobtest"
 
-. ../config.sub
+. ../../config.sub
+. ../../vars.sh
 . ../vars.sh
 
-# These are common to all tests
-#
-make_define 'TEST_CFLAGS' "-g -O0 -std=c99 -DUNIT_TEST -DDEBUG -I../../src -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
-make_define 'TEST_LDFLAGS' "$libucl_LDFLAGS $kqueue_LDFLAGS"
-make_define 'TEST_LDADD' "$libucl_LDADD $kqueue_LDADD"
-make_define 'TEST_DEPENDS' "$libucl_DEPENDS $kqueue_DEPENDS"
+srcdir="../../src"
+
+jobtest_CFLAGS="$TEST_CFLAGS"
+jobtest_LDFLAGS="$TEST_LDFLAGS"
+jobtest_SOURCES="jobtest.c $srcdir/job.c $srcdir/manifest.c $srcdir/manager.c $srcdir/socket.c 
+$srcdir/timer.c $srcdir/calendar.c"
+jobtest_LDADD="$TEST_LDADD"
+jobtest_DEPENDS="$TEST_DEPENDS"
 
 write_makefile
