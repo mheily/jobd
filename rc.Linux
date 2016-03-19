@@ -21,7 +21,9 @@ start)
 		echo 'already running'
 		exit 1
 	else
-		/usr/sbin/launchd && /usr/bin/launchctl load /etc/launchd/daemons
+		/usr/sbin/launchd && /usr/bin/launchctl load /etc/launchd/daemons /usr/share/launchd/daemons
+  to be ignored.
+
 	fi
 	;;
 

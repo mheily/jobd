@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file
 using the [Keep A ChangeLog](http://keepachangelog.com/) style.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Fixed
+- Fix a bug in the init scripts that caused /usr/local/share/launchd/daemons
+  to be ignored.
+
 ## [0.4.1] - 2016-03-18
 ### Security
 - This release is the first to be checked by static analysis tools;
