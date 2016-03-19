@@ -408,6 +408,8 @@ static int job_manifest_parse_sock_service_name(struct job_manifest_socket *sock
 	return (socket->sock_service_name = strdup(ucl_object_tostring(object))) ? 0 : -1;
 }
 
+/* TODO: check the return value of strdup() so we don't crash elsewhere in the program 
+  if memory allocation fails */
 static int job_manifest_rectify(job_manifest_t job_manifest)
 {
 	int i, retval = -1;
@@ -467,6 +469,14 @@ static int job_manifest_rectify(job_manifest_t job_manifest)
 		if (!job_manifest->program_arguments) goto out;
 		if (cvec_push(job_manifest->program_arguments, job_manifest->program) < 0) goto out;
 	}
+
+	/* By default, redirect standard I/O to /dev/null */
+	if (!job_manifest->stdin_path)
+		job_manifest->stdin_path = strdup("/dev/null");
+	if (!job_manifest->stdout_path)
+		job_manifest->stdin_path = strdup("/dev/null");
+	if (!job_manifest->stderr_path)
+		job_manifest->stdin_path = strdup("/dev/null");
 
 	job_manifest->init_groups = true;
 

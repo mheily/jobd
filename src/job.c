@@ -265,7 +265,7 @@ exec_job(const job_t job, const struct passwd *pwent)
 
 	rv = execve(path, argv, envp);
 	if (rv < 0) {
-		log_error("failed to call execve(2)");
+		log_errno("execve(2)");
 		goto err_out;
     	}
 	log_notice("executed job");

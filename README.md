@@ -194,6 +194,11 @@ the email discussion list at:
 
 There is also a #relaunchd IRC channel on FreeNode.
 
+## Links
+
+Here are some links to useful information about launchd:
+- http://technologeeks.com/docs/launchd.pdf
+- http://launchd.info/
 ## References
 
 [1] https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man8/launchd.8.html
