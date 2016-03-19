@@ -14,6 +14,9 @@ software.
 
 ## Status
 
+See the [release notes](./CHANGELOG.md) for details about
+the current release.
+
 relaunchd is known to work on the following platforms:
 	* FreeBSD 9
 	* FreeBSD 10
