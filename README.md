@@ -18,13 +18,10 @@ See the [release notes](./CHANGELOG.md) for details about
 the current release.
 
 relaunchd is known to work on the following platforms:
-	* FreeBSD 9
-	* FreeBSD 10
-	* FreeBSD 11
-	* PC-BSD 10
-	* OpenBSD 5.8
-	* NetBSD 7.0
-	* Linux (various flavors)
+* FreeBSD 9, 10, and 11-CURRENT
+* OpenBSD 5.8
+* NetBSD 7.0
+* Linux (various flavors)
 
 The core functionality is working:
 * loading and unloading jobs with launchctl
