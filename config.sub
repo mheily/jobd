@@ -383,7 +383,7 @@ emit_packaging() {
 	get_install_directory 'bindir' 'Executable directory' '\$(PREFIX)/bin' 'noinstall'
 	get_install_directory 'sbindir' 'Executable directory (superuser)' '\$(PREFIX)/sbin' 'noinstall'
 	get_install_directory 'libexecdir' 'Executable directory (private)' '\$(PREFIX)/libexec' 'noinstall'
-	get_install_directory 'mandir' 'Manual pages' '\$(PREFIX)/man' 'noinstall'
+	get_install_directory 'mandir' 'Manual pages' '\$(PREFIX)/share/man' 'noinstall'
 	get_install_directory 'sysconfdir' 'Configuration files' '\$(PREFIX)/etc' 'noinstall'
 	get_install_directory 'datadir' 'Datafiles' '\$(PREFIX)/share' 'noinstall'
 	get_install_directory 'localstatedir' 'Machine-specific data' '/var' 'noinstall'
