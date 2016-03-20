@@ -7,5 +7,5 @@ scan_build=`which scan-build scan-build37 |grep -v 'not found'|head -1`
 if [ -n "$scan_build" ] ; then
     printf "check:\n\tcd ../../src && make clean && $scan_build --status-bugs make\n" >> Makefile
 else
-    echo "check:\n\techo \"SKIPPED: scan-build not found\"\n" >> Makefile
+    printf "check:\n\techo \"SKIPPED: scan-build not found\"\n" >> Makefile
 fi
