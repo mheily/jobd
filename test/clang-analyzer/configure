@@ -2,7 +2,7 @@
 
 echo "all install clean dist:" > Makefile
 
-scan_build=`which scan-build scan-build37 |grep -v 'not found'|head -1`
+scan_build=`which scan-build scan-build37 2>/dev/null|grep -v 'not found'|head -1`
 
 if [ -n "$scan_build" ] ; then
     printf "check:\n\tcd ../../src && make clean && $scan_build --status-bugs make\n" >> Makefile
