@@ -17,11 +17,12 @@
 #ifndef RELAUNCHD_CALENDAR_H_
 #define RELAUNCHD_CALENDAR_H_
 
+#include "event_loop.h"
 #include <time.h>
 
 struct job;
 
-int calendar_init(int kqfd);
+int calendar_init(struct evl_proxy *evp);
 int calendar_handler();
 int calendar_register_job(struct job *);
 int calendar_unregister_job(struct job *);

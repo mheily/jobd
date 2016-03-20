@@ -20,8 +20,8 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/event.h>
 
+#include "event_loop.h"
 #include "log.h"
 #include "job.h"
 #include "manager.h"

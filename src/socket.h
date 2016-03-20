@@ -17,6 +17,8 @@
 #ifndef SOCKET_H_
 #define SOCKET_H_
 
+#include "event_loop.h"
+
 struct job;
 
 
@@ -45,7 +47,7 @@ struct job_manifest_socket {
 	char *	multicast_group;	/* optional */
 };
 
-void setup_socket_activation();
+void setup_socket_activation(struct evl_proxy *evp);
 int socket_activation_handler();
 
 struct job_manifest_socket * job_manifest_socket_new();

@@ -19,18 +19,18 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/event.h>
 
+#include "event_loop.h"
 #include "log.h"
 #include "job.h"
 #include "manager.h"
 #include "socket.h"
 
 /* The main kqueue descriptor used by launchd */
-static int parent_kqfd;
+static struct evl_proxy *parent_kqfd;
 
 /* The kqueue descriptor dedicated to socket activation */
-static int socket_kqfd;
+static struct evl_proxy socket_kqfd;
 
 struct job_manifest_socket *
 job_manifest_socket_new()
@@ -63,7 +63,6 @@ void job_manifest_socket_free(struct job_manifest_socket *jms)
 
 int job_manifest_socket_open(job_t job, struct job_manifest_socket *jms)
 {
-	struct kevent kev;
 	struct sockaddr_in sa;
 	int enable = 1;
 	int sd = -1;
@@ -115,9 +114,8 @@ int job_manifest_socket_open(job_t job, struct job_manifest_socket *jms)
 		goto err_out;
 	}
 
-	EV_SET(&kev, sd, EVFILT_READ, EV_ADD, 0, 0, job);
-	if (kevent(socket_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
-		log_errno("kevent(2)");
+	if (evl_read(&socket_kqfd, sd, job) < 0) {
+		//log_errno("kevent(2)");
 		goto err_out;
 	}
 
@@ -186,37 +184,27 @@ int job_manifest_socket_export(struct job_manifest_socket *jms, cvec_t env, size
 	return 0;
 }
 
-void setup_socket_activation(int kqfd)
+void setup_socket_activation(struct evl_proxy *evp)
 {
-	struct kevent kev;
-
-	parent_kqfd = kqfd;
-	socket_kqfd = kqueue();
-	if (socket_kqfd < 0) abort();
-
-	EV_SET(&kev, socket_kqfd, EVFILT_READ, EV_ADD, 0, 0, &setup_socket_activation);
-	if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) abort();
+	parent_kqfd = evp;
+	if (evl_proxy_init(&socket_kqfd) < 0)
+		abort();
+	if (evl_read(evp, evl_proxy_descriptor(&socket_kqfd), &setup_socket_activation) < 0)
+		abort();
 }
 
 #if !defined(UNIT_TEST)
 int socket_activation_handler()
 {
 	job_t job;
-	struct kevent kev;
+	struct evl_event evt;
 
-	for (;;) {
-		if (kevent(socket_kqfd, NULL, 0, &kev, 1, NULL) < 1) {
-			if (errno == EINTR) {
-				continue;
-			} else {
-				log_errno("kevent");
-				return -1;
-			}
-		}
-		break;
+	if (evl_wait(&evt, &socket_kqfd) < 0) {
+		//log_error
+		return -1;
 	}
 
-	job = (job_t) (kev.udata);
+	job = (job_t) (evt.udata);
 	log_debug("job %s starting due to socket activation", job->jm->label);
 
 	return (manager_wake_job(job));

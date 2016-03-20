@@ -21,18 +21,18 @@
 #include <limits.h>
 #endif
 #include <sys/types.h>
-#include <sys/event.h>
 #include <sys/time.h>
 #include <time.h>
 
 #include "clock.h"
+#include "event_loop.h"
 #include "log.h"
 #include "manager.h"
 #include "calendar.h"
 #include "job.h"
 
 /* The main kqueue descriptor used by launchd */
-static int parent_kqfd;
+static struct evl_proxy *parent_kqfd;
 
 static SLIST_HEAD(, job) calendar_list;
 
@@ -111,9 +111,9 @@ static inline void update_job_interval(job_t job)
 	log_debug("job %s will start after T=%lu", job->jm->label, (unsigned long)job->next_scheduled_start);
 }
 
-int calendar_init(int kqfd)
+int calendar_init(struct evl_proxy *evp)
 {
-	parent_kqfd = kqfd;
+	parent_kqfd = evp;
 	SLIST_INIT(&calendar_list);
 	return 0;
 }

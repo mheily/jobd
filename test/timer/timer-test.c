@@ -26,7 +26,7 @@
 
 #include "../../src/timer.c"
 
-static int test_kqfd;
+static struct evl_proxy test_kqfd;
 
 //FIXME: copypaste from jmtest.c
 #define run(test) do { \
@@ -46,7 +46,7 @@ static int test_kqfd;
 
 static int test_setup_timers()
 {
-	assert(setup_timers(test_kqfd) == 0);
+	assert(setup_timers(&test_kqfd) == 0);
 	return 0;
 }
 
@@ -69,7 +69,8 @@ static int test_constant_interval()
 
 int main()
 {
-	test_kqfd = kqueue();
+	if (evl_proxy_init(&test_kqfd) < 0)
+		abort();
 	run(test_setup_timers);
 	run(test_constant_interval);
 	exit(0);
