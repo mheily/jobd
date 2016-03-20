@@ -1,2 +1,2 @@
 #!/bin/sh
-cd $WRKSRC && ./configure
+cd $WRKSRC && ./configure --prefix=/usr/local --mandir=/usr/local/man
