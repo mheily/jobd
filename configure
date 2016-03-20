@@ -36,10 +36,10 @@ if [ $check_header_ucl_h -eq 0 ] ; then
 	make_define 'libucl_CFLAGS' "-I$libucl_dir/include"
 	make_define 'libucl_LDFLAGS' ""
 	make_define 'libucl_LDADD' "$libucl_dir/src/.libs/libucl.a"
-    make_define 'libucl_DEPENDS' "$libucl_dir/src/.libs/libucl.a"
+	make_define 'libucl_DEPENDS' "$libucl_dir/src/.libs/libucl.a"
 	tar -C vendor -zxf ./vendor/libucl-0.7.3.tar.gz
 	make_depend "$libucl_dir/src/.libs/libucl.a" \
-        "cd $libucl_dir && ./autogen.sh && CFLAGS=\"$dwarf_options -g -O0\" ./configure && make"
+        "cd $libucl_dir && CFLAGS=\"$dwarf_options -g -O0\" ./configure && make"
 else
 	# KLUDGE: assumes libucl is installed in /usr/local, like on FreeBSD
 	make_define 'libucl_CFLAGS' '-I /usr/local/include'
