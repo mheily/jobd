@@ -57,7 +57,7 @@ init_maketool() {
 	rm -f config.log
 	test -n "$CC" || CC="cc"
 	printf "/* Automatically generated -- do not edit */\n\n" > config.h
-	#printf "# Automatically generated -- do not edit\n\n" > config.mk
+	printf "# Automatically generated -- do not edit\n\n" > config.mk
 	printf "# Automatically generated -- do not edit\n\n" > depends.mk
 	printf "# Automatically generated -- do not edit\n\n" > vars.sh
 	
@@ -73,7 +73,12 @@ init_maketool() {
 	get_install_directory "sbindir" "Executable directory (superuser)" "${prefix}/sbin" "noinstall"
 	get_install_directory "libexecdir" "Executable directory (private)" "${prefix}/libexec" "noinstall"
 	get_install_directory "mandir" "Manual pages" "${prefix}/share/man" "noinstall"
-	get_install_directory "sysconfdir" "Configuration files" "${prefix}/etc" "noinstall"
+	if [ "$prefix" = "/usr" ] ; then
+		default_sysconfdir="/etc"
+	else
+		default_sysconfdir="${prefix}/etc"
+	fi
+	get_install_directory "sysconfdir" "Configuration files" "${default_sysconfdir}" "noinstall"
 	get_install_directory "datadir" "Datafiles" "${prefix}/share" "noinstall"
 	get_install_directory "localstatedir" "Machine-specific data" "/var" "noinstall"
 	get_install_directory "runstatedir" "Machine-specific data (transient)" "${localstatedir}/run" "noinstall"
@@ -111,7 +116,7 @@ manpage() {
 	_section=`echo "$_path" | sed 's/.*\.//'`
 
 	_output_file="`basename $_path`.gz"
-	install_DIRS="$install_DIRS ${install_directory__mandir}/man${_section}"
+	install_DIRS="$install_DIRS ${mandir}/man${_section}"
 	_mf_install_rules="$_mf_install_rules
 	cat $_path | gzip > \$\$DESTDIR\$(MANDIR)/man${_section}/${_output_file}"
 }
@@ -192,7 +197,7 @@ make_depend() {
 make_define() {
     _ident=$1
     shift
-	#printf "%s=%s\n" "$_ident" "$*" >> config.mk
+	printf "%s=%s\n" "$_ident" "$*" >> config.mk
 	printf "%s=\"%s\"\n" "$_ident" "$*" >> vars.sh
 	eval "$_ident=\"$*\""
 }
@@ -236,16 +241,17 @@ rc_script() {
 }
 
 emit_scripts() {
+	if [ -n "$bin_SCRIPTS" ] ; then install_DIRS="$install_DIRS ${bindir}" ; fi
+	if [ -n "$sbin_SCRIPTS" ] ; then install_DIRS="$install_DIRS ${sbindir}" ; fi
+
 	for _prog in $bin_SCRIPTS ; do
 		DISTFILES="$DISTFILES $program"
-		install_DIRS="$install_DIRS ${install_directory__bindir}"
 		_mf_install_rules="$_mf_install_rules
 	\$(INSTALL) -m 755 $_prog \$\$DESTDIR\$(BINDIR)"
 	done
 
 	for _prog in $sbin_SCRIPTS ; do
 		DISTFILES="$DISTFILES $program"
-		install_DIRS="$install_DIRS ${install_directory__sbindir}"
 		_mf_install_rules="$_mf_install_rules
 	\$(INSTALL) -m 755 $_prog \$\$DESTDIR\$(SBINDIR)"
 	done
@@ -288,7 +294,7 @@ $_mkdeps
 }
 
 emit_static_library() {
-	install_DIRS="$install_DIRS ${install_directory__libdir}"
+	install_DIRS="$install_DIRS ${libdir}"
 	_mf_install_rules="$_mf_install_rules
 	\$(INSTALL) -m 755 ${_library}.a \$\$DESTDIR\$(LIBDIR)"
 
@@ -307,7 +313,7 @@ ${_library}.a: $_curdir_objs $depends
 emit_shared_library() {
 	_saved_cflags=$cflags
 		
-	install_DIRS="$install_DIRS ${install_directory__libdir}"
+	install_DIRS="$install_DIRS ${libdir}"
 	_mf_install_rules="$_mf_install_rules
 	\$(INSTALL) -s -m 755 $realname \$\$DESTDIR\$(LIBDIR)
 	\$(INSTALL) -ls $realname \$\$DESTDIR\$(LIBDIR)/$soname
@@ -350,6 +356,9 @@ emit_libraries() {
 }
 
 emit_programs() {
+	if [ -n "$bin_PROGRAMS" ] ; then install_DIRS="$install_DIRS ${bindir}" ; fi
+	if [ -n "$sbin_PROGRAMS" ] ; then install_DIRS="$install_DIRS ${sbindir}" ; fi
+
 	for _program in $bin_PROGRAMS $sbin_PROGRAMS $TESTS; do
 
 		# KLUDGE: only needed because this function does too much
@@ -359,7 +368,7 @@ emit_programs() {
 		done
 
 		if [ "$_should_install" = "yes" ] ; then
-		install_DIRS="$install_DIRS ${install_directory__sbindir}"
+		install_DIRS="$install_DIRS ${sbindir}"
 		_mf_install_rules="$_mf_install_rules
 	\$(INSTALL) -s -m 755 $_program \$\$DESTDIR\$(SBINDIR)"
 		fi
@@ -422,16 +431,16 @@ MAJOR_VERSION=$MAJOR_VERSION
 MINOR_VERSION=$MINOR_VERSION
 PATCH_VERSION=$PATCH_VERSION
 
-PREFIX ?= ${install_directory__prefix}
-LIBDIR = ${install_directory__libdir}
-BINDIR = ${install_directory__bindir}
-SBINDIR = ${install_directory__sbindir}
-LIBEXECDIR = ${install_directory__libexecdir}
-MANDIR = ${install_directory__mandir}
-SYSCONFDIR = ${install_directory__sysconfdir}
-DATADIR = ${install_directory__datadir}
-LOCALSTATEDIR = ${install_directory__localstatedir}
-RUNSTATEDIR = ${install_directory__runstatedir}
+PREFIX = ${prefix}
+LIBDIR = ${libdir}
+BINDIR = ${bindir}
+SBINDIR = ${sbindir}
+LIBEXECDIR = ${libexecdir}
+MANDIR = ${mandir}
+SYSCONFDIR = ${sysconfdir}
+DATADIR = ${datadir}
+LOCALSTATEDIR = ${localstatedir}
+RUNSTATEDIR = ${runstatedir}
 
 INSTALL ?= /usr/bin/install
 "
@@ -482,7 +491,6 @@ CFLAGS+=-D_GNU_SOURCE"
 
 write_makefile() {
 	emit_packaging
-	emit_directories
 	emit_programs
 	emit_libraries
 	emit_scripts
@@ -492,6 +500,7 @@ write_makefile() {
 	emit_subdir_rules
 	emit_vendored_items
 	emit_platform_tweaks
+	emit_directories
 	
 	_outfile="Makefile"
 
@@ -503,6 +512,9 @@ write_makefile() {
 
 	cat <<__EOF__ >$_outfile
 # Automatically generated -- do not edit
+
+include ${TOPDIR}/config.mk
+
 $_mf_packaging
 $_mf_vars
 
@@ -531,7 +543,7 @@ __EOF__
 		for x in $SUBDIRS ; do
 			cd $x
 			if [ -n "$SUBDIR" ] ; then
-				SUBDIR="$SUBDIR/$x" ./configure
+				SUBDIR="$SUBDIR/$x" ./configure $configure_ARGS
 			else
 				SUBDIR="$x" ./configure
 			fi
@@ -546,4 +558,5 @@ __EOF__
 # MAIN()
 #
 
+configure_ARGS="$*"
 init_maketool
