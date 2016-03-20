@@ -57,7 +57,7 @@ init_maketool() {
 	rm -f config.log
 	test -n "$CC" || CC="cc"
 	printf "/* Automatically generated -- do not edit */\n\n" > config.h
-	printf "# Automatically generated -- do not edit\n\n" > config.mk
+	#printf "# Automatically generated -- do not edit\n\n" > config.mk
 	printf "# Automatically generated -- do not edit\n\n" > depends.mk
 	printf "# Automatically generated -- do not edit\n\n" > vars.sh
 	
@@ -192,7 +192,7 @@ make_depend() {
 make_define() {
     _ident=$1
     shift
-	printf "%s=%s\n" "$_ident" "$*" >> config.mk
+	#printf "%s=%s\n" "$_ident" "$*" >> config.mk
 	printf "%s=\"%s\"\n" "$_ident" "$*" >> vars.sh
 	eval "$_ident=\"$*\""
 }
