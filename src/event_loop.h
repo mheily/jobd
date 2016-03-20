@@ -19,6 +19,8 @@
 
 #include <errno.h>
 #include <signal.h>
+#include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "../config.h" //WORKAROUND
@@ -28,6 +30,9 @@
 #endif
 #if HAVE_SYS_EPOLL_H
 #include <sys/epoll.h> 
+#include <sys/signalfd.h>
+/* Maximum signal number */
+#define EVL_SIGNAL_MAX 32
 #endif
 
 typedef enum {
@@ -37,10 +42,11 @@ typedef enum {
 	EVL_FILT_SIGNAL = EVFILT_SIGNAL,
 	EVL_FILT_TIMER = EVFILT_TIMER,
 #else
-	EVL_FILT_READ,
-	EVL_FILT_WRITE,
-	EVL_FILT_SIGNAL,
-	EVL_FILT_TIMER,
+	EVL_FILT_READ = 0,
+	EVL_FILT_WRITE = 1,
+	EVL_FILT_SIGNAL = 2,
+	EVL_FILT_TIMER = 3,
+	EVL_FILT_MAX = 10,	/* Unused, and padded for future growth */
 #endif
 } evl_filter_t;
 
@@ -49,8 +55,9 @@ struct evl_proxy {
         int kqfd;
 #elif HAVE_SYS_EPOLL_H
         int epfd;
-        int signal_map[32]; /* Map between signal and signalfd */
-        void *signal_udata[32]; /* Map between signal and udata */
+	int filters[EVL_FILT_MAX];
+ 	sigset_t sig_mask; /* The current mask of sig_fd */
+        void *sig_udata[EVL_SIGNAL_MAX]; /* Map between signal and udata */
 #else
 #error Unimplemented
 #endif
@@ -73,6 +80,17 @@ evl_proxy_init(struct evl_proxy *evp)
         evp->epfd = epoll_create(10);
         if (evp->epfd < 0)
                 return -1;
+	
+	memset(&evp->filters, -1, sizeof(evp->filters));
+
+	/* Setup signal handling */
+	sigemptyset(&evp->sig_mask);
+	evp->filters[EVL_FILT_SIGNAL] = signalfd(-1, &evp->sig_mask, 0);
+	if (evp->filters[EVL_FILT_SIGNAL] < 0) {
+		(void)close(evp->epfd);
+		return -2;
+	}
+	memset(&evp->sig_udata, 0, sizeof(evp->sig_udata));
 #else
 #error Unimplemented
 #endif
@@ -102,6 +120,8 @@ evl_read(struct evl_proxy *evp, int fd, void *udata)
 	if (kevent(evp->kqfd, &kev, 1, NULL, 0, NULL) < 0)
 		return -1;
 #elif HAVE_SYS_EPOLL_H
+	return -2;
+#else
 #error Unimplemented
 #endif
 
@@ -120,7 +140,16 @@ evl_signal(struct evl_proxy *evp, int signo, void *udata)
 	if (signal(signo, SIG_IGN) == SIG_ERR)
 		return -1;
 #elif HAVE_SYS_EPOLL_H
+	if (signo <= 0 || signo >= EVL_SIGNAL_MAX)
+		return -1;
+	sigaddset(&evp->sig_mask, signo);
+	if (signalfd(evp->filters[EVL_FILT_SIGNAL], &evp->sig_mask, 0) < 0) {
+		return -2;
+	}
+	evp->sig_udata[signo] = udata;
+#else
 #error Unimplemented
+	return -1;
 #endif
 
         return 0;
@@ -138,6 +167,8 @@ evl_timer_stop(struct evl_proxy *evp, int ident, void *udata)
 		return -1;
 	}
 #elif HAVE_SYS_EPOLL_H
+	return -2;
+#else
 #error Unimplemented
 #endif
 
@@ -157,6 +188,8 @@ evl_timer_start(struct evl_proxy *evp, int period, int ident, void *udata)
 		return -1;
 	}
 #elif HAVE_SYS_EPOLL_H
+	return -2;
+#else
 #error Unimplemented
 #endif
 
@@ -185,7 +218,40 @@ evl_wait(struct evl_event *result, const struct evl_proxy *evp)
 	result->filter = kev.filter;
 
 #elif HAVE_SYS_EPOLL_H
+	struct epoll_event ev;
+
+	for (;;) {
+		if (epoll_wait(evp->epfd, &ev, 1, -1) < 1) {
+			if (errno == EINTR) {
+				continue;
+			} else {
+				//log_errno("epoll_wait");
+				return -1;
+			}
+		}
+	}
+
+	result->filter = ev.data.fd;
+
+	switch (result->filter) {
+		case EVL_FILT_SIGNAL:
+			{
+			struct signalfd_siginfo fdsi;
+			ssize_t sz;
+
+			sz = read(evp->filters[EVL_FILT_SIGNAL], &fdsi, sizeof(fdsi));
+			if (sz != sizeof(fdsi))
+				return -3;
+			result->ident = fdsi.ssi_signo;
+			result->udata = evp->sig_udata[result->ident];
+			}
+			break;
+		default:
+			return -2;
+	}
+#else
 #error Unimplemented
+	return -1;
 #endif
 
         return 0;

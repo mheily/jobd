@@ -95,7 +95,7 @@ static void setup_signal_handlers()
 	int i;
 
 	for (i = 0; signals[i] != 0; i++) {
-		if (evl_signal(&state.event_proxy, i, &setup_signal_handlers) < 0)
+		if (evl_signal(&state.event_proxy, signals[i], &setup_signal_handlers) < 0)
 			abort();
 	}
 }

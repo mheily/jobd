@@ -18,11 +18,15 @@
 . ../config.sub
 . ../vars.sh
 
+if [ `uname` = 'Linux' ] ; then 
+	librt_LDADD="-lrt" ; 
+fi
+
 sbin_PROGRAMS=launchd
 bin_SCRIPTS=launchctl
 launchd_CFLAGS="-g -O0 -include ../config.h -std=c99 -Wall -Werror -I/usr/local/include $libucl_CFLAGS"
 launchd_LDFLAGS="$libucl_LDFLAGS"
-launchd_LDADD="$libucl_LDADD"
+launchd_LDADD="$libucl_LDADD $librt_LDADD"
 launchd_SOURCES="job.c launchd.c manager.c manifest.c socket.c 
                  calendar.c timer.c pidfile.c flopen.c"
 launchd_DEPENDS="$libucl_DEPENDS"
