@@ -150,7 +150,7 @@ get_install_directory() {
 
 	make_define $_option $_final_val
 	if [ -n "`echo $_options | grep config_h`" ] ; then
-		echo "#define `echo $_option | tr '[a-z]' '[A-Z]'` '$_final_val'" >> config.h
+		echo "#define `echo $_option | tr '[a-z]' '[A-Z]'` \"$_final_val\"" >> config.h
 	fi
 	eval "install_directory__${_option}=\$_final_val"
 	echo "setting \$$_option to $_final_val" >> config.log
