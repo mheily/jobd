@@ -15,15 +15,21 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
+# KLUDGE: hardcoded for Linux. This should be hooked into ./configure output somehow.
+#
+if [ `uname` = 'Linux' ] ; then
+	prefix="/usr"
+	sysconfdir="/etc"
+else
+	prefix="/usr/local"
+	sysconfdir="$prefix/etc"
+fi
+
 if [ `id -u` -eq 0 ] ; then
-	if [ -d /var/db ] ; then
-		pkgdatadir="/var/db/launchd"
-	else
-		pkgdatadir="/var/lib/launchd"
-	fi
+	pkgdatadir="/var/db/launchd"
 	pidfile="/var/run/launchd.pid"
-	agentdir="/usr/local/etc/launchd/agents"
-	daemondir="/usr/local/etc/launchd/daemons"
+	agentdir="${sysconfdir}/launchd/agents"
+	daemondir="${sysconfdir}/launchd/daemons"
 else
 	pkgdatadir="$HOME/.launchd/run"
 	pidfile="$pkgdatadir/launchd.pid"
@@ -37,10 +43,7 @@ shift
 
 # Start launchd if necessary
 if [ ! -f $pidfile ] ; then
-	self=`realpath $0`		# FIXME: not portable
-	bindir=`dirname $self`
-	launchd="$bindir/../sbin/launchd"
-	$launchd
+	$prefix/sbin/launchd
 	if [ $? -ne 0 ] ; then
 		echo "ERROR: $launchd failed to start" > /dev/stderr
 		exit 1
