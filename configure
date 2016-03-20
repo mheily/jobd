@@ -66,7 +66,10 @@ fi
 
 SUBDIRS="src test"
                  
-install_DIRS='$(SYSCONFDIR)/launchd $(SYSCONFDIR)/launchd/agents $(SYSCONFDIR)/launchd/daemons $(DATADIR)/launchd $(DATADIR)/launchd/agents $(DATADIR)/launchd/daemons'
+get_install_directory 'pkgconfdir' 'Package configuration' "${sysconfdir}/launchd"
+create_subdirectory 'pkgconfdir' 'agents' 'daemons'
+get_install_directory 'pkgdatadir' 'Package data' "${datadir}/launchd"
+create_subdirectory 'pkgdatadir' 'agents' 'daemons'
 test -d /var/db && default_statedir=/var/db/launchd || default_statedir=/var/lib/launchd
 get_install_directory 'pkgstatedir' 'Package state directory' $default_statedir
 get_install_directory 'cachedir' 'Cache directory' '/var/cache/launchd'

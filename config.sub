@@ -35,7 +35,7 @@ TOP_LEVEL="yes"
 _mf_vars=""
 _mf_default_target="all: "
 _mf_targets=""
-_mf_install_rules="install:"
+_mf_install_rules="install: install-directories"
 _mf_dependencies=""
 _mf_clean_files=""
 
@@ -65,6 +65,18 @@ init_maketool() {
 	# at the top-level. Use this assumption to detect what level we
 	# are at
 	test -f config.sub || TOP_LEVEL="no"
+
+	# Get standard directories
+	get_install_directory "prefix" "Installation prefix" "/usr/local" "noinstall"
+	get_install_directory "libdir" "Library directory" "${prefix}/lib" "noinstall"
+	get_install_directory "bindir" "Executable directory" "${prefix}/bin" "noinstall"
+	get_install_directory "sbindir" "Executable directory (superuser)" "${prefix}/sbin" "noinstall"
+	get_install_directory "libexecdir" "Executable directory (private)" "${prefix}/libexec" "noinstall"
+	get_install_directory "mandir" "Manual pages" "${prefix}/share/man" "noinstall"
+	get_install_directory "sysconfdir" "Configuration files" "${prefix}/etc" "noinstall"
+	get_install_directory "datadir" "Datafiles" "${prefix}/share" "noinstall"
+	get_install_directory "localstatedir" "Machine-specific data" "/var" "noinstall"
+	get_install_directory "runstatedir" "Machine-specific data (transient)" "${localstatedir}/run" "noinstall"
 }
 
 package_version() {
@@ -99,6 +111,7 @@ manpage() {
 	_section=`echo "$_path" | sed 's/.*\.//'`
 
 	_output_file="`basename $_path`.gz"
+	install_DIRS="$install_DIRS ${install_directory__mandir}/man${_section}"
 	_mf_install_rules="$_mf_install_rules
 	cat $_path | gzip > \$\$DESTDIR\$(MANDIR)/man${_section}/${_output_file}"
 }
@@ -129,7 +142,7 @@ get_install_directory() {
 		_key=`echo $1 | sed 's/=.*//'`
 		_val=`echo $1 | sed 's/.*=//'`
 		if [ "$_key" = "--${_lc_option}" ] ; then
-			eval "_final_val=\"$_val\""
+			eval "_final_val=\$_val"
 			break
 		fi
 		shift 
@@ -137,13 +150,25 @@ get_install_directory() {
 
 	make_define $_option $_final_val
 	if [ -n "`echo $_options | grep config_h`" ] ; then
-		echo "#define `echo $_option | tr '[a-z]' '[A-Z]'` \"$_final_val\"" >> config.h
+		echo "#define `echo $_option | tr '[a-z]' '[A-Z]'` '$_final_val'" >> config.h
 	fi
-	eval "install_directory__${_option}=\"$_final_val\""
+	eval "install_directory__${_option}=\$_final_val"
 	echo "setting \$$_option to $_final_val" >> config.log
 	if [ -z "`echo $_options | grep noinstall`" ] ; then
 		install_DIRS="$install_DIRS $_final_val"
 	fi
+}
+
+# Create one or more subdirectories under a directory that was defined via
+# get_install_directory().
+# Usage:   <install_dir_name> <subdirectory1> ... [subdirectory_N]
+create_subdirectory() {
+	eval "_parent=\"\${install_directory__$1}\""
+	if [ -z "$_parent" ] ; then err "parent directory not defined" ; fi
+	shift
+	for _child in $* ; do
+		install_DIRS="$install_DIRS $_parent/$_child"
+	done
 }
 
 # A custom target supplied by the user
@@ -205,6 +230,7 @@ rc_script() {
 		err 'Unable to determine RC_SCRIPT_DIR'
 	fi
 	DISTFILES="$DISTFILES $_prog"
+	install_DIRS="$install_DIRS ${RC_SCRIPT_DIR}"
 	_mf_install_rules="$_mf_install_rules
 	\$(INSTALL) -m 755 $_prog \$\$DESTDIR${RC_SCRIPT_DIR}/${_name}"
 }
@@ -212,12 +238,14 @@ rc_script() {
 emit_scripts() {
 	for _prog in $bin_SCRIPTS ; do
 		DISTFILES="$DISTFILES $program"
+		install_DIRS="$install_DIRS ${install_directory__bindir}"
 		_mf_install_rules="$_mf_install_rules
 	\$(INSTALL) -m 755 $_prog \$\$DESTDIR\$(BINDIR)"
 	done
 
 	for _prog in $sbin_SCRIPTS ; do
 		DISTFILES="$DISTFILES $program"
+		install_DIRS="$install_DIRS ${install_directory__sbindir}"
 		_mf_install_rules="$_mf_install_rules
 	\$(INSTALL) -m 755 $_prog \$\$DESTDIR\$(SBINDIR)"
 	done
@@ -226,10 +254,16 @@ emit_scripts() {
 
 # Write rules for creating directories during 'make install'
 emit_directories() {
-	for _dir in $install_DIRS ; do
-		_mf_install_rules="$_mf_install_rules
-	\$(INSTALL) -d -m 755 \$\$DESTDIR$_dir"
+	if [ -z "$install_DIRS" ] ; then
+		_mf_install_directory_rules=$(printf "install-directories:\n")
+		return
+	fi
+	_buf=$(printf "install-directories:\n\t\$(INSTALL) -d -m 755 ")
+	for _item in `printf "$install_DIRS\n" | tr ' ' '\n' | sort | uniq` ; do
+		if [ -z "${_item}" ] ; then continue ; fi
+		eval "_buf=\"\$_buf \\\$\\\$DESTDIR${_item}\""
 	done
+	_mf_install_directory_rules=$_buf
 }
 
 emit_compilation_units() {
@@ -254,6 +288,7 @@ $_mkdeps
 }
 
 emit_static_library() {
+	install_DIRS="$install_DIRS ${install_directory__libdir}"
 	_mf_install_rules="$_mf_install_rules
 	\$(INSTALL) -m 755 ${_library}.a \$\$DESTDIR\$(LIBDIR)"
 
@@ -272,6 +307,7 @@ ${_library}.a: $_curdir_objs $depends
 emit_shared_library() {
 	_saved_cflags=$cflags
 		
+	install_DIRS="$install_DIRS ${install_directory__libdir}"
 	_mf_install_rules="$_mf_install_rules
 	\$(INSTALL) -s -m 755 $realname \$\$DESTDIR\$(LIBDIR)
 	\$(INSTALL) -ls $realname \$\$DESTDIR\$(LIBDIR)/$soname
@@ -323,6 +359,7 @@ emit_programs() {
 		done
 
 		if [ "$_should_install" = "yes" ] ; then
+		install_DIRS="$install_DIRS ${install_directory__sbindir}"
 		_mf_install_rules="$_mf_install_rules
 	\$(INSTALL) -s -m 755 $_program \$\$DESTDIR\$(SBINDIR)"
 		fi
@@ -378,16 +415,6 @@ check:
 }
 
 emit_packaging() {
-	get_install_directory 'prefix' 'Installation prefix' '/usr/local' 'noinstall'
-	get_install_directory 'libdir' 'Library directory' '\$(PREFIX)/lib' 'noinstall'
-	get_install_directory 'bindir' 'Executable directory' '\$(PREFIX)/bin' 'noinstall'
-	get_install_directory 'sbindir' 'Executable directory (superuser)' '\$(PREFIX)/sbin' 'noinstall'
-	get_install_directory 'libexecdir' 'Executable directory (private)' '\$(PREFIX)/libexec' 'noinstall'
-	get_install_directory 'mandir' 'Manual pages' '\$(PREFIX)/share/man' 'noinstall'
-	get_install_directory 'sysconfdir' 'Configuration files' '\$(PREFIX)/etc' 'noinstall'
-	get_install_directory 'datadir' 'Datafiles' '\$(PREFIX)/share' 'noinstall'
-	get_install_directory 'localstatedir' 'Machine-specific data' '/var' 'noinstall'
-	get_install_directory 'runstatedir' 'Machine-specific data (transient)' '\$(LOCALSTATEDIR)/run' 'noinstall'
 	
 	_mf_packaging="PACKAGE_NAME=$PACKAGE_NAME
 PACKAGE_VERSION=$PACKAGE_VERSION
@@ -455,10 +482,10 @@ CFLAGS+=-D_GNU_SOURCE"
 
 write_makefile() {
 	emit_packaging
+	emit_directories
 	emit_programs
 	emit_libraries
 	emit_scripts
-	emit_directories
 	emit_tests
 	emit_distribution
 	emit_cleanup
@@ -485,6 +512,7 @@ DISTFILES = configure config.sub $DISTFILES
 $_mf_default_target
 $_mf_targets
 $_mf_distribution
+$_mf_install_directory_rules
 $_mf_install_rules
 $_mf_clean_rules
 $_mf_dependencies
@@ -492,7 +520,7 @@ $EXTRA_TARGETS
 
 include ${TOPDIR}/depends.mk
 
-.PHONY: clean check
+.PHONY: clean check install install-directories
 __EOF__
 
 	# Convert C preprocessor definitions into shell variables
