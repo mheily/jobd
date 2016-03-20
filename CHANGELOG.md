@@ -3,10 +3,14 @@ All notable changes to this project will be documented in this file
 using the [Keep A ChangeLog](http://keepachangelog.com/) style.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [0.4.2] - 2016-03-20
 ### Fixed
 - Fix a bug in the init scripts that caused /usr/local/share/launchd/daemons
   to be ignored.
+- Fix a bug in the 'make install' target that caused manpages to be installed
+  in the wrong place.
+- Create directories automatically during 'make install'.
+- Stop requiring autoconf/automake to build libucl.
 
 ## [0.4.1] - 2016-03-18
 ### Security
