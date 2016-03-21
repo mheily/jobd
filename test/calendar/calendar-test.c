@@ -26,7 +26,7 @@
 
 #include "../../src/calendar.c"
 
-static struct evl_proxy test_kqfd;
+static int test_kqfd;
 
 //FIXME: copypaste from jmtest.c
 #define run(test) do { \
@@ -46,7 +46,7 @@ static struct evl_proxy test_kqfd;
 
 static int test_calendar_init()
 {
-	assert(calendar_init(&test_kqfd) == 0);
+	assert(calendar_init(test_kqfd) == 0);
 	return 0;
 }
 
@@ -87,8 +87,7 @@ static int test_calendar_interval_1()
 
 int main()
 {
-	if (evl_proxy_init(&test_kqfd) < 0)
-		abort();
+	test_kqfd = kqueue();
 	run(test_calendar_init);
 	//FIXME: run(test_calendar_interval_1);
 	exit(0);

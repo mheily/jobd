@@ -28,12 +28,12 @@
 #include <syslog.h>
 #include "../vendor/FreeBSD/sys/queue.h"
 #include <sys/types.h>
+#include <sys/event.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include "config.h"
 #include "calendar.h"
-#include "event_loop.h"
 #include "log.h"
 #include "manager.h"
 #include "manifest.h"
@@ -49,7 +49,7 @@ FILE *logfile;
 struct launchd_options options;
 
 static struct {
-	struct evl_proxy event_proxy; 	/* kqueue(2) or epoll(2) proxy */
+	int 	kq;				/* kqueue(2) descriptor */
 	struct pidfh *pfh;
 } state;
 
@@ -89,13 +89,22 @@ static void do_shutdown()
 	free(options.pidfile);
 }
 
+static void signal_handler(int signum) {
+	(void) signum;
+}
+
 static void setup_signal_handlers()
 {
 	const int signals[] = {SIGHUP, SIGUSR1, SIGCHLD, SIGINT, SIGTERM, 0};
 	int i;
+	struct kevent kev;
 
 	for (i = 0; signals[i] != 0; i++) {
-		if (evl_signal(&state.event_proxy, signals[i], &setup_signal_handlers) < 0)
+		EV_SET(&kev, signals[i], EVFILT_SIGNAL, EV_ADD, 0, 0,
+				&setup_signal_handlers);
+		if (kevent(state.kq, &kev, 1, NULL, 0, NULL) < 0)
+			abort();
+		if (signal(signals[i], signal_handler) == SIG_ERR)
 			abort();
 	}
 }
@@ -147,14 +156,19 @@ static void reap_child() {
 
 static void main_loop()
 {
-	struct evl_event evt;
+	struct kevent kev;
 
 	for (;;) {
-		if (evl_wait(&evt, &state.event_proxy) < 0)
-			abort();
-
-		if (evt.udata == &setup_signal_handlers) {
-			switch (evt.ident) {
+		if (kevent(state.kq, NULL, 0, &kev, 1, NULL) < 1) {
+			if (errno == EINTR) {
+				continue;
+			} else {
+				log_errno("kevent");
+				abort();
+			}
+		}
+		if ((void *)kev.udata == &setup_signal_handlers) {
+			switch (kev.ident) {
 			case SIGHUP:
 				manager_update_jobs();
 				break;
@@ -166,18 +180,18 @@ static void main_loop()
 				break;
 			case SIGINT:
 			case SIGTERM:
-				log_notice("caught signal %d, exiting", evt.ident);
+				log_notice("caught signal %lu, exiting", kev.ident);
 				do_shutdown();
 				exit(0);
 				break;
 			default:
 				log_error("caught unexpected signal");
 			}
-		} else if (evt.udata == &setup_socket_activation) {
+		} else if ((void *)kev.udata == &setup_socket_activation) {
 			if (socket_activation_handler() < 0) abort();
-		} else if (evt.udata == &setup_timers) {
+		} else if ((void *)kev.udata == &setup_timers) {
 			if (timer_handler() < 0) abort();
-		} else if (evt.udata == &calendar_init) {
+		} else if ((void *)kev.udata == &calendar_init) {
 			if (calendar_handler() < 0) abort();
 		} else {
 			log_warning("spurious wakeup, no known handlers");
@@ -268,13 +282,13 @@ main(int argc, char *argv[])
 
 	pidfile_write(state.pfh);
 
-	if (evl_proxy_init(&state.event_proxy) < 0) abort();
+	if ((state.kq = kqueue()) < 0) abort();
 	manager_init();
 	setup_logging();
 	setup_signal_handlers();
-	setup_socket_activation(&state.event_proxy);
-	if (setup_timers(&state.event_proxy) < 0) abort();
-	if (calendar_init(&state.event_proxy) < 0) abort();
+	setup_socket_activation(state.kq);
+	if (setup_timers(state.kq) < 0) abort();
+	if (calendar_init(state.kq) < 0) abort();
 	manager_update_jobs();
 	main_loop();
 

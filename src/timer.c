@@ -21,18 +21,18 @@
 #include <limits.h>
 #endif
 #include <sys/types.h>
+#include <sys/event.h>
 #include <sys/time.h>
 #include <time.h>
 
 #include "clock.h"
-#include "event_loop.h"
 #include "log.h"
 #include "manager.h"
 #include "timer.h"
 #include "job.h"
 
 /* The main kqueue descriptor used by launchd */
-static struct evl_proxy *parent_kqfd;
+static int parent_kqfd;
 
 static SLIST_HEAD(, job) start_interval_list;
 
@@ -41,6 +41,7 @@ static uint32_t min_interval = UINT_MAX;
 /* Find the smallest interval that we can wait before waking up at least one job */
 static void update_min_interval()
 {
+	struct kevent kev;
 	job_t job;
 	int saved_interval = min_interval;
 
@@ -48,8 +49,11 @@ static void update_min_interval()
 		if (min_interval == 0) {
 			return;
 		}
-		if (evl_timer_stop(parent_kqfd, JOB_SCHEDULE_PERIODIC, setup_timers) < 0)
+		EV_SET(&kev, JOB_SCHEDULE_PERIODIC, EVFILT_TIMER, EV_ADD | EV_DISABLE, 0, 0, &setup_timers);
+		if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
+			log_errno("kevent(2)");
 			abort();
+		}
 		min_interval = 0;
 	} else {
 		SLIST_FOREACH(job, &start_interval_list, start_interval_sle) {
@@ -57,8 +61,12 @@ static void update_min_interval()
 				min_interval = job->jm->start_interval;
 		}
 		if (min_interval > 0 && saved_interval == 0) {
-			if (evl_timer_start(parent_kqfd, (1000 * min_interval), JOB_SCHEDULE_PERIODIC, setup_timers) < 0)
+			EV_SET(&kev, JOB_SCHEDULE_PERIODIC, EVFILT_TIMER,
+					EV_ADD | EV_ENABLE, 0, (1000 * min_interval), &setup_timers);
+			if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
+				log_errno("kevent(2)");
 				abort();
+			}
 		}
 	}
 }
@@ -69,9 +77,9 @@ static inline void update_job_interval(job_t job)
 	log_debug("job %s will start after T=%lu", job->jm->label, (unsigned long)job->next_scheduled_start);
 }
 
-int setup_timers(struct evl_proxy *evp)
+int setup_timers(int kqfd)
 {
-	parent_kqfd = evp;
+	parent_kqfd = kqfd;
 	SLIST_INIT(&start_interval_list);
 	return 0;
 }
