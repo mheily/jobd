@@ -114,7 +114,7 @@ int job_manifest_socket_open(job_t job, struct job_manifest_socket *jms)
 		goto err_out;
 	}
 
-	if (evl_read(&socket_kqfd, sd, job) < 0) {
+	if (evl_watch_fd(&socket_kqfd, EVL_FILT_READ, sd, job) < 0) {
 		//log_errno("kevent(2)");
 		goto err_out;
 	}
@@ -189,7 +189,7 @@ void setup_socket_activation(struct evl_proxy *evp)
 	parent_kqfd = evp;
 	if (evl_proxy_init(&socket_kqfd) < 0)
 		abort();
-	if (evl_read(evp, evl_proxy_descriptor(&socket_kqfd), &setup_socket_activation) < 0)
+	if (evl_watch_fd(evp, EVL_FILT_READ, evl_proxy_descriptor(&socket_kqfd), &setup_socket_activation) < 0)
 		abort();
 }
 

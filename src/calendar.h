@@ -22,7 +22,7 @@
 
 struct job;
 
-int calendar_init(struct evl_proxy *evp);
+int calendar_init(struct evl_proxy *);
 int calendar_handler();
 int calendar_register_job(struct job *);
 int calendar_unregister_job(struct job *);
