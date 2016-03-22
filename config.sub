@@ -164,6 +164,15 @@ get_install_directory() {
 	fi
 }
 
+# Recursively a directory into a directory at 'make install' time
+copy_directory() {
+	_src=$1
+	_dst=$2
+
+	_mf_install_rules="$_mf_install_rules
+	test -d $_src && cp -R $_src/* \$\$DESTDIR${_dst}"
+}
+
 # Create one or more subdirectories under a directory that was defined via
 # get_install_directory().
 # Usage:   <install_dir_name> <subdirectory1> ... [subdirectory_N]

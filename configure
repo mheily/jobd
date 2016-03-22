@@ -85,4 +85,10 @@ elif [ `uname` = 'Linux' ] ; then
 	rc_script 'launchd' 'rc.Linux'
 fi
 
+# Copy manifests for supported operating systems
+if [ -e /usr/local/etc/pcbsd.conf ] ; then
+	copy_directory 'manifests/pcbsd/agents' "${install_directory__pkgdatadir}/agents"
+	copy_directory 'manifests/pcbsd/daemons' "${install_directory__pkgdatadir}/daemons"
+fi
+
 write_makefile
