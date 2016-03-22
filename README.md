@@ -141,7 +141,7 @@ To start launchd, run the following command as root:
 If you want to run jobs in your graphical user session, add the following lines to
 your session startup file:
 
-	launchctl load ~/.launchd/agents /usr/local/etc/launchd/agents /usr/local/etc/launchd/agents   
+	launchctl load ~/.launchd/agents /usr/local/etc/launchd/agents /usr/local/share/launchd/agents   
 
 ## Differences with Darwin launchd
 
@@ -198,7 +198,10 @@ There is also a #relaunchd IRC channel on FreeNode.
 
 Here are some links to useful information about launchd:
 - http://technologeeks.com/docs/launchd.pdf
+- http://www.real-world-systems.com/docs/launchctl.1.html
 - http://launchd.info/
+- https://developer.apple.com/library/mac/technotes/tn2083/_index.html
+
 ## References
 
 [1] https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man8/launchd.8.html
