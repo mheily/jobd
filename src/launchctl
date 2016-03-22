@@ -41,7 +41,12 @@ watchdir="$pkgdatadir/new"
 command=$1
 shift
 
-# Start launchd if necessary
+#
+# Start launchd if it is not already running
+#
+if [ -f $pidfile ] ; then
+	kill -0 `cat $pidfile` >/dev/null 2>&1 || rm -f $pidfile
+fi
 if [ ! -f $pidfile ] ; then
 	$prefix/sbin/launchd
 	if [ $? -ne 0 ] ; then
