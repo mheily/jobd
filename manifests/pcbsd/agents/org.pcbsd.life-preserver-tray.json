@@ -1,0 +1,10 @@
+{
+	"Label": "org.pcbsd.life-preserver-tray",
+	"Program": "/usr/local/bin/life-preserver-tray",
+	"RunAtLoad": true,
+	"EnvironmentVariables": { 
+		"PATH": "/usr/local/share/pcbsd/bin:/sbin:/bin:/usr/sbin:/usr/bin:/usr/games:/usr/local/sbin:/usr/local/bin",
+		"XDG_DATA_DIRS": "/share:/usr/share:/usr/local/share",
+		"XDG_CONFIG_DIRS": "/usr/local/etc/xdg",
+	},
+}
