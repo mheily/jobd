@@ -128,14 +128,14 @@ static ssize_t poll_watchdir()
 
 void update_jobs(void)
 {
-	job_manifest_t jm;
+	job_manifest_t jm, jm_tmp;
 	job_t job, job_tmp;
 	LIST_HEAD(,job) joblist;
 
 	LIST_INIT(&joblist);
 
 	/* Pass #1: load all jobs */
-	LIST_FOREACH(jm, &pending, jm_le) {
+	LIST_FOREACH_SAFE(jm, &pending, jm_le, jm_tmp) {
 		job = job_new(jm);
 		if (!job) abort();
 
