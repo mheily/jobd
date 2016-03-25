@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file
 using the [Keep A ChangeLog](http://keepachangelog.com/) style.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.4.3] - Unreleased
+### Fixed
+- Fix a build failure on i386.
+- Fix incorrect detection of --mandir and --sysconfdir in the ./configure script
+- Fix handling of stale pidfiles
+- Fix a crash when a job with a duplicate label is loaded. 
+
+### Added
+- Some experimental PC-BSD plist files have been added to the manifests/ directory.
+
 ## [0.4.2] - 2016-03-20
 ### Fixed
 - Fix a bug in the init scripts that caused /usr/local/share/launchd/daemons
