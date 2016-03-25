@@ -1,8 +1,8 @@
-{ "Label": "env",
-"Program": "/usr/bin/env",
-"EnvironmentVariables": {"FOO": "BAR", "BAZ": "BAM"},
-"StandardInPath": "/dev/null",
-"StandardOutPath": "/tmp/envjob.out",
-"StandardErrorPath": "/tmp/envjob.err",
-"RunAtLoad": true,
+{
+	"Label": "env2",
+	"Program": "/usr/bin/env",
+	"EnvironmentVariables": {"FOO": "BAR", "BAZ": "BAM"},
+	"StandardInPath": "/dev/null",
+	"StandardOutPath": "/tmp/envjob2.out",
+	"RunAtLoad": true,
 }

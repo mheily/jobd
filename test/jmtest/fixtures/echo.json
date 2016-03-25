@@ -1,6 +1,6 @@
-{ "Label": "echo",
-"ProgramArguments": ["/bin/echo", "hello world"],
-"StandardInPath": "/dev/null",
-"StandardOutPath": "/tmp/echojob.out",
-"StandardErrorPath": "/tmp/echojob.err",
+{
+	"Label": "echo",
+	"ProgramArguments": ["/bin/echo", "hello world"],
+	"StandardOutPath": "/tmp/echojob.out",
+	"RunAtLoad": true,
 }
