@@ -180,7 +180,7 @@ static void main_loop()
 				break;
 			case SIGINT:
 			case SIGTERM:
-				log_notice("caught signal %lu, exiting", kev.ident);
+				log_notice("caught signal %u, exiting", (unsigned int)kev.ident);
 				do_shutdown();
 				exit(0);
 				break;
