@@ -72,7 +72,12 @@ init_maketool() {
 	get_install_directory "bindir" "Executable directory" "${prefix}/bin" "noinstall"
 	get_install_directory "sbindir" "Executable directory (superuser)" "${prefix}/sbin" "noinstall"
 	get_install_directory "libexecdir" "Executable directory (private)" "${prefix}/libexec" "noinstall"
-	get_install_directory "mandir" "Manual pages" "${prefix}/share/man" "noinstall"
+	if [ -d "${prefix}/man" ] ; then 
+		_default_mandir="${prefix}/man"
+	else
+		_default_mandir="${prefix}/share/man"
+	fi
+	get_install_directory "mandir" "Manual pages" "${_default_mandir}" "noinstall"
 	if [ "$prefix" = "/usr" ] ; then
 		default_sysconfdir="/etc"
 	else
