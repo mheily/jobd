@@ -25,7 +25,7 @@ srcdir="../../src"
 
 timer_CFLAGS="$TEST_CFLAGS -Wall -Werror"
 timer_LDFLAGS=$TEST_LDFLAGS
-timer_SOURCES="timer-test.c $srcdir/job.c $srcdir/calendar.c $srcdir/manifest.c $srcdir/socket.c"
+timer_SOURCES="timer-test.c $srcdir/job.c $srcdir/calendar.c $srcdir/manifest.c $srcdir/socket.c $srcdir/manager.c"
 timer_LDADD=$TEST_LDADD
 timer_DEPENDS="$TEST_DEPENDS"
 

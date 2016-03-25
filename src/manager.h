@@ -51,8 +51,11 @@ void manager_free_job(job_t job);
  */
 int manager_wake_job(job_t job);
 
-void manager_init();
+void manager_init(int kqfd);
 void manager_update_jobs();
 int manager_write_status_file();
+void manager_reap_child(pid_t pid, int status);
+void manager_pid_event_add(int pid);
+void manager_pid_event_delete(int pid);
 
 #endif /* MANAGER_H_ */

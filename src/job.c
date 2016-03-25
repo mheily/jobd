@@ -30,6 +30,7 @@
 #include "calendar.h"
 #include "job.h"
 #include "log.h"
+#include "manager.h"
 #include "socket.h"
 #include "timer.h"
 
@@ -497,6 +498,7 @@ int job_run(job_t job)
     		exit(127);
     	}
     } else {
+	manager_pid_event_add(pid);
     	log_debug("job %s started with pid %d", job->jm->label, pid);
     	job->pid = pid;
     	job->state = JOB_STATE_RUNNING;

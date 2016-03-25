@@ -25,7 +25,7 @@ srcdir="../../src"
 
 calendar_CFLAGS="$TEST_CFLAGS -Wall -Werror"
 calendar_LDFLAGS=$TEST_LDFLAGS
-calendar_SOURCES="calendar-test.c $srcdir/job.c $srcdir/timer.c $srcdir/manifest.c $srcdir/socket.c"
+calendar_SOURCES="calendar-test.c $srcdir/job.c $srcdir/timer.c $srcdir/manifest.c $srcdir/socket.c $srcdir/manager.c"
 calendar_LDADD=$TEST_LDADD
 calendar_DEPENDS="$TEST_DEPENDS"
 

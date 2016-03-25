@@ -21,6 +21,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/event.h>
+#include <sys/wait.h>
 
 #include "log.h"
 #include "job.h"
@@ -32,6 +33,9 @@ extern struct launchd_options options;
 
 static LIST_HEAD(,job_manifest) pending; /* Jobs that have been submitted but not loaded */
 static LIST_HEAD(,job) jobs;			/* All active jobs */
+
+/* The kqueue descriptor used by main_loop() */
+static int main_kqfd = -1;
 
 static job_manifest_t read_job(const char *filename)
 {
@@ -292,8 +296,9 @@ out:
 	return retval;
 }
 
-void manager_init()
+void manager_init(int kqfd)
 {
+	main_kqfd = kqfd;
 	LIST_INIT(&jobs);
 }
 
@@ -302,4 +307,81 @@ void manager_update_jobs()
 	if (poll_watchdir() > 0) {
 		update_jobs();
 	}
+}
+
+void
+manager_pid_event_add(int pid)
+{
+	struct kevent kev;
+
+	EV_SET(&kev, pid, EVFILT_PROC, EV_ADD, NOTE_EXIT, 0, NULL);
+	if (kevent(main_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
+		log_errno("kevent");
+		//TODO: probably want to crash, or kill the job, or do something
+		// more useful here.
+	}
+}
+
+void
+manager_pid_event_delete(int pid)
+{
+	struct kevent kev;
+
+	EV_SET(&kev, pid, EVFILT_PROC, EV_DELETE, NOTE_EXIT, 0, NULL);
+	if (kevent(main_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
+		// TODO: check ENOENT, that's probably not too bad
+		log_errno("kevent");
+		//TODO: probably want to crash, or kill the job, or do something
+		// more useful here.
+	}
+}
+
+void 
+manager_reap_child(pid_t pid, int status)
+{
+	job_t job;
+
+// linux will need to do this in a loop after reading a signalfd and getting SIGCHLD
+#if 0
+	pid = waitpid(-1, &status, WNOHANG);
+	if (pid < 0) {
+		if (errno == ECHILD) return;
+		log_errno("waitpid");
+		abort();
+	} else if (pid == 0) {
+		return;
+	}
+#endif
+
+	manager_pid_event_delete(pid);
+
+	job = manager_get_job_by_pid(pid);
+	if (!job) {
+		log_error("child pid %d exited but no job found", pid);
+		return;
+	}
+
+	if (job->state == JOB_STATE_KILLED) {
+		/* The job is unloaded, so nobody cares about the exit status */
+		manager_free_job(job);
+		return;
+	}
+
+	if (job->jm->start_interval > 0) {
+		job->state = JOB_STATE_WAITING;
+	} else {
+		job->state = JOB_STATE_EXITED;
+	}
+	if (WIFEXITED(status)) {
+		job->last_exit_status = WEXITSTATUS(status);
+	} else if (WIFSIGNALED(status)) {
+		job->last_exit_status = -1;
+		job->term_signal = WTERMSIG(status);
+	} else {
+		log_error("unhandled exit status");
+	}
+	log_debug("job %d exited with status %d", job->pid,
+			job->last_exit_status);
+	job->pid = 0;
+	return;
 }

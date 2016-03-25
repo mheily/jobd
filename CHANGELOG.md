@@ -4,11 +4,16 @@ using the [Keep A ChangeLog](http://keepachangelog.com/) style.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.4.3] - Unreleased
+### Broken
+- The Linux port is probably broken due to the use of EVFILT_PROC
+
 ### Fixed
 - Fix a build failure on i386.
 - Fix incorrect detection of --mandir and --sysconfdir in the ./configure script
 - Fix handling of stale pidfiles
 - Fix a crash when a job with a duplicate label is loaded. 
+- Fix an issue with signal handling in launchd(8) by using kevent() to track
+  children instead of a signal handler. 
 
 ### Added
 - Some experimental PC-BSD plist files have been added to the manifests/ directory.

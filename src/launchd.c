@@ -29,7 +29,6 @@
 #include "../vendor/FreeBSD/sys/queue.h"
 #include <sys/types.h>
 #include <sys/event.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 #include "config.h"
@@ -89,10 +88,6 @@ static void do_shutdown()
 	free(options.pidfile);
 }
 
-static void signal_handler(int signum) {
-	(void) signum;
-}
-
 static void setup_signal_handlers()
 {
 	const int signals[] = {SIGHUP, SIGUSR1, SIGCHLD, SIGINT, SIGTERM, 0};
@@ -100,58 +95,13 @@ static void setup_signal_handlers()
 	struct kevent kev;
 
 	for (i = 0; signals[i] != 0; i++) {
+		if (signal(signals[i], SIG_IGN) == SIG_ERR)
+			abort();
 		EV_SET(&kev, signals[i], EVFILT_SIGNAL, EV_ADD, 0, 0,
 				&setup_signal_handlers);
 		if (kevent(state.kq, &kev, 1, NULL, 0, NULL) < 0)
 			abort();
-		if (signal(signals[i], signal_handler) == SIG_ERR)
-			abort();
 	}
-}
-
-static void reap_child() {
-	pid_t pid;
-	int status;
-	job_t job;
-
-	pid = waitpid(-1, &status, WNOHANG);
-	if (pid < 0) {
-		if (errno == ECHILD) return;
-		log_errno("waitpid");
-		abort();
-	} else if (pid == 0) {
-		return;
-	}
-
-	job = manager_get_job_by_pid(pid);
-	if (!job) {
-		log_error("child pid %d exited but no job found", pid);
-		return;
-	}
-
-	if (job->state == JOB_STATE_KILLED) {
-		/* The job is unloaded, so nobody cares about the exit status */
-		manager_free_job(job);
-		return;
-	}
-
-	if (job->jm->start_interval > 0) {
-		job->state = JOB_STATE_WAITING;
-	} else {
-		job->state = JOB_STATE_EXITED;
-	}
-	if (WIFEXITED(status)) {
-		job->last_exit_status = WEXITSTATUS(status);
-	} else if (WIFSIGNALED(status)) {
-		job->last_exit_status = -1;
-		job->term_signal = WTERMSIG(status);
-	} else {
-		log_error("unhandled exit status");
-	}
-	log_debug("job %d exited with status %d", job->pid,
-			job->last_exit_status);
-	job->pid = 0;
-	return;
 }
 
 static void main_loop()
@@ -176,7 +126,7 @@ static void main_loop()
 				manager_write_status_file();
 				break;
 			case SIGCHLD:
-				reap_child();
+				manager_reap_child(kev.ident, kev.data);
 				break;
 			case SIGINT:
 			case SIGTERM:
@@ -187,6 +137,8 @@ static void main_loop()
 			default:
 				log_error("caught unexpected signal");
 			}
+		} else if (kev.filter == EVFILT_PROC) {
+			(void) manager_reap_child(kev.ident, kev.data);
 		} else if ((void *)kev.udata == &setup_socket_activation) {
 			if (socket_activation_handler() < 0) abort();
 		} else if ((void *)kev.udata == &setup_timers) {
@@ -283,7 +235,7 @@ main(int argc, char *argv[])
 	pidfile_write(state.pfh);
 
 	if ((state.kq = kqueue()) < 0) abort();
-	manager_init();
+	manager_init(state.kq);
 	setup_logging();
 	setup_signal_handlers();
 	setup_socket_activation(state.kq);
