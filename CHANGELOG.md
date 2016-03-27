@@ -1,23 +1,28 @@
 # Change Log
+
 All notable changes to this project will be documented in this file
 using the [Keep A ChangeLog](http://keepachangelog.com/) style.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.4.3] - Unreleased
+## [0.5.0] - 2016/03/27
 ### Broken
-- The Linux port is probably broken due to the use of EVFILT_PROC
+- The Linux port is probably broken due to the use of EVFILT_PROC.
+  This will be fixed in a later release.
 
 ### Fixed
-- Fix a build failure on i386.
-- Fix incorrect detection of --mandir and --sysconfdir in the ./configure script
-- Fix handling of stale pidfiles
-- Fix a crash when a job with a duplicate label is loaded. 
-- Fix an issue with signal handling in launchd(8) by using kevent() to track
-  children instead of a signal handler. 
+- Fix a build failure on 32-bit machines.
+- Fix incorrect detection of --mandir and --sysconfdir in the ./configure script.
+- Fix handling of stale pidfiles.
+- Fix a crash when a job with a duplicate label is loaded.
+- Fix an issue with signal handling in launchd(8) by using kevent(2) to trac
+  children instead of installing a signal handler. 
 - Fix a problem where the child process would inherit the signal handlers
-  of launchd(8). We now reset all signal handlers after calling fork().
+  of launchd(8). We now reset all signal handlers in the child process
+  after it is created.
 - Fix a memory corruption problem affecting vector resizes.
 - Fix an off-by-one memory corruption problem affecting manifest parsing.
+- Replaced potentially risky calls to system(3) with direct calls to mkdir(2) 
+  and unlink(2) as needed.
 
 ### Added
 - Some experimental PC-BSD plist files have been added to the manifests/ directory.
