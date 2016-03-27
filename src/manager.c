@@ -38,11 +38,9 @@
 #include "util.h"
 
 /* A list of signals that are meaningful to launchd(8) itself. */
-#define LAUNCHD_SIGSET_SIZE 6
-const int launchd_signals[LAUNCHD_SIGSET_SIZE] = {
+const int launchd_signals[] = {
 	SIGHUP, SIGUSR1, SIGCHLD, SIGINT, SIGTERM, 0
 };
-//TODO: maybe? struct sigaction saved_sigaction[LAUNCHD_SIGSET_SIZE];
 
 static void setup_job_dirs();
 static void setup_signal_handlers();

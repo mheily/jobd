@@ -334,7 +334,9 @@ reset_signal_handlers()
 	int i;
 
 	sa.sa_handler = SIG_DFL;
-	/* FIXME: do we need to set mask or flags also? */
+	sa.sa_flags = 0;
+	sigemptyset(&sa.sa_mask);
+
 	for (i = 0; launchd_signals[i] != 0; i++) {
 		if (sigaction(launchd_signals[i], &sa, NULL) < 0) {
 			log_errno("sigaction(2)");
