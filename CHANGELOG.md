@@ -14,9 +14,15 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Fix a crash when a job with a duplicate label is loaded. 
 - Fix an issue with signal handling in launchd(8) by using kevent() to track
   children instead of a signal handler. 
-
+- Fix a problem where the child process would inherit the signal handlers
+  of launchd(8). We now reset all signal handlers after calling fork().
+-
 ### Added
 - Some experimental PC-BSD plist files have been added to the manifests/ directory.
+
+### Changed
+- If you run launchd(8) in the foreground, log messages will be printed to
+  standard output, rather than to the logfile.
 
 ## [0.4.2] - 2016-03-20
 ### Fixed
