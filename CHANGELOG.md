@@ -16,7 +16,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   children instead of a signal handler. 
 - Fix a problem where the child process would inherit the signal handlers
   of launchd(8). We now reset all signal handlers after calling fork().
--
+- Fix a memory corruption problem affecting vector resizes.
+
 ### Added
 - Some experimental PC-BSD plist files have been added to the manifests/ directory.
 - If you send launchd(8) a SIGINT signal, it will gracefully unload all jobs and then exit.

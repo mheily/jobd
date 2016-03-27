@@ -45,7 +45,7 @@ static inline int cvec_resize(cvec_t cv, const size_t new_size)
 	char **new_items;
 
 	if (cv->allocated == cv->length) {
-		new_items = realloc(cv->items, cv->allocated + 50);
+		new_items = realloc(cv->items, cv->allocated + (50 * sizeof(char *)));
 		if (new_items == NULL) {
 			return (-1);
 		} else {
@@ -103,16 +103,12 @@ static inline char ** cvec_to_array(cvec_t cv) {
 }
 
 static inline void cvec_debug(cvec_t cv) {
-#ifdef DEBUG
 	int i;
 
 	fprintf(stderr, "items: %zu\n", cv->length);
 	for (i = 0; i < cv->length; i++) {
 		fprintf(stderr, "  %d = %s\n", i, cv->items[i]);
 	}
-#else
-	(void) cv;
-#endif
 }
 
 static inline size_t cvec_length(cvec_t const cv) {
