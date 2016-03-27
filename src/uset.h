@@ -71,7 +71,6 @@ static inline int uset_add(uset_t us, void **item) {
 
 static inline void *uset_get(uset_t us, size_t index) {
 	if (index > us->length) {
-		abort(); // XXX for testing
 		return NULL;
 	} else {
 		printf("returning item %p from slot %zu\n", us->items[index], index);

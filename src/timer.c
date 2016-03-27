@@ -51,8 +51,7 @@ static void update_min_interval()
 		}
 		EV_SET(&kev, JOB_SCHEDULE_PERIODIC, EVFILT_TIMER, EV_ADD | EV_DISABLE, 0, 0, &setup_timers);
 		if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
-			log_errno("kevent(2)");
-			abort();
+			err(1, "kevent(2)");
 		}
 		min_interval = 0;
 	} else {
@@ -64,8 +63,7 @@ static void update_min_interval()
 			EV_SET(&kev, JOB_SCHEDULE_PERIODIC, EVFILT_TIMER,
 					EV_ADD | EV_ENABLE, 0, (1000 * min_interval), &setup_timers);
 			if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
-				log_errno("kevent(2)");
-				abort();
+				err(1, "kevent(2)");
 			}
 		}
 	}
@@ -103,7 +101,6 @@ int timer_unregister_job(struct job *job)
 	return 0;
 }
 
-#ifndef UNIT_TEST
 int timer_handler()
 {
 	job_t job;
@@ -119,4 +116,3 @@ int timer_handler()
 	}
 	return 0;
 }
-#endif

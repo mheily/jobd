@@ -136,7 +136,6 @@ int calendar_unregister_job(struct job *job)
 	return 0;
 }
 
-#ifndef UNIT_TEST
 int calendar_handler()
 {
 	job_t job;
@@ -152,4 +151,3 @@ int calendar_handler()
 	}
 	return 0;
 }
-#endif

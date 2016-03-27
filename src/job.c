@@ -34,6 +34,8 @@
 #include "socket.h"
 #include "timer.h"
 
+static int reset_signal_handlers();
+
 static void job_dump(job_t job) {
 	log_debug("job dump: label=%s state=%d", job->jm->label, job->state);
 }
@@ -325,6 +327,24 @@ err_out:
 }
 
 static int 
+reset_signal_handlers()
+{
+	extern const int launchd_signals[];
+	struct sigaction sa;
+	int i;
+
+	sa.sa_handler = SIG_DFL;
+	/* FIXME: do we need to set mask or flags also? */
+	for (i = 0; launchd_signals[i] != 0; i++) {
+		if (sigaction(launchd_signals[i], &sa, NULL) < 0) {
+			log_errno("sigaction(2)");
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int
 start_child_process(const job_t job, const struct passwd *pwent, const struct group *grent)
 {
 #ifdef __FreeBSD__
@@ -344,6 +364,10 @@ start_child_process(const job_t job, const struct passwd *pwent, const struct gr
 		goto err_out;
 	}
 #endif
+	if (reset_signal_handlers() < 0) {
+		log_error("unable to reset signal handlers");
+		goto err_out;
+	}
 	if (apply_resource_limits(job) < 0) {
 		log_error("unable to apply resource limits");
 		goto err_out;
@@ -449,7 +473,7 @@ int job_unload(job_t job)
 {
 	if (job->state == JOB_STATE_RUNNING) {
 		log_debug("sending SIGTERM to process group %d", job->pid);
-		if (killpg(job->pid, SIGTERM) < 0) {
+		if (kill(-1 * job->pid, SIGTERM) < 0) {
 			log_errno("killpg(2) of pid %d", job->pid);
 			/* not sure how to handle the error, we still want to clean up */
 		}
@@ -489,23 +513,23 @@ int job_run(job_t job)
 
 	(void) start_child_process(job, pwent, grent);
 #else
-    pid = fork();
-    if (pid < 0) {
-    	return (-1);
-    } else if (pid == 0) {
-    	if (start_child_process(job, pwent, grent) < 0) {
-    		//TODO: report failures to the parent
-    		exit(127);
-    	}
-    } else {
-	manager_pid_event_add(pid);
-    	log_debug("job %s started with pid %d", job->jm->label, pid);
-    	job->pid = pid;
-    	job->state = JOB_STATE_RUNNING;
-	SLIST_FOREACH(jms, &job->jm->sockets, entry) {
-		job_manifest_socket_close(jms);
+	pid = fork();
+	if (pid < 0) {
+		return (-1);
+	} else if (pid == 0) {
+		if (start_child_process(job, pwent, grent) < 0) {
+			//TODO: report failures to the parent
+			exit(124);
+		}
+	} else {
+		manager_pid_event_add(pid);
+		log_debug("job %s started with pid %d", job->jm->label, pid);
+		job->pid = pid;
+		job->state = JOB_STATE_RUNNING;
+		SLIST_FOREACH(jms, &job->jm->sockets, entry) {
+			job_manifest_socket_close(jms);
+		}
 	}
-    }
 #endif
 	return (0);
 }

@@ -18,17 +18,38 @@
 
 #include <dirent.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/event.h>
 #include <sys/wait.h>
 
+#include "../config.h"
+
+#include "calendar.h"
 #include "log.h"
 #include "job.h"
 #include "manager.h"
+#include "pidfile.h"
 #include "socket.h"
 #include "options.h"
+#include "timer.h"
+#include "util.h"
 
+/* A list of signals that are meaningful to launchd(8) itself. */
+#define LAUNCHD_SIGSET_SIZE 6
+const int launchd_signals[LAUNCHD_SIGSET_SIZE] = {
+	SIGHUP, SIGUSR1, SIGCHLD, SIGINT, SIGTERM, 0
+};
+//TODO: maybe? struct sigaction saved_sigaction[LAUNCHD_SIGSET_SIZE];
+
+static void setup_job_dirs();
+static void setup_signal_handlers();
+static void setup_logging();
+static void do_shutdown();
+
+struct pidfh *pidfile_handle;
 extern struct launchd_options options;
 
 static LIST_HEAD(,job_manifest) pending; /* Jobs that have been submitted but not loaded */
@@ -37,41 +58,37 @@ static LIST_HEAD(,job) jobs;			/* All active jobs */
 /* The kqueue descriptor used by main_loop() */
 static int main_kqfd = -1;
 
-static job_manifest_t read_job(const char *filename)
+static job_manifest_t
+read_job(const char *filename)
 {
-	job_manifest_t retval = NULL;
-	char *path = NULL, *rename_to = NULL;
+	char path[PATH_MAX], rename_to[PATH_MAX];
 	job_manifest_t jm = NULL;
 
 	jm = job_manifest_new();
-	if (asprintf(&path, "%s/%s", options.watchdir, filename) < 0) abort();
-	if (asprintf(&rename_to, "%s/%s", options.activedir, filename) < 0) abort();
-	if (!jm || !path || !rename_to) {
-		log_warning("malloc error");
-		goto out;
+	if (!jm) {
+		log_error("job_manifest_new()");
+		return NULL;
 	}
+
+	path_sprintf(&path, "%s/%s", options.watchdir, filename);
+	path_sprintf(&rename_to, "%s/%s", options.activedir, filename);
 
 	log_debug("loading %s", path);
 	if (job_manifest_read(jm, path) < 0) {
 		log_error("parse error");
-		goto out;
+		job_manifest_free(jm);
+		return NULL;
 	}
 
 	if (rename(path, rename_to) != 0) {
 		log_errno("rename(2) of %s to %s", path, rename_to);
-		goto out;
+		job_manifest_free(jm);
+		return NULL;
 	}
 
 	log_debug("defined job: %s", jm->label);
 
-	retval = jm;
-
-out:
-	if (!retval)
-		job_manifest_free(jm);
-	free(path);
-	free(rename_to);
-	return (retval);
+	return jm;
 }
 
 static ssize_t poll_watchdir()
@@ -82,10 +99,12 @@ static ssize_t poll_watchdir()
 	ssize_t found_jobs = 0;
 	char *ext;
 
-	if ((dirp = opendir(options.watchdir)) == NULL) abort();
+	if ((dirp = opendir(options.watchdir)) == NULL)
+		err(1, "opendir(3)");
 
 	while (dirp) {
-		if (readdir_r(dirp, &entry, &result) < 0) abort();
+		if (readdir_r(dirp, &entry, &result) < 0)
+			err(1, "readdir_r(3)");
 		if (!result) break;
 		if (strcmp(entry.d_name, ".") == 0 || strcmp(entry.d_name, "..") == 0) {
 			continue;
@@ -126,7 +145,8 @@ static ssize_t poll_watchdir()
 			log_error("skipping %s: unsupported file extension", entry.d_name);
 		}
 	}
-	if (closedir(dirp) < 0) abort();
+	if (closedir(dirp) < 0)
+		err(1, "closedir(3)");
 	return (found_jobs);
 }
 
@@ -141,7 +161,8 @@ void update_jobs(void)
 	/* Pass #1: load all jobs */
 	LIST_FOREACH_SAFE(jm, &pending, jm_le, jm_tmp) {
 		job = job_new(jm);
-		if (!job) abort();
+		if (!job)
+			errx(1, "job_new()");
 
 		/* Check for duplicate jobs */
 		if (manager_get_job_by_label(jm->label)) {
@@ -219,28 +240,34 @@ int manager_write_status_file()
 	job_t job;
 
 	/* FIXME: should write to a .new file, then rename() over the old file */
-	if (asprintf(&path, "%s/launchctl.list", options.pkgstatedir) < 0) abort();
-	if ((fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, 0644)) < 0) {
-		log_errno("open of %s", path);
-		abort();
-	}
-	if (asprintf(&buf, "%-8s %-8s %s\n", "PID", "Status", "Label") < 0) abort();
+	if (asprintf(&path, "%s/launchctl.list", options.pkgstatedir) < 0)
+		err(1, "asprintf(3)");
+	if ((fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, 0644)) < 0)
+		err(1, "open(2)");
+	if (asprintf(&buf, "%-8s %-8s %s\n", "PID", "Status", "Label") < 0)
+		err(1, "asprintf(3)");
 	len = strlen(buf) + 1;
-	if (write(fd, buf, len) < len) abort();
+	if (write(fd, buf, len) < len)
+		err(1, "write(2)");
 	free(buf);
 	LIST_FOREACH(job, &jobs, joblist_entry) {
 		if (job->pid == 0) {
-			if ((pid = strdup("-")) == NULL) abort();
+			if ((pid = strdup("-")) == NULL)
+				err(1, "strdup(3)");
 		} else {
-			if (asprintf(&pid, "%d", job->pid) < 0) abort();
+			if (asprintf(&pid, "%d", job->pid) < 0)
+				err(1, "asprintf(3)");
 		}
-		if (asprintf(&buf, "%-8s %-8d %s\n", pid, job->last_exit_status, job->jm->label) < 0) abort();
+		if (asprintf(&buf, "%-8s %-8d %s\n", pid, job->last_exit_status, job->jm->label) < 0)
+			err(1, "asprintf(3)");
 		len = strlen(buf) + 1;
-		if (write(fd, buf, len) < len) abort();
+		if (write(fd, buf, len) < len)
+			err(1, "write(2)");
 		free(buf);
 		free(pid);
 	}
-	if (close(fd) < 0) abort();
+	if (close(fd) < 0)
+		err(1, "close(2)");
 	free(path);
 	return 0;
 }
@@ -296,10 +323,21 @@ out:
 	return retval;
 }
 
-void manager_init(int kqfd)
+void manager_init(struct pidfh *pfh)
 {
-	main_kqfd = kqfd;
+	pidfile_handle = pfh;
 	LIST_INIT(&jobs);
+
+	if ((main_kqfd = kqueue()) < 0)
+		err(1, "kqueue(2)");
+	setup_logging();
+	setup_signal_handlers();
+	setup_socket_activation(main_kqfd);
+	setup_job_dirs();
+	if (setup_timers(main_kqfd) < 0)
+		errx(1, "setup_timers()");
+	if (calendar_init(main_kqfd) < 0)
+		errx(1, "calendar_init()");
 }
 
 void manager_update_jobs()
@@ -327,12 +365,11 @@ manager_pid_event_delete(int pid)
 {
 	struct kevent kev;
 
+	/* This isn't necessary, I think, but just to be on the safe side.. */
 	EV_SET(&kev, pid, EVFILT_PROC, EV_DELETE, NOTE_EXIT, 0, NULL);
 	if (kevent(main_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
-		// TODO: check ENOENT, that's probably not too bad
-		log_errno("kevent");
-		//TODO: probably want to crash, or kill the job, or do something
-		// more useful here.
+		if (errno != ENOENT)
+			err(1, "kevent");
 	}
 }
 
@@ -346,8 +383,7 @@ manager_reap_child(pid_t pid, int status)
 	pid = waitpid(-1, &status, WNOHANG);
 	if (pid < 0) {
 		if (errno == ECHILD) return;
-		log_errno("waitpid");
-		abort();
+		err(1, "waitpid(2)");
 	} else if (pid == 0) {
 		return;
 	}
@@ -385,3 +421,148 @@ manager_reap_child(pid_t pid, int status)
 	job->pid = 0;
 	return;
 }
+
+/* Delete everything in a given directory */
+static void
+delete_directory_entries(const char *path)
+{
+	DIR *dirp;
+	struct dirent *ent;
+
+	dirp = opendir(path);
+	if (!dirp) err(1, "opendir(3) of %s", path);
+
+	for (;;) {
+		errno = 0;
+		ent = readdir(dirp);
+		if (!ent)
+			break;
+
+		if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+			continue;
+
+		log_debug("deleting manifest: %s/%s", path, ent->d_name);
+		if (unlinkat(dirfd(dirp), ent->d_name, 0) < 0)
+			err(1, "unlinkat(2)");
+	}
+	(void) closedir(dirp);
+}
+
+static void
+setup_job_dirs()
+{
+	char basedir[PATH_MAX], buf[PATH_MAX];
+
+	if (getuid() == 0) {
+		path_sprintf(&options.pkgstatedir, PKGSTATEDIR);
+	} else {
+		path_sprintf(&options.pkgstatedir, "%s/.launchd/run", getenv("HOME"));
+	}
+
+	path_sprintf(&options.watchdir, "%s/new", options.pkgstatedir);
+	path_sprintf(&options.activedir, "%s/cur", options.pkgstatedir);
+
+	if (getuid() > 0) {
+		path_sprintf(&basedir, "%s/.launchd", getenv("HOME"));
+		mkdir_idempotent(basedir, 0700);
+
+		path_sprintf(&buf, "%s/agents", &basedir);
+		mkdir_idempotent(buf, 0700);
+
+		path_sprintf(&buf, "%s/run", &basedir);
+		mkdir_idempotent(buf, 0700);
+	}
+
+        mkdir_idempotent(options.activedir, 0700);
+        mkdir_idempotent(options.watchdir, 0700);
+
+	/* Clear any record of active jobs that may be leftover from a previous program crash */
+        path_sprintf(&buf, "%s", options.activedir);
+        delete_directory_entries(buf);
+
+        path_sprintf(&buf, "%s", options.watchdir);
+        delete_directory_entries(buf);
+}
+
+static void setup_signal_handlers()
+{
+	int i;
+	struct kevent kev;
+
+	for (i = 0; launchd_signals[i] != 0; i++) {
+		if (signal(launchd_signals[i], SIG_IGN) == SIG_ERR)
+			err(1, "signal(2): %d", launchd_signals[i]);
+		EV_SET(&kev, launchd_signals[i], EVFILT_SIGNAL, EV_ADD, 0, 0,
+				&setup_signal_handlers);
+		if (kevent(main_kqfd, &kev, 1, NULL, 0, NULL) < 0)
+			err(1, "kevent(2)");
+	}
+}
+
+void
+manager_main_loop()
+{
+	struct kevent kev;
+
+	for (;;) {
+		if (kevent(main_kqfd, NULL, 0, &kev, 1, NULL) < 1) {
+			if (errno == EINTR) {
+				continue;
+			} else {
+				err(1, "kevent(2)");
+			}
+		}
+		if ((void *)kev.udata == &setup_signal_handlers) {
+			switch (kev.ident) {
+			case SIGHUP:
+				manager_update_jobs();
+				break;
+			case SIGUSR1:
+				manager_write_status_file();
+				break;
+			case SIGCHLD:
+				/* NOTE: undocumented use of kev.data to obtain
+				 * the status of the child. This should be reported to
+				 * FreeBSD as a bug in the manpage.
+				 */
+				manager_reap_child(kev.ident, kev.data);
+				break;
+			case SIGINT:
+			case SIGTERM:
+				log_notice("caught signal %u, exiting", (unsigned int)kev.ident);
+				do_shutdown();
+				exit(0);
+				break;
+			default:
+				log_error("caught unexpected signal");
+			}
+		} else if (kev.filter == EVFILT_PROC) {
+			(void) manager_reap_child(kev.ident, kev.data);
+		} else if ((void *)kev.udata == &setup_socket_activation) {
+			if (socket_activation_handler() < 0)
+				errx(1, "socket_activation_handler()");
+		} else if ((void *)kev.udata == &setup_timers) {
+			if (timer_handler() < 0)
+				errx(1, "timer_handler()");
+		} else if ((void *)kev.udata == &calendar_init) {
+			if (calendar_handler() < 0)
+				errx(1, "calendar_handler()");
+		} else {
+			log_warning("spurious wakeup, no known handlers");
+		}
+	}
+}
+
+static void setup_logging()
+{
+#ifndef UNIT_TEST
+	openlog("launchd", LOG_PID | LOG_NDELAY, LOG_DAEMON);
+#endif
+}
+
+static void do_shutdown()
+{
+	if (pidfile_handle)
+		pidfile_remove(pidfile_handle);
+}
+

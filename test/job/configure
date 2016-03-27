@@ -23,10 +23,9 @@ TESTS="jobtest"
 
 srcdir="../../src"
 
-jobtest_CFLAGS="$TEST_CFLAGS"
+jobtest_CFLAGS="$TEST_CFLAGS -include ../../config.h"
 jobtest_LDFLAGS="$TEST_LDFLAGS"
-jobtest_SOURCES="jobtest.c $srcdir/job.c $srcdir/manifest.c $srcdir/manager.c $srcdir/socket.c 
-$srcdir/timer.c $srcdir/calendar.c"
+jobtest_SOURCES="jobtest.c $TEST_SOURCES"
 jobtest_LDADD="$TEST_LDADD"
 jobtest_DEPENDS="$TEST_DEPENDS"
 

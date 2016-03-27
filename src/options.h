@@ -18,10 +18,10 @@
 #define OPTIONS_H_
 
 struct launchd_options {
-	char *	pidfile;		/* Path to the pid file */
-	char *	pkgstatedir; 		/* Top-level directory for state data */
-	char *	watchdir;		/* Directory to watch for new jobs */
-	char *	activedir;		/* Directory that holds info about active jobs */
+	char	pidfile[PATH_MAX];	/* Path to the pid file */
+	char	pkgstatedir[PATH_MAX];	/* Top-level directory for state data */
+	char 	watchdir[PATH_MAX];	/* Directory to watch for new jobs */
+	char 	activedir[PATH_MAX];	/* Directory that holds info about active jobs */
 	bool 	daemon;
 	int	log_level;
 } options;

@@ -14,42 +14,43 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef RELAUNCHD_CLOCK_H_
-#define RELAUNCHD_CLOCK_H_
+#ifndef _RELAUNCHD_UTIL_H_
+#define _RELAUNCHD_UTIL_H_
 
-#include <stdlib.h>
-#include <time.h>
-#include <sys/time.h>
+#include <stdarg.h>
+#include <limits.h>
 
-#include "log.h"
-
-/*
- * Provide a mock clock object that can be manipulated when running unit tests.
- */
-#ifdef UNIT_TEST
-
-static struct timespec mock_clock = {0, 0};
-
-static void  __attribute__((unused))
-set_current_time(time_t sec)
+static inline void
+path_sprintf(char (*buf)[PATH_MAX], const char *format, ...)
 {
-	mock_clock.tv_sec = sec;
-	mock_clock.tv_nsec = 0;
+	int len;
+	va_list args;
+
+	if (buf == NULL)
+		errx(1, "null pointer");
+	
+	va_start(args, format);
+	len = vsnprintf((char *)buf, sizeof(*buf), format, args);
+	va_end(args);
+	
+	if (len < 0) 
+		err(1, "vsnprintf(3)");
+        if (len >= (int)sizeof(*buf)) {
+                errno = ENAMETOOLONG;
+		err(1, "vsnprintf(3)");
+        }
 }
 
-static inline time_t current_time() {
-	return mock_clock.tv_sec;
-}
+/* Make a directory idempotently */
+static inline void
+mkdir_idempotent(const char *path, mode_t mode)
+{
+	if (mkdir(path, mode) < 0) {
+		if (errno == EEXIST)
+			return;
 
-#else
-
-static inline time_t current_time() {
-	struct timespec now;
-	if (clock_gettime(CLOCK_MONOTONIC, &now) < 0) {
-		err(1, "clock_gettime(2)");
+		err(1, "mkdir(2)");
 	}
-	return now.tv_sec;
 }
 
-#endif /* UNIT_TEST */
-#endif /* RELAUNCHD_CLOCK_H_ */
+#endif /* _RELAUNCHD_UTIL_H_ */

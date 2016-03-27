@@ -15,7 +15,6 @@
  */
 
 #include <dirent.h>
-#include <err.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <inttypes.h>
@@ -42,13 +41,11 @@
 #include "socket.h"
 #include "timer.h"
 #include "uset.h"
-
-FILE *logfile;
+#include "util.h"
 
 struct launchd_options options;
 
 static struct {
-	int 	kq;				/* kqueue(2) descriptor */
 	struct pidfh *pfh;
 } state;
 
@@ -57,125 +54,15 @@ void usage()
 	printf("todo: usage\n");
 }
 
-static void setup_job_dirs()
-{
-	char *buf;
-
-	if (asprintf(&options.watchdir, "%s/new", options.pkgstatedir) < 0) abort();
-	if (asprintf(&options.activedir, "%s/cur", options.pkgstatedir) < 0) abort();
-
-	if (asprintf(&buf, "/bin/mkdir -p %s %s",
-			options.watchdir, options.activedir) < 0) abort();
-	if (system(buf) < 0) abort();
-	free(buf);
-
-	if (getuid() != 0 && getenv("HOME")) {
-		if (asprintf(&buf, "/bin/mkdir -p %s/.launchd/agents", getenv("HOME")) < 0) abort();
-		if (system(buf) < 0) abort();
-		free(buf);
-	}
-
-	/* Clear any record of active jobs that may be leftover from a previous program crash */
-	if (asprintf(&buf, "/bin/rm -f %s/* %s/*", options.activedir, options.watchdir) < 0) abort();
-	if (system(buf) < 0) abort();
-	free(buf);
-}
-
-static void do_shutdown()
-{
-	pidfile_remove(state.pfh);
-	free(options.pkgstatedir);
-	free(options.pidfile);
-}
-
-static void setup_signal_handlers()
-{
-	const int signals[] = {SIGHUP, SIGUSR1, SIGCHLD, SIGINT, SIGTERM, 0};
-	int i;
-	struct kevent kev;
-
-	for (i = 0; signals[i] != 0; i++) {
-		if (signal(signals[i], SIG_IGN) == SIG_ERR)
-			abort();
-		EV_SET(&kev, signals[i], EVFILT_SIGNAL, EV_ADD, 0, 0,
-				&setup_signal_handlers);
-		if (kevent(state.kq, &kev, 1, NULL, 0, NULL) < 0)
-			abort();
-	}
-}
-
-static void main_loop()
-{
-	struct kevent kev;
-
-	for (;;) {
-		if (kevent(state.kq, NULL, 0, &kev, 1, NULL) < 1) {
-			if (errno == EINTR) {
-				continue;
-			} else {
-				log_errno("kevent");
-				abort();
-			}
-		}
-		if ((void *)kev.udata == &setup_signal_handlers) {
-			switch (kev.ident) {
-			case SIGHUP:
-				manager_update_jobs();
-				break;
-			case SIGUSR1:
-				manager_write_status_file();
-				break;
-			case SIGCHLD:
-				manager_reap_child(kev.ident, kev.data);
-				break;
-			case SIGINT:
-			case SIGTERM:
-				log_notice("caught signal %u, exiting", (unsigned int)kev.ident);
-				do_shutdown();
-				exit(0);
-				break;
-			default:
-				log_error("caught unexpected signal");
-			}
-		} else if (kev.filter == EVFILT_PROC) {
-			(void) manager_reap_child(kev.ident, kev.data);
-		} else if ((void *)kev.udata == &setup_socket_activation) {
-			if (socket_activation_handler() < 0) abort();
-		} else if ((void *)kev.udata == &setup_timers) {
-			if (timer_handler() < 0) abort();
-		} else if ((void *)kev.udata == &calendar_init) {
-			if (calendar_handler() < 0) abort();
-		} else {
-			log_warning("spurious wakeup, no known handlers");
-		}
-	}
-}
-
-static inline void setup_logging()
-{
-       char path[PATH_MAX + 1];
-       int rv;
-
-       if (options.daemon) {
-	       if (getuid() == 0) {
-                rv = snprintf(path, sizeof(path), "/var/log/launchd.log");
-	       } else {
-                rv = snprintf(path, sizeof(path), 
-                        "%s/.launchd/launchd.log", getenv("HOME"));
-	       }
-       } else {
-           rv = snprintf(path, sizeof(path), "/dev/stdout");
-       }
-       if (rv < 0) {
-           log_errno("snprintf(3)");
-           abort();
-       }
-       openlog("launchd", LOG_PID | LOG_NDELAY, LOG_DAEMON);
-}
-
 void create_pid_file()
 {
 	pid_t otherpid;
+
+	if (getuid() == 0) {
+		path_sprintf(&options.pidfile, "/var/run/launchd.pid");
+	} else {
+		path_sprintf(&options.pidfile, "%s/.launchd/run/launchd.pid", getenv("HOME"));
+	}
 
 	state.pfh = pidfile_open(options.pidfile, 0600, &otherpid);
 	if (state.pfh == NULL) {
@@ -187,6 +74,7 @@ void create_pid_file()
 	}
 }
 
+#ifndef UNIT_TEST
 int
 main(int argc, char *argv[])
 {
@@ -199,16 +87,7 @@ main(int argc, char *argv[])
 	}
 
 	options.daemon = true;
-	options.log_level = LOG_DEBUG;
-	if (getuid() == 0) {
-		if (asprintf(&options.pkgstatedir, PKGSTATEDIR) < 0) abort();
-		if (asprintf(&options.pidfile, "/var/run/launchd.pid") < 0) abort();
-	} else {
-		if (asprintf(&options.pkgstatedir, "%s/.launchd/run", getenv("HOME")) < 0) abort();
-		if (asprintf(&options.pidfile, "%s/launchd.pid", options.pkgstatedir) < 0) abort();
-	}
-
-	setup_job_dirs();
+	options.log_level = LOG_NOTICE;
 
 	while ((c = getopt(argc, argv, "fv")) != -1) {
 			switch (c) {
@@ -216,7 +95,7 @@ main(int argc, char *argv[])
 					options.daemon = false;
 					break;
 			case 'v':
-					options.log_level++;
+					options.log_level = LOG_DEBUG;
 					break;
 			default:
 					usage();
@@ -230,20 +109,17 @@ main(int argc, char *argv[])
 		fprintf(stderr, "Unable to daemonize");
 		pidfile_remove(state.pfh);
 		exit(EX_OSERR);
+	} else {
+		log_freopen(stdout);
 	}
 
 	pidfile_write(state.pfh);
 
-	if ((state.kq = kqueue()) < 0) abort();
-	manager_init(state.kq);
-	setup_logging();
-	setup_signal_handlers();
-	setup_socket_activation(state.kq);
-	if (setup_timers(state.kq) < 0) abort();
-	if (calendar_init(state.kq) < 0) abort();
+	manager_init(state.pfh);
 	manager_update_jobs();
-	main_loop();
+	manager_main_loop();
 
 	/* NOTREACHED */
 	exit(EXIT_SUCCESS);
 }
+#endif /* !UNIT_TEST */

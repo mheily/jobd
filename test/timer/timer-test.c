@@ -24,8 +24,6 @@
 #include <sys/event.h>
 #include <unistd.h>
 
-#include "../../src/timer.c"
-
 static int test_kqfd;
 
 //FIXME: copypaste from jmtest.c

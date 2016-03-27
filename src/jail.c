@@ -91,8 +91,10 @@ int jail_opts_init()
 {
 	atexit(jail_opts_shutdown);
 
-	if (asprintf(&jail_opts.base_txz_path, "%s/base.txz", CACHEDIR) < 0) abort();
-	if (asprintf(&jail_opts.jail_prefix, "%s", "/usr/launchd-jails") < 0) abort();
+	if (asprintf(&jail_opts.base_txz_path, "%s/base.txz", CACHEDIR) < 0)
+		err(1, "asprintf(3)");
+	if (asprintf(&jail_opts.jail_prefix, "%s", "/usr/launchd-jails") < 0)
+		err(1, "asprintf(3)");
 
 	if (access(jail_opts.jail_prefix, F_OK) < 0) {
 		if (mkdir(jail_opts.jail_prefix, 0700) < 0) {
@@ -217,7 +219,7 @@ out:
 int jail_create(jail_config_t jc)
 {
 	int retval = -1;
-	char *buf = NULL, *cmd = NULL;
+	char *cmd = NULL;
 
 	if (access(jc->rootdir, F_OK) == 0) {
 		log_error("refusing to create jail; %s already exists", jc->rootdir);

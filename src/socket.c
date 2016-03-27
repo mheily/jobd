@@ -192,13 +192,14 @@ void setup_socket_activation(int kqfd)
 
 	parent_kqfd = kqfd;
 	socket_kqfd = kqueue();
-	if (socket_kqfd < 0) abort();
+	if (socket_kqfd < 0)
+		err(1, "kqueue(2)");
 
 	EV_SET(&kev, socket_kqfd, EVFILT_READ, EV_ADD, 0, 0, &setup_socket_activation);
-	if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) abort();
+	if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0)
+		err(1, "kevent(2)");
 }
 
-#if !defined(UNIT_TEST)
 int socket_activation_handler()
 {
 	job_t job;
@@ -221,4 +222,3 @@ int socket_activation_handler()
 
 	return (manager_wake_job(job));
 }
-#endif
