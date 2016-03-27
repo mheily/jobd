@@ -27,4 +27,12 @@ launchd_SOURCES="log.c job.c launchd.c manager.c manifest.c socket.c
                  calendar.c timer.c pidfile.c flopen.c"
 launchd_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS"
                  
+# TODO: add a --debug option to configure; this wont work because CFLAGS specifies -O2
+#if [ -n "$DEBUG" ] ; then
+#	launchd_CFLAGS="$launchd_CFLAGS -O0 -g"
+#fi
+
+#TODO: add a valgrinding option:
+#make clean ; make all CFLAGS="-g -O0" && valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes ./launchd -fv 2>&1|less
+
 write_makefile
