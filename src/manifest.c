@@ -579,8 +579,11 @@ static unsigned char* job_manifest_prepare_buf_for_file(const char *filename, si
 	if (stat(filename, &sb))
 		return NULL;
 
+	/* WORKAROUND: allocate (buf_size + 1) to prevent future off-by-one errors
+	 * reported by Valgrind. It would be better to fix this someplace else.
+	 */
 	*buf_size = sb.st_size + 1;
-	buf = calloc(*buf_size, sizeof(unsigned char));
+	buf = calloc(*buf_size + 1, sizeof(unsigned char));
 
 	return buf;
 }
