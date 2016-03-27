@@ -59,5 +59,6 @@ void manager_reap_child(pid_t pid, int status);
 void manager_pid_event_add(int pid);
 void manager_pid_event_delete(int pid);
 void manager_main_loop();
+void manager_unload_all_jobs();
 
 #endif /* MANAGER_H_ */

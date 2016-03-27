@@ -271,6 +271,12 @@ int manager_write_status_file()
 }
 
 void manager_free_job(job_t job) {
+	char path[PATH_MAX];
+
+	path_sprintf(&path, "%s/%s.json", options.activedir, job->jm->label);
+	if (unlink(path) < 0) {
+		log_errno("unlink(2) of %s", path);
+	}
 	LIST_REMOVE(job, joblist_entry);
 	job_free(job);
 }
@@ -294,16 +300,6 @@ int manager_unload_job(const char *label)
 		goto out;
 	}
 
-	if (asprintf(&path, "%s/%s.json", options.activedir, label) < 0) {
-		log_errno("asprintf");
-		goto out;
-	}
-
-	if (unlink(path) < 0) {
-		log_errno("unlink(2) of %s", path);
-		goto out;
-	}
-
 	if (job_unload(job) < 0) {
 		goto out;
 	}
@@ -319,6 +315,23 @@ int manager_unload_job(const char *label)
 out:
 	free(path);
 	return retval;
+}
+
+void
+manager_unload_all_jobs()
+{
+	job_t job;
+	job_t job_tmp;
+
+	log_debug("unloading all jobs");
+	LIST_FOREACH_SAFE(job, &jobs, joblist_entry, job_tmp) {
+		if (job_unload(job) < 0) {
+			log_error("job unload failed: %s", job->jm->label);
+		} else {
+			log_debug("job %s unloaded", job->jm->label);
+		}
+		manager_free_job(job);
+	}
 }
 
 void manager_init(struct pidfh *pfh)
@@ -526,8 +539,12 @@ manager_main_loop()
 				manager_reap_child(kev.ident, kev.data);
 				break;
 			case SIGINT:
+				log_notice("caught SIGINT, exiting");
+				manager_unload_all_jobs();
+				exit(1);
+				break;
 			case SIGTERM:
-				log_notice("caught signal %u, exiting", (unsigned int)kev.ident);
+				log_notice("caught SIGTERM, exiting");
 				do_shutdown();
 				exit(0);
 				break;

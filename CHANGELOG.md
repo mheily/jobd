@@ -19,6 +19,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 -
 ### Added
 - Some experimental PC-BSD plist files have been added to the manifests/ directory.
+- If you send launchd(8) a SIGINT signal, it will gracefully unload all jobs and then exit.
 
 ### Changed
 - If you run launchd(8) in the foreground, log messages will be printed to

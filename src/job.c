@@ -33,6 +33,8 @@
 #include "manager.h"
 #include "socket.h"
 #include "timer.h"
+#include "util.h"
+
 
 static int reset_signal_handlers();
 
