@@ -20,6 +20,12 @@ These instructions are intended for advanced users and PC-BSD developers **only*
 	make
 	sudo make install
 ```
+1. Copy the JSON files for PC-BSD services into launchd's configuration directories.
+```
+cd manifests/pcbsd
+sudo cp agents/* /usr/local/etc/launchd/agents/
+sudo cp daemons/* /usr/local/etc/launchd/daemons/
+```
 1. Enable and start the launchd service (requires becoming root):
 ```
 	# echo 'launchd_enable=YES' >>  /etc/rc.conf
