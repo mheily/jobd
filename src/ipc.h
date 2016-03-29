@@ -14,45 +14,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef _RELAUNCHD_UTIL_H_
-#define _RELAUNCHD_UTIL_H_
+#ifndef _RELAUNCHD_IPC_H_
+#define _RELAUNCHD_IPC_H_
 
-#include <errno.h>
-#include <stdarg.h>
-#include <limits.h>
-#include <sys/stat.h>
+void setup_ipc_server(int kqfd);
+int ipc_connection_handler();
 
-static inline void
-path_sprintf(char (*buf)[PATH_MAX], const char *format, ...)
-{
-	int len;
-	va_list args;
-
-	if (buf == NULL)
-		errx(1, "null pointer");
-	
-	va_start(args, format);
-	len = vsnprintf((char *)buf, sizeof(*buf), format, args);
-	va_end(args);
-	
-	if (len < 0) 
-		err(1, "vsnprintf(3)");
-        if (len >= (int)sizeof(*buf)) {
-                errno = ENAMETOOLONG;
-		err(1, "vsnprintf(3)");
-        }
-}
-
-/* Make a directory idempotently */
-static inline void
-mkdir_idempotent(const char *path, mode_t mode)
-{
-	if (mkdir(path, mode) < 0) {
-		if (errno == EEXIST)
-			return;
-
-		err(1, "mkdir(2)");
-	}
-}
-
-#endif /* _RELAUNCHD_UTIL_H_ */
+#endif /* _RELAUNCHD_IPC_H_ */
