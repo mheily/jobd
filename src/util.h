@@ -51,7 +51,7 @@ mkdir_idempotent(const char *path, mode_t mode)
 		if (errno == EEXIST)
 			return;
 
-		err(1, "mkdir(2)");
+		err(1, "mkdir(2) of `%s'", path);
 	}
 }
 

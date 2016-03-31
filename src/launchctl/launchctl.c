@@ -32,6 +32,7 @@
 
 #include <sys/nv.h>
 
+#include "ipc.h"
 #include "options.h"
 #include "job.h"
 #include "util.h"
@@ -42,10 +43,9 @@ int setup_client_socket()
 	struct sockaddr_un sock;
 	int fd;
 
-	if (getuid() == 0) {
-		path_sprintf(&path, "/var/run/launchd/ipc.sock");
-	} else {
-		path_sprintf(&path, "%s/.launchd/run/ipc.sock", getenv("HOME"));
+	if (ipc_get_socket_path((char *)path, sizeof(path),
+			RELAUNCHD_IPC_SERVICE, IPC_INTERFACE_DEFAULT) < 0) {
+		return -1;
 	}
 
 	sock.sun_family = AF_LOCAL;

@@ -17,7 +17,39 @@
 #ifndef _RELAUNCHD_IPC_H_
 #define _RELAUNCHD_IPC_H_
 
+
+#define RELAUNCHD_IPC_SERVICE "com.heily.relaunchd"
+
 void setup_ipc_server(int kqfd);
 int ipc_connection_handler();
+
+/* TODO: move everything below here to libipc */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#define IPC_INTERFACE_DEFAULT ((void *)(0))
+
+static inline int
+ipc_get_socket_path(char *buf, size_t bufsz, const char *service, const char *interface)
+{
+	const char *sys_ipcdir = "/var/run/ipc";
+	int len;
+
+	if (interface == IPC_INTERFACE_DEFAULT)
+		interface = "__default__";
+
+	if (getuid() == 0) {
+		len = snprintf(buf, bufsz, "%s/%s/%s.sock", sys_ipcdir, service, interface);
+	} else {
+		len = snprintf(buf, bufsz, "%s/.ipc/%s/%s.sock", getenv("HOME"), service, interface);
+	}
+	if (len < 0 || len >= bufsz) {
+        	return -1;
+        }
+
+        return 0;
+}
 
 #endif /* _RELAUNCHD_IPC_H_ */

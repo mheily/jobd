@@ -25,6 +25,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include "ipc.h"
 #include "log.h"
 #include "util.h"
 
@@ -38,13 +39,24 @@ static void
 setup_listen_socket()
 {
 	struct sockaddr_un name;
-	char path[PATH_MAX];
+	char ipcdir[PATH_MAX], path[PATH_MAX];
 
+	/* Initialize the IPC directory */
 	if (getuid() == 0) {
-		path_sprintf(&path, "/var/run/launchd/ipc.sock");
-		mkdir_idempotent("/var/run/launchd", 0700);
+		mkdir_idempotent("/var/run/ipc", 0755);
+		path_sprintf(&ipcdir, "/var/run/ipc/%s", RELAUNCHD_IPC_SERVICE);
+		mkdir_idempotent(ipcdir, 0755);
+
 	} else {
-		path_sprintf(&path, "%s/.launchd/run/ipc.sock", getenv("HOME"));
+		path_sprintf(&ipcdir, "%s/.ipc", getenv("HOME"));
+		mkdir_idempotent(ipcdir, 0700);
+		path_sprintf(&ipcdir, "%s/.ipc/%s", getenv("HOME"), RELAUNCHD_IPC_SERVICE);
+		mkdir_idempotent(ipcdir, 0700);
+	}
+
+	if (ipc_get_socket_path((char *)path, sizeof(path),
+			RELAUNCHD_IPC_SERVICE, IPC_INTERFACE_DEFAULT) < 0) {
+		errx(1, "ipc_get_socket_path()");
 	}
 
 	(void) unlink(path);
@@ -54,13 +66,16 @@ setup_listen_socket()
 
         sock = socket(AF_LOCAL, SOCK_STREAM, 0);
         if (!sock)
-                err(1, "socket");
+                err(1, "socket(2)");
 
         if (bind(sock, (struct sockaddr *) &name, SUN_LEN(&name)) < 0)
-                err(1, "bind");
+                err(1, "bind(2)");
+
+        if (chmod(path, 0700) < 0)
+        	err(1, "chmod(2)");
 
         if (listen(sock, 1024) < 0)
-                err(1, "listen");
+                err(1, "listen(2)");
 }
 
 void setup_ipc_server(int kqfd)
