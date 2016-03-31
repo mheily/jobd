@@ -246,7 +246,12 @@ rc_script() {
 	elif [ -x '/etc/init.d' ] ; then
 		RC_SCRIPT_DIR="/etc/init.d"
 	else
-		err 'Unable to determine RC_SCRIPT_DIR'
+		_uname=$(uname)
+		case `uname` in
+		"FreeBSD") RC_SCRIPT_DIR="/usr/local/etc/rc.d" ;;
+		"Linux") RC_SCRIPT_DIR="/etc/init.d" ;;
+		*) err 'Unable to determine RC_SCRIPT_DIR'
+		esac
 	fi
 	DISTFILES="$DISTFILES $_prog"
 	install_DIRS="$install_DIRS ${RC_SCRIPT_DIR}"
