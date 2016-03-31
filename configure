@@ -79,10 +79,13 @@ do
 	manpage $manpage
 done
 
-if [ -x /usr/local/etc/rc.d ] ; then
+uname=$(uname)
+if [ $uname = 'FreeBSD' ] ; then
 	rc_script 'launchd' 'rc.FreeBSD'
 elif [ `uname` = 'Linux' ] ; then
 	rc_script 'launchd' 'rc.Linux'
+else
+	echo "**WARNING** Unable to determine the correct rc script to install"
 fi
 
 # Copy manifests for supported operating systems

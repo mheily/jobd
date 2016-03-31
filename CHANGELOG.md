@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file
 using the [Keep A ChangeLog](http://keepachangelog.com/) style.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.5.1] - 2016/03/31
+### Fixed
+- Fix a problem creating the rc script when building under Poudriere
+
 ## [0.5.0] - 2016/03/27
 ### Broken
 - The Linux port is probably broken due to the use of EVFILT_PROC.
