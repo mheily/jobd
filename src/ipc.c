@@ -121,6 +121,7 @@ int ipc_connection_handler()
                 log_errno("accept(2)");
                 return 0;
         }
+        log_debug("incoming connection");
 
 	nvl = nvlist_recv(client, 0);
 	if (nvl == NULL) {
