@@ -50,7 +50,7 @@ ipc_get_socket_path(char *buf, size_t bufsz, const char *service, const char *in
 	const char *sys_ipcdir = "/var/run/ipc";
 	int len;
 
-	if (interface == IPC_INTERFACE_DEFAULT)
+	if (!strcmp(interface, IPC_INTERFACE_DEFAULT))
 		interface = "__default__";
 
 	if (getuid() == 0) {
