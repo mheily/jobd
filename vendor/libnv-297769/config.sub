@@ -1,0 +1,604 @@
+#
+# Copyright (c) 2016 Mark Heily <mark@heily.com>
+#
+# Permission to use, copy, modify, and distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+
+## imported from makeconf/pure-makefiles:
+##
+##	commit 5166812db572269cc540b1859f6ee9c8e793cdd3
+## 	Date:   Sat Apr 9 16:47:59 2016 -0400
+
+###### PRIVATE ######
+
+ARGV=$*
+PACKAGE_NAME=myprogram
+PACKAGE_VERSION=0.0.1
+if [ -z "$TOPDIR" ] ; then
+    TOPDIR=`pwd`
+fi
+export TOPDIR
+# DISTFILES=""
+# SUBDIRS=""
+# LIBRARIES=""
+# install_DIRS=""
+
+# Use this LF variable to inject newlines into strings
+lf='
+'
+# Use this LF+TAB variable to inject new Make rules into strings
+lftab='
+	'
+
+# If set to "yes", this is the top-level ./configure script within the project
+TOP_LEVEL="yes"
+
+# Sections within the makefile
+_mf_vars=""
+_mf_default_target="all: "
+_mf_targets=""
+_mf_install_rules="install: install-directories"
+_mf_dependencies=""
+_mf_clean_files=""
+
+log_debug() {
+	message="[DEBUG] $*"
+	printf "%s\n" "$message" >> config.log
+}
+
+err() {
+	message="[ERROR] $*"
+	printf "%s\n" "$message" >> config.log
+	echo "*** ERROR *** $*"
+	exit 1
+}
+
+###### PUBLIC #######
+
+init_maketool() {
+	rm -f config.log
+	test -n "$CC" || CC="cc"
+	printf "/* Automatically generated -- do not edit */\n\n" > config.h
+	printf "# Automatically generated -- do not edit\n\n" > config.mk
+	printf "# Automatically generated -- do not edit\n\n" > depends.mk
+	printf "# Automatically generated -- do not edit\n\n" > vars.sh
+	
+	# Assume that all subdirectories share a common "config.sub"
+	# at the top-level. Use this assumption to detect what level we
+	# are at
+	test -f config.sub || TOP_LEVEL="no"
+
+	# Get standard directories
+	get_install_directory "prefix" "Installation prefix" "/usr/local" "noinstall"
+	get_install_directory "libdir" "Library directory" "${prefix}/lib" "noinstall"
+	get_install_directory "bindir" "Executable directory" "${prefix}/bin" "noinstall"
+	get_install_directory "sbindir" "Executable directory (superuser)" "${prefix}/sbin" "noinstall"
+	get_install_directory "libexecdir" "Executable directory (private)" "${prefix}/libexec" "noinstall"
+	if [ -d "${prefix}/man" ] ; then 
+		_default_mandir="${prefix}/man"
+	else
+		_default_mandir="${prefix}/share/man"
+	fi
+	get_install_directory "mandir" "Manual pages" "${_default_mandir}" "noinstall"
+	if [ "$prefix" = "/usr" ] ; then
+		default_sysconfdir="/etc"
+	else
+		default_sysconfdir="${prefix}/etc"
+	fi
+	get_install_directory "sysconfdir" "Configuration files" "${default_sysconfdir}" "noinstall"
+	get_install_directory "datadir" "Datafiles" "${prefix}/share" "noinstall"
+	get_install_directory "localstatedir" "Machine-specific data" "/var" "noinstall"
+	get_install_directory "runstatedir" "Machine-specific data (transient)" "${localstatedir}/run" "noinstall"
+}
+
+package_version() {
+	_version=$1
+	PACKAGE_VERSION=$_version
+	MAJOR_VERSION=`echo $_version | cut -f1 -d.`
+	MINOR_VERSION=`echo $_version | cut -f2 -d.`
+	PATCH_VERSION=`echo $_version | cut -f3 -d.`
+}
+
+package() {
+	PACKAGE_NAME=$1
+	package_version $2
+}
+
+getopt() {
+	match=$1
+	handler=$2
+	for arg in $ARGV ; do
+		if [ $arg = $match ] ; then
+			eval "$handler"
+			break
+		fi
+	done	
+}
+
+# Install a manpage
+manpage() {
+	_path=$1
+
+	# Assume the section is the last part of the filename
+	_section=`echo "$_path" | sed 's/.*\.//'`
+
+	_output_file="`basename $_path`.gz"
+	install_DIRS="$install_DIRS ${mandir}/man${_section}"
+	_mf_install_rules="$_mf_install_rules
+	cat $_path | gzip > \$\$DESTDIR\$(MANDIR)/man${_section}/${_output_file}"
+}
+
+# Get a directory that can be installed into
+get_install_directory() {
+	_option=$1
+	_helptext=$2
+	_default=$3
+	_options=$4
+
+	# Available options:
+	#	config_h	Add to config.h
+	#	noinstall	Don't create the directory during 'make install'
+	#	none		No special options
+	if [ -z "$_options" ] ; then
+		_options="config_h"
+	fi
+
+	_argv=$ARGV
+	set -- $_argv
+
+	_lc_option=`echo "$_option" | tr '[A-Z]' '[a-z]'`
+
+	_final_val="$_default"
+	while true; do
+		if [ -z "$1" ] ; then break ; fi
+		_key=`echo $1 | sed 's/=.*//'`
+		_val=`echo $1 | sed 's/.*=//'`
+		if [ "$_key" = "--${_lc_option}" ] ; then
+			eval "_final_val=\$_val"
+			break
+		fi
+		shift 
+	done
+
+	make_define $_option $_final_val
+	if [ -n "`echo $_options | grep config_h`" ] ; then
+		echo "#define `echo $_option | tr '[a-z]' '[A-Z]'` \"$_final_val\"" >> config.h
+	fi
+	eval "install_directory__${_option}=\$_final_val"
+	echo "setting \$$_option to $_final_val" >> config.log
+	if [ -z "`echo $_options | grep noinstall`" ] ; then
+		install_DIRS="$install_DIRS $_final_val"
+	fi
+}
+
+# Recursively a directory into a directory at 'make install' time
+copy_directory() {
+	_src=$1
+	_dst=$2
+
+	_mf_install_rules="$_mf_install_rules
+	test -d $_src && cp -R $_src/* \$\$DESTDIR${_dst}"
+}
+
+# Create one or more subdirectories under a directory that was defined via
+# get_install_directory().
+# Usage:   <install_dir_name> <subdirectory1> ... [subdirectory_N]
+create_subdirectory() {
+	eval "_parent=\"\${install_directory__$1}\""
+	if [ -z "$_parent" ] ; then err "parent directory not defined" ; fi
+	shift
+	for _child in $* ; do
+		install_DIRS="$install_DIRS $_parent/$_child"
+	done
+}
+
+# A custom target supplied by the user
+target() {
+	_body=$1
+	
+	EXTRA_TARGETS="$EXTRA_TARGETS
+$_body
+
+"
+}
+
+# A custom dependency
+make_depend() {
+    _target=$1
+    _rule=$2
+    printf "$_target:\n\t$_rule\n\n" >> depends.mk
+}
+
+# A variable definition in the Makefile
+make_define() {
+    _ident=$1
+    shift
+	printf "%s=%s\n" "$_ident" "$*" >> config.mk
+	printf "%s=\"%s\"\n" "$_ident" "$*" >> vars.sh
+	eval "$_ident=\"$*\""
+}
+
+check_header() {
+	_header=$1
+	_sym=`echo $_header | tr 'a-z' 'A-Z' | sed 's/[\-\.\/]/_/g'`
+	_lc_sym=`echo $_sym | tr 'A-Z' 'a-z'`
+	
+	printf "checking for the existence of <$_header>.. "
+	printf "#include <sys/types.h>\n#include <$_header>\nint main() {}\n" > test-$$.c
+	eval "$CC -I/usr/local/include $CFLAGS -o /dev/null test-$$.c >> config.log 2>&1"
+ 	if [ $? -eq 0 ] ; then 
+		echo yes ; val=1 
+	else 
+		echo no ; val=0 
+	fi
+	rm -f test-$$.c
+
+	echo "#define HAVE_$_sym $val" >> config.h
+	eval "check_header_${_lc_sym}=$val"
+}
+
+# Install a run control script
+rc_script() {
+	_name=$1
+	_prog=$2
+	
+	# Detect where rc scripts should go.
+	if [ -x '/usr/local/etc/rc.d' ] ; then
+		RC_SCRIPT_DIR="/usr/local/etc/rc.d"
+	elif [ -x '/etc/init.d' ] ; then
+		RC_SCRIPT_DIR="/etc/init.d"
+	else
+		_uname=$(uname)
+		case `uname` in
+		"FreeBSD") RC_SCRIPT_DIR="/usr/local/etc/rc.d" ;;
+		"Linux") RC_SCRIPT_DIR="/etc/init.d" ;;
+		*) err 'Unable to determine RC_SCRIPT_DIR'
+		esac
+	fi
+	DISTFILES="$DISTFILES $_prog"
+	install_DIRS="$install_DIRS ${RC_SCRIPT_DIR}"
+	_mf_install_rules="$_mf_install_rules
+	\$(INSTALL) -m 755 $_prog \$\$DESTDIR${RC_SCRIPT_DIR}/${_name}"
+}
+
+emit_scripts() {
+	if [ -n "$bin_SCRIPTS" ] ; then install_DIRS="$install_DIRS ${bindir}" ; fi
+	if [ -n "$sbin_SCRIPTS" ] ; then install_DIRS="$install_DIRS ${sbindir}" ; fi
+
+	for _prog in $bin_SCRIPTS ; do
+		DISTFILES="$DISTFILES $program"
+		_mf_install_rules="$_mf_install_rules
+	\$(INSTALL) -m 755 $_prog \$\$DESTDIR\$(BINDIR)"
+	done
+
+	for _prog in $sbin_SCRIPTS ; do
+		DISTFILES="$DISTFILES $program"
+		_mf_install_rules="$_mf_install_rules
+	\$(INSTALL) -m 755 $_prog \$\$DESTDIR\$(SBINDIR)"
+	done
+
+}
+
+# Write rules for creating directories during 'make install'
+emit_directories() {
+	if [ -z "$install_DIRS" ] ; then
+		_mf_install_directory_rules=$(printf "install-directories:\n")
+		return
+	fi
+	_buf=$(printf "install-directories:\n\t\$(INSTALL) -d -m 755 ")
+	for _item in `printf "$install_DIRS\n" | tr ' ' '\n' | sort | uniq` ; do
+		if [ -z "${_item}" ] ; then continue ; fi
+		eval "_buf=\"\$_buf \\\$\\\$DESTDIR${_item}\""
+	done
+	_mf_install_directory_rules=$_buf
+}
+
+emit_compilation_units() {
+	_prefix=$1
+	
+	_all_mkdeps=""
+	for source in $sources ; do
+		_obj=`echo $source | sed 's/\.c\$/.o/' | sed 's/.*\///'`
+		test -n "$_prefix" && _obj="${_prefix}${_obj}"
+		_mkdep_command="$CC $cflags $CFLAGS -MM -MT $_obj"
+		log_debug "checking dependencies of ${_obj}:\\n + ${_mkdep_command} ${source}"
+		_mkdeps=`${_mkdep_command} $source 2>>config.log`
+		test $? -eq 0 || err "Unable to generate dependencies for $source"
+		_all_mkdeps="$_all_mkdeps `echo $_mkdeps | head -1 | sed 's/.*: //'`"
+		_mf_dependencies="$_mf_dependencies
+$_mkdeps
+	\$(CC) -c $cflags \$(CFLAGS) -o \$@ $source
+"
+	done
+
+	DISTFILES="$DISTFILES $_all_mkdeps"	
+}
+
+emit_static_library() {
+	install_DIRS="$install_DIRS ${libdir}"
+	_mf_install_rules="$_mf_install_rules
+	\$(INSTALL) -m 755 ${_library}.a \$\$DESTDIR\$(LIBDIR)"
+
+	_objs=`echo $sources | sort | sed 's/\.c/.o/g'`
+	_curdir_objs=`for x in $_objs ; do basename $x ; done | sed 's/^/static-/g' | tr '\n' ' '`
+
+	_mf_default_target="$_mf_default_target ${_library}.a"
+	_mf_clean_files="$_mf_clean_files ${_library}.a"
+	_mf_targets="$_mf_targets
+${_library}.a: $_curdir_objs $depends
+	\$(AR) rcs ${_library}.a $_curdir_objs
+"
+	emit_compilation_units 'static-'
+}
+
+emit_shared_library() {
+	_saved_cflags=$cflags
+		
+	install_DIRS="$install_DIRS ${libdir}"
+	_mf_install_rules="$_mf_install_rules
+	\$(INSTALL) -s -m 755 $realname \$\$DESTDIR\$(LIBDIR)
+	\$(INSTALL) -ls $realname \$\$DESTDIR\$(LIBDIR)/$soname
+	\$(INSTALL) -ls $realname \$\$DESTDIR\$(LIBDIR)/$_library.so
+"
+
+	_objs=`echo $sources | sort | sed 's/\.c/.o/g'`
+	_curdir_objs=`for x in $_objs ; do basename $x ; done | tr '\n' ' '`
+
+	_mf_default_target="$_mf_default_target $realname"
+	_mf_clean_files="$_mf_clean_files $realname $soname $_library.so"
+	_mf_targets="$_mf_targets
+$realname: $_curdir_objs $depends
+	\$(CC) -shared -fvisibility=hidden -Wl,-soname,$soname -o \$@ \\
+	    $ldflags \$(LDFLAGS) $_curdir_objs $ldadd \$(LDADD)
+
+"
+
+	cflags="$cflags -fpic -fvisibility=hidden"
+	emit_compilation_units ''
+	cflags=$_saved_cflags
+}
+
+emit_libraries() {
+	for _library in $LIBRARIES; do
+		# common to all targets
+		eval "sources=\$${_library}_SOURCES"
+		eval "cflags=\$${_library}_CFLAGS"
+		eval "ldflags=\$${_library}_LDFLAGS"
+		eval "ldadd=\$${_library}_LDADD"
+		eval "depends=\$${_library}_DEPENDS"
+		# specific to libraries
+		eval "soname=\$${_library}_SONAME"
+		eval "realname=\$${_library}_REALNAME"
+		
+	
+		emit_static_library
+		emit_shared_library
+	done
+}
+
+emit_programs() {
+	if [ -n "$bin_PROGRAMS" ] ; then install_DIRS="$install_DIRS ${bindir}" ; fi
+	if [ -n "$sbin_PROGRAMS" ] ; then install_DIRS="$install_DIRS ${sbindir}" ; fi
+
+	for _program in $bin_PROGRAMS $sbin_PROGRAMS $TESTS; do
+
+		# KLUDGE: only needed because this function does too much
+		_should_install=yes
+		for _x in $TESTS ; do
+			if [ "$_x" = "$_program" ] ; then _should_install=no ; break ; fi
+		done
+
+		if [ "$_should_install" = "yes" ] ; then
+		install_DIRS="$install_DIRS ${sbindir}"
+		_mf_install_rules="$_mf_install_rules
+	\$(INSTALL) -s -m 755 $_program \$\$DESTDIR\$(SBINDIR)"
+		fi
+
+		eval "sources=\$${_program}_SOURCES"
+		eval "cflags=\$${_program}_CFLAGS"
+		eval "ldflags=\$${_program}_LDFLAGS"
+		eval "ldadd=\$${_program}_LDADD"
+		eval "depends=\$${_program}_DEPENDS"
+		_objs=`echo $sources | sort | sed 's/\.c/.o/g'`
+		_curdir_objs=`for x in $_objs ; do basename $x ; done | tr '\n' ' '`
+
+		_mf_default_target="$_mf_default_target $_program"
+		_mf_clean_files="$_mf_clean_files $_program"
+		_mf_targets="$mf_targets
+$_program: $_curdir_objs $depends
+	\$(CC) -o \$@ $ldflags \$(LDFLAGS) $_curdir_objs $ldadd \$(LDADD)
+
+"
+		emit_compilation_units
+	done
+}
+
+# Add any vendor tarballs to the distribution
+emit_vendored_items() {
+	if [ -x ./vendor ] ; then
+		for dep in `find ./vendor -depth 1 -name '*.gz' -o -name '*.tgz'` ; do
+			DISTFILES="$DISTFILES $dep"
+		done
+	fi
+}
+
+emit_tests() {
+    _cwd=`pwd`
+	_test_rules=`echo $TESTS | tr ' ' '\n' | sed "s,^,	${_cwd}/,"`
+	if [ -n "$TESTS" ] ; then
+		_mf_targets="$_mf_targets
+
+check: $TESTS
+$_test_rules
+"
+	else
+	_mf_targets="$_mf_targets
+
+check:
+"
+	fi
+	if [ -n "$SUBDIRS" ] ; then
+		_mf_targets="$_mf_targets
+	for dir in $SUBDIRS ; do cd \$\$dir && \$(MAKE) check && cd .. ; done
+"
+	fi
+}
+
+emit_packaging() {
+	
+	_mf_packaging="PACKAGE_NAME=$PACKAGE_NAME
+PACKAGE_VERSION=$PACKAGE_VERSION
+MAJOR_VERSION=$MAJOR_VERSION
+MINOR_VERSION=$MINOR_VERSION
+PATCH_VERSION=$PATCH_VERSION
+
+PREFIX = ${prefix}
+LIBDIR = ${libdir}
+BINDIR = ${bindir}
+SBINDIR = ${sbindir}
+LIBEXECDIR = ${libexecdir}
+MANDIR = ${mandir}
+SYSCONFDIR = ${sysconfdir}
+DATADIR = ${datadir}
+LOCALSTATEDIR = ${localstatedir}
+RUNSTATEDIR = ${runstatedir}
+
+INSTALL ?= /usr/bin/install
+"
+}
+
+emit_distribution() {
+	if [ "$TOP_LEVEL" = "no" ] ; then return ; fi
+	
+	_distfiles=`echo "$DISTFILES" | sed 's/\\\//g' | tr ' ' '\n' | sort | uniq | tr '\n' ' '`
+	_mf_distribution="dist:
+	mkdir \$(PACKAGE_NAME)-\$(PACKAGE_VERSION)
+	for file in $_distfiles ; do \
+		install -d \$(PACKAGE_NAME)-\$(PACKAGE_VERSION)/\`dirname \$\$file\` ; \
+		install \$\$file \$(PACKAGE_NAME)-\$(PACKAGE_VERSION)/\$\$file ; \
+	done
+	tar cf \$(PACKAGE_NAME)-\$(PACKAGE_VERSION).tar.gz \$(PACKAGE_NAME)-\$(PACKAGE_VERSION)
+	rm -rf \$(PACKAGE_NAME)-\$(PACKAGE_VERSION)
+"
+}
+
+emit_cleanup() {
+	_mf_clean_rules="clean:
+	rm -f *.o $_mf_clean_files"
+	if [ -n "$SUBDIRS" ] ; then
+		_mf_clean_rules="$_mf_clean_rules
+	for dir in $SUBDIRS ; do cd \$\$dir && \$(MAKE) clean && cd .. ; done
+"
+	fi
+}
+
+emit_distclean() {
+	_buf="distclean: clean"
+	for _dir in $SUBDIRS ; do 
+		_buf="$_buf${lftab}\$(MAKE) -C $_dir distclean"
+	done
+	_buf="$_buf${lftab}rm -f config.h vars.sh depends.mk config.mk config.log"
+	_mf_distclean_rules=$_buf
+}
+
+emit_subdir_rules() {
+	if [ -z "$SUBDIRS" ] ; then return ; fi
+
+	_mf_default_target="$_mf_default_target
+	for dir in $SUBDIRS ; do cd \$\$dir && \$(MAKE) all && cd .. ; done
+"
+
+	_mf_install_rules="$_mf_install_rules
+	for dir in $SUBDIRS ; do cd \$\$dir && \$(MAKE) install && cd .. ; done"
+}
+
+emit_platform_tweaks() {
+	if [ `uname` = 'Linux' ] ; then
+		_mf_vars="$mf_vars
+CFLAGS+=-D_GNU_SOURCE"
+	fi
+}
+
+write_makefile() {
+	emit_packaging
+	emit_programs
+	emit_libraries
+	emit_scripts
+	emit_tests
+	emit_distribution
+	emit_cleanup
+	emit_distclean
+	emit_subdir_rules
+	emit_vendored_items
+	emit_platform_tweaks
+	emit_directories
+	
+	_outfile="Makefile"
+
+	if [ -n "$SUBDIR" ] ; then
+		echo "creating $SUBDIR/$_outfile"
+	else
+		echo "creating $_outfile"
+	fi
+
+	cat <<__EOF__ >$_outfile
+# Automatically generated -- do not edit
+
+include ${TOPDIR}/config.mk
+
+$_mf_packaging
+$_mf_vars
+
+# Files to include in the tarball
+DISTFILES = configure config.sub $DISTFILES
+
+$_mf_default_target
+$_mf_targets
+$_mf_distribution
+$_mf_install_directory_rules
+$_mf_install_rules
+$_mf_clean_rules
+$_mf_distclean_rules
+$_mf_dependencies
+$EXTRA_TARGETS
+
+include ${TOPDIR}/depends.mk
+
+.PHONY: clean check install install-directories
+__EOF__
+
+	# Convert C preprocessor definitions into shell variables
+        egrep '^#define' config.h | sed 's/^#define //; s/ /=/' >> vars.sh
+
+	# Perform recursive ./configure invocation
+	if [ -n "$SUBDIRS" ] ; then
+		for x in $SUBDIRS ; do
+			cd $x
+			if [ -n "$SUBDIR" ] ; then
+				SUBDIR="$SUBDIR/$x" ./configure $configure_ARGS
+			else
+				SUBDIR="$x" ./configure
+			fi
+			test $? -eq 0 || err "Unable to run configure in ./$x/"
+			cd ..
+		done
+	fi
+}
+
+
+#
+# MAIN()
+#
+
+configure_ARGS="$*"
+init_maketool
