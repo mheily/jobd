@@ -1,0 +1,6 @@
+FreeBSD-base/
+work/
+Makefile
+config.*
+*.mk
+*.swp
