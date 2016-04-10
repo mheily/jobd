@@ -20,10 +20,10 @@
 
 bin_PROGRAMS=launchctl
 
-launchctl_CFLAGS="-include ../../config.h -I.. -std=c99 -Wall -Werror -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
-launchctl_LDFLAGS="$libucl_LDFLAGS"
-launchctl_LDADD="$libucl_LDADD $kqueue_LDADD -lnv"
+launchctl_CFLAGS="-include ../../config.h -I.. -std=c99 -Wall -Werror -I/usr/local/include $vendor_CFLAGS"
+launchctl_LDFLAGS="$vendor_LDFLAGS"
+launchctl_LDADD="$vendor_LDADD"
 launchctl_SOURCES="../log.c launchctl.c"
-launchctl_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS"
+launchctl_DEPENDS="$vendor_DEPENDS"
 
 write_makefile

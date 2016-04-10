@@ -22,12 +22,12 @@ SUBDIRS="launchctl"
 
 sbin_PROGRAMS=launchd
 
-launchd_CFLAGS="-include ../config.h -std=c99 -Wall -Werror -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
-launchd_LDFLAGS="$libucl_LDFLAGS"
-launchd_LDADD="$libucl_LDADD $kqueue_LDADD -lnv"
+launchd_CFLAGS="-include ../config.h -std=c99 -Wall -Werror -I/usr/local/include $vendor_CFLAGS"
+launchd_LDFLAGS="$vendor_LDFLAGS"
+launchd_LDADD="$vendor_LDADD"
 launchd_SOURCES="log.c job.c launchd.c manager.c manifest.c socket.c ipc.c
                  calendar.c timer.c pidfile.c flopen.c"
-launchd_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS"
+launchd_DEPENDS="$vendor_DEPENDS"
                  
 # TODO: add a --debug option to configure; this wont work because CFLAGS specifies -O2
 #if [ -n "$DEBUG" ] ; then

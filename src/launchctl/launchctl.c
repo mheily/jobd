@@ -90,7 +90,11 @@ main(int argc, const char *argv[])
 
 	setup_client_socket();
 
-	do_command_load(argv);
+	if (!strcmp(argv[1], "load")) {
+		do_command_load(argv);
+	} else {
+		errx(1, "unrecognized command");
+	}
 
 	exit(EXIT_SUCCESS);
 }
