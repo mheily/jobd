@@ -15,7 +15,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-SUBDIRS="jmtest job manifest clang-analyzer"
+SUBDIRS="jmtest job manifest jail clang-analyzer"
 # XXX-fixme: timer/calendar broken
 
 . ../config.sub

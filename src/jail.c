@@ -30,45 +30,41 @@
 #include "jail.h"
 #include "util.h"
 
+static void get_host_release(void);
+static int fetch_distfiles(const char *machine, const char *release);
+static void set_base_txz_path(char (*path)[PATH_MAX], const char *release, const char *machine);
+
 /* Global options for jails */
 static struct {
 	bool initialized;
-	char *base_txz_path;
 	char *jail_prefix;	/** Top level directory where jails live */
+
+	/* Information about the jail host */
+	char *host_release;
+	char *host_machine;
 } jail_opts = {
 	false,
 	NULL,
 	NULL
 };
 
-static int fetch_distfiles()
+static int fetch_distfiles(const char *machine, const char *release)
 {
-	struct utsname uts;
-	char short_version[5];
+	char outfile[PATH_MAX];
 	char *cmd = NULL, *uri = NULL;
 
-	if (uname(&uts) < 0) {
-		log_errno("uname(3)");
-		return -1;
-	}
-
-	strncpy((char *)&short_version, uts.release, 4);
-	short_version[4] = '\0';
-	/* FIXME: quick hack because freebsd 11 is not released */
-	if (!strcmp(short_version, "11.0")) {
-		strncpy((char *)&short_version, "10.3", 4);
-	}
-
 	if (asprintf(&uri,
-			"%s/pub/FreeBSD/releases/%s/%s/%s-RELEASE/base.txz",
+			"%s/pub/FreeBSD/releases/%s/%s/base.txz",
 			"ftp://ftp.freebsd.org", /* TODO: make configurable */
-			uts.machine, uts.machine, short_version) < 0) {
+			machine, release) < 0) {
 		log_errno("asprintf(3)");
 		goto err_out;
 	}
+	set_base_txz_path(&outfile, release, machine);
 	log_debug("downloading %s", uri);
 
-	if (asprintf(&cmd, "fetch -q %s -o %s", uri, jail_opts.base_txz_path) < 0) {
+	if (asprintf(&cmd, "fetch -q %s -o %s",
+			uri, outfile) < 0) {
 		goto err_out;
 	}
 	if (system(cmd) < 0) {
@@ -88,7 +84,6 @@ err_out:
 
 static void jail_opts_shutdown()
 {
-	free(jail_opts.base_txz_path);
 	free(jail_opts.jail_prefix);
 }
 
@@ -102,8 +97,6 @@ int jail_opts_init()
 	path_sprintf(&path, "/var/cache/launchd");
 	mkdir_idempotent(path, 0755);
 
-	if (asprintf(&jail_opts.base_txz_path, "%s/base.txz", CACHEDIR) < 0)
-		err(1, "asprintf(3)");
 	if (asprintf(&jail_opts.jail_prefix, "%s", "/usr/launchd-jails") < 0)
 		err(1, "asprintf(3)");
 
@@ -114,10 +107,7 @@ int jail_opts_init()
 		}
 	}
 
-	if (access(jail_opts.base_txz_path, F_OK) < 0) {
-		if (fetch_distfiles() < 0)
-			return -1;
-	}
+	get_host_release();
 
 	jail_opts.initialized = true;
 
@@ -175,6 +165,24 @@ int jail_config_set_name(jail_config_t jc, const char *name)
 	return 0;
 }
 
+int jail_config_set_release(jail_config_t jc, const char *release) {
+	jc->release = strdup(release);
+	if (!jc->release) {
+		log_errno("strdup(3)");
+		return -1;
+	}
+	return 0;
+}
+
+int jail_config_set_machine(jail_config_t jc, const char *machine) {
+	jc->machine = strdup(machine);
+	if (!jc->machine) {
+		log_errno("strdup(3)");
+		return -1;
+	}
+	return 0;
+}
+
 void jail_config_free(jail_config_t jc)
 {
 	if (jc == NULL)
@@ -182,6 +190,8 @@ void jail_config_free(jail_config_t jc)
 	free(jc->name);
 	free(jc->package);
 	free(jc->config_file);
+	free(jc->release);
+	free(jc->base_txz_path);
 	free(jc);
 }
 
@@ -232,6 +242,12 @@ int jail_create(jail_config_t jc)
 	int retval = -1;
 	char *cmd = NULL;
 
+	set_base_txz_path(&(jc->base_txz_path), jc->release, jc->machine);
+	if (access(jc->base_txz_path, F_OK) < 0) {
+		if (fetch_distfiles(jc->machine, jc->release) < 0)
+			return -1;
+	}
+
 	if (access(jc->rootdir, F_OK) == 0) {
 		log_error("refusing to create jail; %s already exists", jc->rootdir);
 		goto out;
@@ -242,7 +258,7 @@ int jail_create(jail_config_t jc)
 		goto out;
 	}
 
-	if (asprintf(&cmd, "tar -xf %s -C %s", jail_opts.base_txz_path, jc->rootdir) < 0) {
+	if (asprintf(&cmd, "tar -xf %s -C %s", jc->base_txz_path, jc->rootdir) < 0) {
 		log_errno("asprintf(3)");
 		goto out;
 	}
@@ -343,4 +359,29 @@ bool jail_is_installed(jail_config_t jc)
 bool jail_is_running(jail_config_t jc)
 {
 	return (jail_getid(jc->name) >= 0);
+}
+
+static void
+get_host_release(void)
+{
+	struct utsname uts;
+	char short_version[5];
+
+	if (uname(&uts) < 0) {
+		err(1, "uname(3)");
+	}
+
+	strncpy((char *)&short_version, uts.release, 4);
+	short_version[4] = '\0';
+	jail_opts.host_release = strdup((char *)&short_version);
+	jail_opts.host_machine = strdup(uts.machine);
+	if (!jail_opts.host_release || !jail_opts.host_machine)
+		err(1, "memory allocation failed");
+}
+
+static void
+set_base_txz_path(char (*path)[PATH_MAX], const char *release, const char *machine)
+{
+	path_sprintf(path, "%s/%s_%s_base.txz",
+			"/var/cache/launchd", release, machine);
 }

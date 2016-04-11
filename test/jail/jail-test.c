@@ -47,6 +47,8 @@ static int test_jail_config()
 	jco = jail_config_new();
 	assert(jco);
 	assert(jail_config_set_name(jco, "test_jailname") == 0);
+	assert(jail_config_set_release(jco, "10.3-RELEASE") == 0);
+	assert(jail_config_set_machine(jco, "amd64") == 0);
 	if (jail_is_installed(jco)) {
 		assert(jail_destroy(jco) == 0);
 	}
@@ -61,6 +63,8 @@ static int test_jail_create()
 
 	jco = jail_config_new();
 	jail_config_set_name(jco, "test_jailname");
+	jail_config_set_release(jco, "10.3-RELEASE");
+	jail_config_set_machine(jco, "amd64");
 	assert(jail_create(jco) == 0);
 	assert(jail_is_installed(jco) == true);
 	assert(jail_is_running(jco) == true);

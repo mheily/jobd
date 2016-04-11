@@ -17,12 +17,17 @@
 #ifndef _RELAUNCHD_JAIL_H_
 #define _RELAUNCHD_JAIL_H_
 
+#include <limits.h>
+
 /** The configuration for a jail */
 struct jail_config {
 	char *name;	/** The jailname, not to be confused with hostname */
 	char *package; /** Package to install in the jail; FIXME: should be an array */
+	char *release; /** The release version of FreeBSD */
+	char *machine; /** The machine name (from uname -m) */
 
 	/* Internal variables, not to be exposed to the user */
+	char base_txz_path[PATH_MAX]; /** Path to the base.txz used to install the jail */
 	char *config_file; /** Path to the jail(8) configuration file */
 	char *rootdir; /** The root of the jail filesystem heirarchy */
 };
@@ -34,6 +39,8 @@ jail_config_t jail_config_new();
 void jail_config_free(jail_config_t jc);
 
 int jail_config_set_name(jail_config_t jc, const char *name);
+int jail_config_set_machine(jail_config_t jc, const char *machine);
+int jail_config_set_release(jail_config_t jc, const char *release);
 
 int jail_create(jail_config_t jc);
 bool jail_is_running(jail_config_t jc);
