@@ -105,6 +105,10 @@ main(int argc, char *argv[])
 
 	create_pid_file();
 
+/* daemon(3) is deprecated on MacOS */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 	if (options.daemon && daemon(0, 0) < 0) {
 		fprintf(stderr, "Unable to daemonize");
 		pidfile_remove(state.pfh);
@@ -112,6 +116,8 @@ main(int argc, char *argv[])
 	} else {
 		log_freopen(stdout);
 	}
+
+#pragma clang diagnostic pop
 
 	pidfile_write(state.pfh);
 
