@@ -1,0 +1,10 @@
+{
+	"Label": "com.example.jail-test",
+	"Program": "/usr/bin/true",
+	"Jail": {
+		"Name": "com_example_jail-test",
+		"Hostname": "jail-test",
+		"Machine": "amd64",
+		"Release": "10.3-RELEASE",
+	},
+}
