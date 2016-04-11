@@ -68,8 +68,9 @@ typedef struct job_manifest {
 	uint32_t throttle_interval;
 	uint32_t nice;
 	bool	 init_groups;
-	cvec_t	 watch_paths;
-	cvec_t	 queue_directories;
+	cvec_t	watch_paths;
+	cvec_t	queue_directories;
+	cvec_t	packages;
 	bool	 start_on_mount;
 	char	*stdin_path;
 	char	*stdout_path;

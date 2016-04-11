@@ -560,6 +560,7 @@ void job_manifest_free(job_manifest_t job_manifest)
 	cvec_free(job_manifest->watch_paths);
 	cvec_free(job_manifest->queue_directories);
 	cvec_free(job_manifest->environment_variables);
+	cvec_free(job_manifest->packages);
 
 	SLIST_FOREACH_SAFE(jms, &job_manifest->sockets, entry, jms_tmp) {
 		SLIST_REMOVE(&job_manifest->sockets, jms, job_manifest_socket, entry);
