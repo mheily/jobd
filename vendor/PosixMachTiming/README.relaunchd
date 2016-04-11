@@ -1,0 +1,5 @@
+Imported into the relaunchd source tree from this 02/28/2016 commit on GitHub:
+
+https://github.com/ChisholmKyle/PosixMachTiming/commit/b550f8360b03eb9979b3e22e2924fe39942b6dbb
+
+In the future, this should be done as a git submodule
