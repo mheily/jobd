@@ -34,7 +34,13 @@
 #ifndef	_MSGIO_H_
 #define	_MSGIO_H_
 
+#ifdef __APPLE__
+struct cmsgcred {
+
+};
+#else
 struct cmsgcred;
+#endif
 struct iovec;
 struct msghdr;
 

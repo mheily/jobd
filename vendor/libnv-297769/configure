@@ -43,11 +43,17 @@ if [ ! -d $workdir ] ; then
 	#set +ex
 fi
 
+check_header 'sys/endian.h'
+
 PACKAGE_NAME=libnv
 #FIXME: PACKAGE_VERSION=$(svn info $basedir | grep Revision | awk '{ print $2 }')
 PACKAGE_VERSION="297769" # WORKAROUND
 LIBRARIES=libnv
 libnv_CFLAGS="-include ./config.h -I$workdir/include -std=c99 -Wall -Werror"
 libnv_SOURCES="$workdir/src/nvlist.c $workdir/src/nvpair.c $workdir/src/msgio.c"
+
+if [ `uname` = "Darwin" ] ; then
+	libnv_CFLAGS="$libnv_CFLAGS -I../panzi -I../OpenBSM -Wno-format"
+fi
 
 write_makefile

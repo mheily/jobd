@@ -32,12 +32,7 @@
 __FBSDID("$FreeBSD: head/sys/contrib/libnv/nvpair.c 286796 2015-08-15 06:34:49Z oshogbo $");
 
 #include <sys/param.h>
-#if HAVE_SYS_ENDIAN_H
 #include <sys/endian.h>
-#else
-#include <inttypes.h>
-#include <compat_endian.h>
-#endif
 #include <sys/queue.h>
 
 #ifdef _KERNEL
