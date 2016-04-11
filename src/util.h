@@ -17,8 +17,10 @@
 #ifndef _RELAUNCHD_UTIL_H_
 #define _RELAUNCHD_UTIL_H_
 
+#include <errno.h>
 #include <stdarg.h>
 #include <limits.h>
+#include <sys/stat.h>
 
 static inline void
 path_sprintf(char (*buf)[PATH_MAX], const char *format, ...)
@@ -49,7 +51,7 @@ mkdir_idempotent(const char *path, mode_t mode)
 		if (errno == EEXIST)
 			return;
 
-		err(1, "mkdir(2)");
+		err(1, "mkdir(2) of `%s'", path);
 	}
 }
 

@@ -18,20 +18,22 @@
 . ../config.sub
 . ../vars.sh
 
+SUBDIRS="launchctl"
+
 sbin_PROGRAMS=launchd
-bin_SCRIPTS=launchctl
-launchd_CFLAGS="-include ../config.h -std=c99 -Wall -Werror -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
-launchd_LDFLAGS="$libucl_LDFLAGS"
-launchd_LDADD="$libucl_LDADD $kqueue_LDADD"
-launchd_SOURCES="log.c job.c launchd.c manager.c manifest.c socket.c 
+
+launchd_CFLAGS="-include ../config.h -std=c99 -Wall -Werror -I/usr/local/include $vendor_CFLAGS"
+launchd_LDFLAGS="$vendor_LDFLAGS"
+launchd_LDADD="$vendor_LDADD"
+launchd_SOURCES="log.c job.c launchd.c manager.c manifest.c socket.c ipc.c
                  calendar.c timer.c pidfile.c flopen.c"
-launchd_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS"
+launchd_DEPENDS="$vendor_DEPENDS"
 
 # MacOS needs a POSIX clock_gettime() function
 if [ `uname` = "Darwin" ] ; then
 	launchd_SOURCES="$launchd_SOURCES ../vendor/PosixMachTiming/src/timing_mach.c"
 fi
-     
+
 # TODO: add a --debug option to configure; this wont work because CFLAGS specifies -O2
 #if [ -n "$DEBUG" ] ; then
 #	launchd_CFLAGS="$launchd_CFLAGS -O0 -g"

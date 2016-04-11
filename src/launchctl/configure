@@ -15,18 +15,15 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-SUBDIRS="jmtest job manifest clang-analyzer"
-# XXX-fixme: timer/calendar broken
+. ../../config.sub
+. ../../vars.sh
 
-. ../config.sub
-. ../vars.sh
+bin_PROGRAMS=launchctl
 
-# These are common to all tests
-#
-make_define 'TEST_CFLAGS' "-g -O0 -std=c99 -DUNIT_TEST -DDEBUG -I../../src -I/usr/local/include $vendor_CFLAGS -include `pwd`/../config.h"
-make_define 'TEST_LDFLAGS' "$vendor_LDFLAGS $(test `uname` = 'FreeBSD' && echo -ljail)"
-make_define 'TEST_LDADD' "$vendor_LDADD"
-make_define 'TEST_DEPENDS' "$vendor_DEPENDS"
-make_define 'TEST_SOURCES' "$(find `pwd`/../src/*.c | grep -v jail.c)"
+launchctl_CFLAGS="-include ../../config.h -I.. -std=c99 -Wall -Werror -I/usr/local/include $vendor_CFLAGS"
+launchctl_LDFLAGS="$vendor_LDFLAGS"
+launchctl_LDADD="$vendor_LDADD"
+launchctl_SOURCES="../log.c launchctl.c"
+launchctl_DEPENDS="$vendor_DEPENDS"
 
 write_makefile

@@ -45,7 +45,7 @@ else
 	make_define 'libucl_CFLAGS' '-I /usr/local/include'
 	make_define 'libucl_LDFLAGS' '-L /usr/local/lib'
 	make_define 'libucl_LDADD' '-lucl'
-	make_define 'libucl_DEPENDS' ''	
+	make_define 'libucl_DEPENDS' ''
 fi
 
 check_header 'sys/event.h'
@@ -63,6 +63,29 @@ else
 	make_define 'kqueue_LDADD' ''
 	make_define 'kqueue_DEPENDS' ''	
 fi
+
+check_header 'sys_nv.h'
+if [ $check_header_sys_nv_h -eq 0 ] ; then
+	echo "building a local copy of libnv.. "
+	make_define 'nv_dir' "`pwd`/vendor/libnv-297769"
+	make_define 'nv_CFLAGS' "-I$nv_dir/work/include"
+	make_define 'nv_LDADD' "$nv_dir/libnv.a"
+	make_define 'nv_DEPENDS' "$nv_dir/libnv.a"
+	make_depend "$nv_dir/libnv.a" \
+	    "cd $nv_dir && ./configure && make"
+else
+	make_define 'nv_CFLAGS' ''
+	make_define 'nv_LDADD' '-lnv'
+	make_define 'nv_DEPENDS' ''
+fi
+
+# For convenience, combine all dependencies into a virtual "vendor"
+# library.
+#
+make_define 'vendor_CFLAGS' "$libucl_CFLAGS $kqueue_CFLAGS $nv_CFLAGS"
+make_define 'vendor_LDFLAGS' "$libucl_LDFLAGS $kqueue_LDFLAGS $nv_LDFLAGS"
+make_define 'vendor_LDADD' "$libucl_LDADD $kqueue_LDADD $nv_LDADD"
+make_define 'vendor_DEPENDS' "$libucl_DEPENDS $kqueue_DEPENDS $nv_DEPENDS"
 
 SUBDIRS="src test"
                  

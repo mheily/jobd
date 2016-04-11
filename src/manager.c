@@ -28,6 +28,7 @@
 #include "../config.h"
 
 #include "calendar.h"
+#include "ipc.h"
 #include "log.h"
 #include "job.h"
 #include "manager.h"
@@ -345,6 +346,7 @@ void manager_init(struct pidfh *pfh)
 	setup_signal_handlers();
 	setup_socket_activation(main_kqfd);
 	setup_job_dirs();
+	setup_ipc_server(main_kqfd);
 	if (setup_timers(main_kqfd) < 0)
 		errx(1, "setup_timers()");
 	if (calendar_init(main_kqfd) < 0)
@@ -553,6 +555,9 @@ manager_main_loop()
 			}
 		} else if (kev.filter == EVFILT_PROC) {
 			(void) manager_reap_child(kev.ident, kev.data);
+		} else if ((void *)kev.udata == &setup_ipc_server) {
+			if (ipc_connection_handler() < 0)
+				errx(1, "ipc_connection_handler()");
 		} else if ((void *)kev.udata == &setup_socket_activation) {
 			if (socket_activation_handler() < 0)
 				errx(1, "socket_activation_handler()");
