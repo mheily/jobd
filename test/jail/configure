@@ -25,7 +25,7 @@ srcdir="../../src"
 
 jail_CFLAGS=$TEST_CFLAGS
 jail_LDFLAGS=$TEST_LDFLAGS
-jail_SOURCES="jail-test.c ../../src/jail.c $TEST_SOURCES"
+jail_SOURCES="jail-test.c $TEST_SOURCES"
 jail_LDADD=$TEST_LDADD
 jail_DEPENDS="$TEST_DEPENDS"
 

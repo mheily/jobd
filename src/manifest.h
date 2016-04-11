@@ -22,9 +22,12 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <ucl.h>
 #include "../vendor/FreeBSD/sys/queue.h"
 #include "cvec.h"
 #include "socket.h"
+
+struct jail_config;
 
 /** A wildcard value in a crontab(5) specification */
 #define CRON_SPEC_WILDCARD UINT32_MAX
@@ -54,7 +57,7 @@ typedef struct job_manifest {
 	bool     run_at_load;
 	char	*working_directory;
 	char 	*root_directory;
-	char    *jail_name;
+	struct jail_config *jail_options; /* All options related to jails */
 
 	cvec_t	 environment_variables;
 

@@ -40,6 +40,11 @@
 	return -1; \
 } while (0)
 
+static int test_jail_init() {
+	assert(jail_opts_init() == 0);
+	return 0;
+}
+
 static int test_jail_config()
 {
 	jail_config_t jco = NULL;
@@ -57,7 +62,7 @@ static int test_jail_config()
 	return 0;
 }
 
-static int test_jail_create()
+static int test_jail_create_and_destroy()
 {
 	jail_config_t jco = NULL;
 
@@ -75,9 +80,35 @@ static int test_jail_create()
 	return 0;
 }
 
+static int test_jail_manifest() {
+		job_manifest_t jm;
+		int rv;
+
+		jm = job_manifest_new();
+		rv = job_manifest_read(jm, "jail-test.json");
+		assert (rv == 0);
+		job_manifest_free(jm);
+		return 0;
+}
+
+static int test_jail_load_and_unload() {
+		job_manifest_t jm;
+		int rv;
+
+		jm = job_manifest_new();
+		rv = job_manifest_read(jm, "jail-test.json");
+		assert (jail_job_load(jm) == 0);
+		assert (jail_job_unload(jm) == 0);
+		job_manifest_free(jm);
+		return 0;
+}
+
 int main()
 {
 	log_freopen(stdout);
+	run(test_jail_init);
+	run(test_jail_manifest);
 	run(test_jail_config);
-	run(test_jail_create);
+	run(test_jail_create_and_destroy);
+	run(test_jail_load_and_unload);
 }

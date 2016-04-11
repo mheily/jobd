@@ -18,12 +18,17 @@
 #include <pwd.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <ucl.h>
 #include <unistd.h>
 
 #include "cvec.h"
 #include "log.h"
 #include "manifest.h"
+
+#ifdef __FreeBSD__
+#include "jail.h"
+#endif
+
+extern int jail_parse_manifest(job_manifest_t manifest, const ucl_object_t *obj);
 
 static const uint32_t DEFAULT_EXIT_TIMEOUT = 20;
 static const uint32_t DEFAULT_THROTTLE_INTERVAL = 10;
@@ -50,7 +55,6 @@ static int job_manifest_parse_label(job_manifest_t manifest, const ucl_object_t 
 static int job_manifest_parse_user_name(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_group_name(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_program(job_manifest_t manifest, const ucl_object_t *obj);
-static int job_manifest_parse_jail_name(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_umask(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_working_directory(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_root_directory(job_manifest_t manifest, const ucl_object_t *obj);
@@ -92,7 +96,7 @@ static const job_manifest_item_parser_t manifest_parser_map[] = {
 	{ "StandardOutPath",       UCL_STRING,  job_manifest_parse_standard_out_path },
 	{ "StandardErrorPath",     UCL_STRING,  job_manifest_parse_standard_error_path },
 	{ "AbandonProcessGroup",   UCL_BOOLEAN, job_manifest_parse_abandon_process_group },
-	{ "JailName",              UCL_STRING,  job_manifest_parse_jail_name },
+	{ "Jail",              UCL_OBJECT,  jail_parse_manifest },
 	{ "Sockets",               UCL_OBJECT,  job_manifest_parse_sockets },
 	{ "StartCalendarInterval", UCL_OBJECT,  job_manifest_parse_start_calendar_interval },
 	{ "Umask",                 UCL_STRING,  job_manifest_parse_umask },
@@ -179,11 +183,6 @@ static int job_manifest_parse_group_name(job_manifest_t manifest, const ucl_obje
 static int job_manifest_parse_program(job_manifest_t manifest, const ucl_object_t *obj)
 {
 	return (manifest->program = strdup(ucl_object_tostring(obj))) ? 0 : -1;
-}
-
-static int job_manifest_parse_jail_name(job_manifest_t manifest, const ucl_object_t *obj)
-{
-	return (manifest->jail_name = strdup(ucl_object_tostring(obj))) ? 0 : -1;
 }
 
 static int job_manifest_parse_umask(job_manifest_t manifest, const ucl_object_t *obj)
@@ -556,7 +555,6 @@ void job_manifest_free(job_manifest_t job_manifest)
 	free(job_manifest->stdin_path);
 	free(job_manifest->stdout_path);
 	free(job_manifest->stderr_path);
-	free(job_manifest->jail_name);
 
 	cvec_free(job_manifest->program_arguments);
 	cvec_free(job_manifest->watch_paths);
@@ -567,6 +565,8 @@ void job_manifest_free(job_manifest_t job_manifest)
 		SLIST_REMOVE(&job_manifest->sockets, jms, job_manifest_socket, entry);
 		job_manifest_socket_free(jms);
 	}
+
+	jail_config_free(job_manifest->jail_options);
 
 	free(job_manifest);
 }

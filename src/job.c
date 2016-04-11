@@ -22,11 +22,6 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
-#ifdef __FreeBSD__
-#include <sys/param.h>
-#include <sys/jail.h>
-#endif
-
 #include "calendar.h"
 #include "job.h"
 #include "log.h"
@@ -34,6 +29,12 @@
 #include "socket.h"
 #include "timer.h"
 #include "util.h"
+
+#ifdef __FreeBSD__
+#include <sys/param.h>
+#include <sys/jail.h>
+#include "jail.h"
+#endif
 
 
 static int reset_signal_handlers();
@@ -352,10 +353,11 @@ static int
 start_child_process(const job_t job, const struct passwd *pwent, const struct group *grent)
 {
 #ifdef __FreeBSD__
-	if (job->jm->jail_name) {
-		log_debug("entering jail %s", job->jm->jail_name);
-		/* XXX-FIXME: hardcoded to JID #1, should lookup the JID from name */
-		if (jail_attach(1) < 0) {
+	struct jail_config * const jc = job->jm->jail_options;
+
+	if (jc->name) {
+		log_debug("entering jail: name=`%s' jid=%d", jc->name, jc->jid);
+		if (jail_attach(jc->jid) < 0) {
 			log_errno("jail_attach(2)");
 			return -1;
 		}
@@ -439,6 +441,13 @@ int job_load(job_t job)
 {
 	struct job_manifest_socket *jms;
 
+#ifdef __FreeBSD__
+	if (job->jm->jail_options && jail_job_load(job->jm) < 0) {
+		log_error("failed to setup jail");
+		return -1;
+	}
+#endif
+
 	/* TODO: This is the place to setup on-demand watches for the following keys:
 			WatchPaths
 			QueueDirectories
@@ -489,6 +498,12 @@ int job_unload(job_t job)
 		job->state = JOB_STATE_DEFINED;
 	}
 
+#ifdef __FreeBSD__
+	if (job->jm->jail_options && jail_job_unload(job->jm) < 0) {
+		log_error("failed to teardown jail");
+		return -1;
+	}
+#endif
 	return 0;
 }
 

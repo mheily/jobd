@@ -138,10 +138,10 @@ int jail_config_set_name(jail_config_t jc, const char *name)
 		return -1;
 	}
 	for (p = (char *)name; *p != '\0'; p++) {
-		if (isalnum(*p) || *p == '_') {
+		if (isalnum(*p) || *p == '_' || *p == '-') {
 			// valid character
 		} else {
-			log_error("invalid character in jail name");
+			log_error("invalid character `%c' in jail name", *p);
 			return -1;
 		}
 	}
@@ -164,6 +164,16 @@ int jail_config_set_name(jail_config_t jc, const char *name)
 
 	return 0;
 }
+
+int jail_config_set_hostname(jail_config_t jc, const char *hostname) {
+	jc->hostname = strdup(hostname);
+	if (!jc->hostname) {
+		log_errno("strdup(3)");
+		return -1;
+	}
+	return 0;
+}
+
 
 int jail_config_set_release(jail_config_t jc, const char *release) {
 	jc->release = strdup(release);
@@ -188,10 +198,12 @@ void jail_config_free(jail_config_t jc)
 	if (jc == NULL)
 		return;
 	free(jc->name);
+	free(jc->hostname);
 	free(jc->package);
 	free(jc->config_file);
 	free(jc->release);
-	free(jc->base_txz_path);
+	free(jc->machine);
+	free(jc->rootdir);
 	free(jc);
 }
 
@@ -254,7 +266,7 @@ int jail_create(jail_config_t jc)
 	}
 
 	if (mkdir(jc->rootdir, 0700) < 0) {
-		log_errno("mkdir(2)");
+		log_errno("mkdir(2) of `%s", jc->rootdir);
 		goto out;
 	}
 
@@ -304,6 +316,29 @@ out:
 	return retval;
 }
 
+int jail_stop(jail_config_t jc)
+{
+		int retval = -1;
+		char *cmd = NULL;
+
+		log_debug("stopping jail `%s'", jc->name);
+
+		/* TODO: Capture the output of this and write to the logfile */
+		if (asprintf(&cmd, "jail -f %s -r %s >/dev/null 2>&1", jc->config_file, jc->name) < 0) {
+			log_errno("asprintf(3)");
+			return -1;
+		}
+
+		if (system(cmd) < 0) {
+			log_errno("command failed: %s", cmd);
+			free(cmd);
+			return -1;
+		}
+
+		free(cmd);
+		return 0;
+}
+
 int jail_destroy(jail_config_t jc)
 {
 	int retval = -1;
@@ -351,6 +386,21 @@ out:
 	return retval;
 }
 
+int jail_restart(struct jail_config *jc)
+{
+	char cmd[PATH_MAX];
+
+	log_debug("restarting jail `%s'", jc->name);
+
+	path_sprintf(&cmd, "jail -f %s -q -rc", jc->config_file);
+	if (system(cmd) < 0) {
+		log_errno("command failed: %s", cmd);
+		return -1;
+	}
+
+	return 0;
+}
+
 bool jail_is_installed(jail_config_t jc)
 {
 	return (access(jc->rootdir, F_OK) == 0);
@@ -359,6 +409,90 @@ bool jail_is_installed(jail_config_t jc)
 bool jail_is_running(jail_config_t jc)
 {
 	return (jail_getid(jc->name) >= 0);
+}
+
+int jail_job_load(job_manifest_t manifest)
+{
+	struct jail_config * const cfg = manifest->jail_options;
+
+	if (!jail_is_installed(cfg)) {
+		if (jail_create(cfg) < 0) {
+			log_error("jail_create()");
+			return -1;
+		}
+	}
+	if (!jail_is_running(cfg)) {
+		if (jail_restart(cfg) < 0) {
+			log_error("jail_restart()");
+			return -1;
+		}
+	}
+
+	cfg->jid = jail_getid(cfg->name);
+
+	return 0;
+}
+
+int jail_job_unload(job_manifest_t manifest)
+{
+	struct jail_config * const cfg = manifest->jail_options;
+
+	if (jail_is_running(cfg)) {
+		if (jail_stop(cfg) < 0) {
+			log_error("jail_stop()");
+			return -1;
+		}
+	}
+
+	cfg->jid = -1;
+
+	return 0;
+}
+
+int jail_parse_manifest(job_manifest_t manifest, const ucl_object_t *obj)
+{
+	ucl_object_iter_t it;
+	const ucl_object_t *cur;
+	struct jail_config * jconf;
+	int result;
+
+	jconf = calloc(1, sizeof(*jconf));
+	if (!jconf) {
+		log_errno("calloc(3)");
+		return -1;
+	}
+	manifest->jail_options = jconf;
+
+	it = ucl_object_iterate_new(obj);
+
+	while ((cur = ucl_object_iterate_safe(it, true)) != NULL) {
+		const char *key = ucl_object_key(cur);
+		const char *val = ucl_object_tostring(cur);
+		log_debug("key=%s val=%s", key, val);
+
+		if (!strcmp(key, "Name")) {
+			result = jail_config_set_name(jconf, val);
+		} else if (!strcmp(key, "Hostname")) {
+			result = jail_config_set_hostname(jconf, val);
+		} else if (!strcmp(key, "Machine")) {
+			result = jail_config_set_machine(jconf, val);
+		} else if (!strcmp(key, "Release")) {
+			result = jail_config_set_release(jconf, val);
+		} else {
+			log_error("Syntax error: unknown key: %s", key);
+			ucl_object_iterate_free(it);
+			return -1;
+		}
+
+		if (result < 0) {
+			log_error("jail_parse_manifest()");
+			return -1;
+		}
+	}
+
+	ucl_object_iterate_free(it);
+
+	return 0;
 }
 
 static void

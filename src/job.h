@@ -25,6 +25,10 @@
 
 #include "manifest.h"
 
+#ifdef __FreeBSD__
+#include "jail.h"
+#endif
+
 typedef enum {
 	JOB_SCHEDULE_NONE = 0,
 	JOB_SCHEDULE_PERIODIC,
