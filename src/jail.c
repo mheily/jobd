@@ -28,6 +28,7 @@
 #include "config.h"
 #include "log.h"
 #include "jail.h"
+#include "util.h"
 
 /* Global options for jails */
 static struct {
@@ -53,6 +54,10 @@ static int fetch_distfiles()
 
 	strncpy((char *)&short_version, uts.release, 4);
 	short_version[4] = '\0';
+	/* FIXME: quick hack because freebsd 11 is not released */
+	if (!strcmp(short_version, "11.0")) {
+		strncpy((char *)&short_version, "10.3", 4);
+	}
 
 	if (asprintf(&uri,
 			"%s/pub/FreeBSD/releases/%s/%s/%s-RELEASE/base.txz",
@@ -89,7 +94,13 @@ static void jail_opts_shutdown()
 
 int jail_opts_init()
 {
+	char path[PATH_MAX];
+
 	atexit(jail_opts_shutdown);
+
+	/* Create a cache directory for downloaded files */
+	path_sprintf(&path, "/var/cache/launchd");
+	mkdir_idempotent(path, 0755);
 
 	if (asprintf(&jail_opts.base_txz_path, "%s/base.txz", CACHEDIR) < 0)
 		err(1, "asprintf(3)");
@@ -98,7 +109,7 @@ int jail_opts_init()
 
 	if (access(jail_opts.jail_prefix, F_OK) < 0) {
 		if (mkdir(jail_opts.jail_prefix, 0700) < 0) {
-			log_errno("mkdir(2)");
+			log_errno("mkdir(2) of %s", jail_opts.jail_prefix);
 			return -1;
 		}
 	}
