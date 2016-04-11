@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file
 using the [Keep A ChangeLog](http://keepachangelog.com/) style.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## HEAD - Not released yet
+### Fixed
+- Create $HOME/.launchd if it does not exist.
+
+### Added
+- Ported to MacOS X.
+
 ## [0.5.1] - 2016/03/31
 ### Fixed
 - Fix a problem creating the rc script when building under Poudriere

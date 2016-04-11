@@ -61,16 +61,24 @@ void create_pid_file()
 	if (getuid() == 0) {
 		path_sprintf(&options.pidfile, "/var/run/launchd.pid");
 	} else {
-		path_sprintf(&options.pidfile, "%s/.launchd/run/launchd.pid", getenv("HOME"));
+		char statedir[PATH_MAX];
+
+		path_sprintf(&statedir, "%s/.launchd", getenv("HOME"));
+		mkdir_idempotent(statedir, 0700);
+		path_sprintf(&statedir, "%s/.launchd/run", getenv("HOME"));
+		mkdir_idempotent(statedir, 0700);
+
+		path_sprintf(&options.pidfile, "%s/launchd.pid", statedir);
 	}
 
 	state.pfh = pidfile_open(options.pidfile, 0600, &otherpid);
 	if (state.pfh == NULL) {
 		if (errno == EEXIST) {
-			errx(EXIT_FAILURE, "Daemon already running, pid: %jd.",
-					(intmax_t) otherpid);
+			fprintf(stderr, "WARNING: Daemon already running, pid: %jd.\n", (intmax_t) otherpid);
+		} else {
+			fprintf(stderr, "ERROR: Cannot open or create pidfile: %s\n", options.pidfile);
 		}
-		errx(EXIT_FAILURE, "Cannot open or create pidfile");
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -103,8 +111,9 @@ main(int argc, char *argv[])
 			}
 	}
 
+puts("x");
 	create_pid_file();
-
+puts("y");
 /* daemon(3) is deprecated on MacOS */
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
