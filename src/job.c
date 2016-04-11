@@ -26,13 +26,12 @@
 #include "job.h"
 #include "log.h"
 #include "manager.h"
+#include "package.h"
 #include "socket.h"
 #include "timer.h"
 #include "util.h"
 
 #ifdef __FreeBSD__
-#include <sys/param.h>
-#include <sys/jail.h>
 #include "jail.h"
 #endif
 
@@ -447,6 +446,11 @@ int job_load(job_t job)
 		return -1;
 	}
 #endif
+
+	if (job->jm->packages && package_install(job->jm) < 0) {
+		log_error("failed to install packages");
+		return -1;
+	}
 
 	/* TODO: This is the place to setup on-demand watches for the following keys:
 			WatchPaths

@@ -1,6 +1,7 @@
 {
 	"Label": "com.example.jail-test",
-	"Program": "/usr/bin/true",
+	"ProgramArguments": ["/usr/local/sbin/thttpd", "-D"],
+	"Packages": ["thttpd"],
 	"Jail": {
 		"Name": "com_example_jail-test",
 		"Hostname": "jail-test",

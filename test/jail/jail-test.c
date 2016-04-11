@@ -23,6 +23,7 @@
 
 #include "../../src/log.h"
 #include "../../src/jail.h"
+#include "../../src/package.h"
 
 //FIXME: copypaste from jmtest.c
 #define run(test) do { \
@@ -98,7 +99,9 @@ static int test_jail_load_and_unload() {
 		jm = job_manifest_new();
 		rv = job_manifest_read(jm, "jail-test.json");
 		assert (jail_job_load(jm) == 0);
+		assert(package_install(jm) == 0);
 		assert (jail_job_unload(jm) == 0);
+		jail_destroy(jm->jail_options);
 		job_manifest_free(jm);
 		return 0;
 }

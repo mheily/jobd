@@ -18,6 +18,8 @@
 #define _RELAUNCHD_JAIL_H_
 
 #include <limits.h>
+#include <sys/param.h>
+#include <sys/jail.h>
 
 #include "manifest.h"
 

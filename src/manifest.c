@@ -67,6 +67,7 @@ static int job_manifest_parse_start_on_mount(job_manifest_t manifest, const ucl_
 static int job_manifest_parse_init_groups(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_abandon_process_group(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_environment_variables(job_manifest_t manifest, const ucl_object_t *obj);
+static int job_manifest_parse_packages(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_program_arguments(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_watch_paths(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_queue_directories(job_manifest_t manifest, const ucl_object_t *obj);
@@ -100,6 +101,8 @@ static const job_manifest_item_parser_t manifest_parser_map[] = {
 	{ "Sockets",               UCL_OBJECT,  job_manifest_parse_sockets },
 	{ "StartCalendarInterval", UCL_OBJECT,  job_manifest_parse_start_calendar_interval },
 	{ "Umask",                 UCL_STRING,  job_manifest_parse_umask },
+	{ "Packages",      UCL_ARRAY,   job_manifest_parse_packages },
+
 	/*
 	{ "inetdCompatibility",    SKIP_ITEM,   NULL },
 	{ "KeepAlive",             SKIP_ITEM,   NULL },
@@ -292,6 +295,11 @@ static int job_manifest_parse_environment_variables(job_manifest_t manifest, con
 static int job_manifest_parse_program_arguments(job_manifest_t manifest, const ucl_object_t *obj)
 {
 	return job_manifest_parse_cvec(&manifest->program_arguments, obj);
+}
+
+static int job_manifest_parse_packages(job_manifest_t manifest, const ucl_object_t *obj)
+{
+	return job_manifest_parse_cvec(&manifest->packages, obj);
 }
 
 static int job_manifest_parse_watch_paths(job_manifest_t manifest, const ucl_object_t *obj)

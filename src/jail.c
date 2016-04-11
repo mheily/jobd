@@ -33,6 +33,7 @@
 static void get_host_release(void);
 static int fetch_distfiles(const char *machine, const char *release);
 static void set_base_txz_path(char (*path)[PATH_MAX], const char *release, const char *machine);
+static int bootstrap_pkg(const jail_config_t cfg);
 
 /* Global options for jails */
 static struct {
@@ -309,6 +310,11 @@ int jail_create(jail_config_t jc)
 		goto out;
 	}
 
+	if (bootstrap_pkg(jc) < 0) {
+		log_error("unable to bootstrap pkg");
+		goto out;
+	}
+
 	retval = 0;
 
 out:
@@ -318,7 +324,6 @@ out:
 
 int jail_stop(jail_config_t jc)
 {
-		int retval = -1;
 		char *cmd = NULL;
 
 		log_debug("stopping jail `%s'", jc->name);
@@ -518,4 +523,22 @@ set_base_txz_path(char (*path)[PATH_MAX], const char *release, const char *machi
 {
 	path_sprintf(path, "%s/%s_%s_base.txz",
 			"/var/cache/launchd", release, machine);
+}
+
+/* Inject pkg into the jail and bootstrap it */
+static int bootstrap_pkg(const jail_config_t cfg)
+{
+	char buf[COMMAND_MAX];
+
+	if (run_system(&buf, "cp /etc/resolv.conf %s/etc", cfg->rootdir) < 0) {
+		log_error("unable to create resolv.conf");
+		return -1;
+	}
+
+	if (run_system(&buf, "env ASSUME_ALWAYS_YES=YES pkg --chroot %s bootstrap -f", cfg->rootdir) < 0) {
+		log_error("unable to fetch pkg");
+		return -1;
+	}
+
+	return 0;
 }

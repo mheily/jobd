@@ -24,7 +24,7 @@ launchd_CFLAGS="-include ../config.h -std=c99 -Wall -Werror -I/usr/local/include
 launchd_LDFLAGS="$libucl_LDFLAGS"
 launchd_LDADD="$libucl_LDADD $kqueue_LDADD"
 launchd_SOURCES="log.c job.c launchd.c manager.c manifest.c socket.c 
-                 calendar.c timer.c pidfile.c flopen.c"
+                 calendar.c timer.c package.c pidfile.c flopen.c"
 launchd_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS"
 
 # MacOS needs a POSIX clock_gettime() function

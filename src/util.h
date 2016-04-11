@@ -20,6 +20,9 @@
 #include <stdarg.h>
 #include <limits.h>
 
+/* A buffer large enough to hold a reasonable command line string */
+#define COMMAND_MAX 8092
+
 static inline void
 path_sprintf(char (*buf)[PATH_MAX], const char *format, ...)
 {
@@ -51,6 +54,31 @@ mkdir_idempotent(const char *path, mode_t mode)
 
 		err(1, "mkdir(2)");
 	}
+}
+
+/* Execute a command */
+static inline int
+run_system(char (*buf)[COMMAND_MAX], const char *format, ...)
+{
+	int len;
+	va_list args;
+
+	if (buf == NULL)
+		return -1;
+
+	va_start(args, format);
+	len = vsnprintf((char *)buf, sizeof(*buf), format, args);
+	va_end(args);
+
+	if (len < 0)
+		err(1, "vsnprintf(3)");
+        if (len >= (int)sizeof(*buf)) {
+                errno = ENAMETOOLONG;
+		err(1, "vsnprintf(3)");
+     }
+      log_debug("executing: %s", (char *)buf);
+
+      return system((char *)buf);
 }
 
 #endif /* _RELAUNCHD_UTIL_H_ */
