@@ -13,5 +13,4 @@
 			"SockServiceName": "80",
 		},
 	},
-	"EnvironmentVariables": {"LD_PRELOAD":"/tmp/sa-wrapper.so"}
 }

@@ -207,6 +207,11 @@ job_has_no_environment:
 		job_manifest_socket_export(jms, env, offset++);
 	}
 	if (offset > 0) {
+		/* TODO: check if there is already a LD_PRELOAD variable, and error out if so */
+		//FIXME: hardcoded /usr/local
+		if (cvec_push(env, "LD_PRELOAD=/usr/local/lib/liblaunch-socket.so") < 0)
+			goto err_out;
+
 		if (asprintf(&buf, "LISTEN_FDS=%zu", offset) < 0) goto err_out;
 		if (cvec_push(env, buf) < 0) goto err_out;
 		free(buf);

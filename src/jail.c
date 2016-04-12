@@ -401,6 +401,7 @@ bool jail_is_running(jail_config_t jc)
 int jail_job_load(job_manifest_t manifest)
 {
 	struct jail_config * const cfg = manifest->jail_options;
+	char buf[COMMAND_MAX];
 
 	if (!jail_is_installed(cfg)) {
 		if (jail_create(cfg) < 0) {
@@ -408,6 +409,14 @@ int jail_job_load(job_manifest_t manifest)
 			return -1;
 		}
 	}
+
+	/* Ensure the jail always has the latest versiof of liblaunch-socket.so */
+	// FIXME hardcoded path
+	if (run_system(&buf, "cp /usr/local/lib/liblaunch-socket.so.0 %s/usr/local/lib/liblaunch-socket.so", cfg->rootdir) < 0) {
+		log_errno("copy failed");
+		return -1;
+	}
+
 	if (!jail_is_running(cfg)) {
 		if (jail_restart(cfg) < 0) {
 			log_error("jail_restart()");
@@ -511,11 +520,6 @@ set_base_txz_path(char (*path)[PATH_MAX], const char *release, const char *machi
 static int bootstrap_pkg(const jail_config_t cfg)
 {
 	char buf[COMMAND_MAX];
-
-	if (run_system(&buf, "cp /etc/resolv.conf %s/etc", cfg->rootdir) < 0) {
-		log_error("unable to create resolv.conf");
-		return -1;
-	}
 
 	if (run_system(&buf, "env ASSUME_ALWAYS_YES=YES pkg --chroot %s bootstrap -f", cfg->rootdir) < 0) {
 		log_error("unable to fetch pkg");
