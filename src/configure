@@ -18,7 +18,7 @@
 . ../config.sub
 . ../vars.sh
 
-SUBDIRS="bind-wrapper"
+SUBDIRS="liblaunch-socket"
 
 sbin_PROGRAMS=launchd
 bin_SCRIPTS=launchctl

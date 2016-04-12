@@ -74,10 +74,9 @@ static void wrapper_init()
 	//puts("init");
 }
 
-int
+int __attribute__ ((visibility ("default")))
 bind(int s, const struct sockaddr *addr, socklen_t addrlen)
 {
-	int newfd;
 	struct sockaddr_in *sain = (struct sockaddr_in *) addr;
 	size_t i;
 

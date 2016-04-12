@@ -321,8 +321,9 @@ $_mkdeps
 
 emit_static_library() {
 	install_DIRS="$install_DIRS ${libdir}"
+	_installname=$(echo $soname | sed 's/\.so.*/.a/')
 	_mf_install_rules="$_mf_install_rules
-	\$(INSTALL) -m 755 ${_library}.a \$\$DESTDIR\$(LIBDIR)"
+	\$(INSTALL) -m 755 ${_library}.a \$\$DESTDIR\$(LIBDIR)/${_installname}"
 
 	_objs=`echo $sources | sort | sed 's/\.c/.o/g'`
 	_curdir_objs=`for x in $_objs ; do basename $x ; done | sed 's/^/static-/g' | tr '\n' ' '`
@@ -339,20 +340,21 @@ ${_library}.a: $_curdir_objs $depends
 emit_shared_library() {
 	_saved_cflags=$cflags
 		
+	_basic_libname=$(echo $soname | sed 's/\.so\..*/.so/')
+	
 	install_DIRS="$install_DIRS ${libdir}"
 	_mf_install_rules="$_mf_install_rules
-	\$(INSTALL) -s -m 755 $realname \$\$DESTDIR\$(LIBDIR)
-	\$(INSTALL) -ls $realname \$\$DESTDIR\$(LIBDIR)/$soname
-	\$(INSTALL) -ls $realname \$\$DESTDIR\$(LIBDIR)/$_library.so
+	\$(INSTALL) -s -m 755 ${_basic_libname} \$\$DESTDIR\$(LIBDIR)/$soname
+	ln -s \$\$DESTDIR\$(LIBDIR)/$soname \$\$DESTDIR\$(LIBDIR)/${_basic_libname} 
 "
 
 	_objs=`echo $sources | sort | sed 's/\.c/.o/g'`
 	_curdir_objs=`for x in $_objs ; do basename $x ; done | tr '\n' ' '`
 
-	_mf_default_target="$_mf_default_target $realname"
-	_mf_clean_files="$_mf_clean_files $realname $soname $_library.so"
+	_mf_default_target="$_mf_default_target ${_basic_libname}"
+	_mf_clean_files="$_mf_clean_files ${_basic_libname}"
 	_mf_targets="$_mf_targets
-$realname: $_curdir_objs $depends
+${_basic_libname}: $_curdir_objs $depends
 	\$(CC) -shared -fvisibility=hidden -Wl,-soname,$soname -o \$@ \\
 	    $ldflags \$(LDFLAGS) $_curdir_objs $ldadd \$(LDADD)
 
@@ -373,9 +375,7 @@ emit_libraries() {
 		eval "depends=\$${_library}_DEPENDS"
 		# specific to libraries
 		eval "soname=\$${_library}_SONAME"
-		eval "realname=\$${_library}_REALNAME"
 		
-	
 		emit_static_library
 		emit_shared_library
 	done
