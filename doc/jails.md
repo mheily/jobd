@@ -18,16 +18,28 @@ Machine
 The machine type. Currently only 'i386' and 'amd64' are supported.
 
 Release
-The full name of the FreeBSD release.
+The full name of the FreeBSD release as reported by `uname -r`.
 
 ## Example
 
+The following job manifest will create a jail, install the thttpd package,
+and launch thttpd inside of the jail. When an incoming connection arrives
+at port 80 on the host, it will be transparently forwarded to the jail.
+There is no need to setup NAT, bridging, or assign an IP address to the jail.
+
 {
-	"Label": "org.example.jailtest",
+	"Label": "com.example.jail-test",
+	"ProgramArguments": ["/usr/local/sbin/thttpd", "-D"],
+	"Packages": ["thttpd"],
 	"Jail": {
-		"Name": "org_example_jailtest",
-		"Hostname": "jailtest",
+		"Name": "com_example_jail-test",
+		"Hostname": "jail-test",
 		"Machine": "amd64",
 		"Release": "10.3-RELEASE",
+	},
+	"Sockets": {
+		"thttpd": {
+			"SockServiceName": "80",
+		},
 	},
 }
