@@ -28,6 +28,13 @@ export TOPDIR
 # LIBRARIES=""
 # install_DIRS=""
 
+# Use this LF variable to inject newlines into strings
+lf='
+'
+# Use this LF+TAB variable to inject new Make rules into strings
+lftab='
+	'
+
 # If set to "yes", this is the top-level ./configure script within the project
 TOP_LEVEL="yes"
 
@@ -468,7 +475,7 @@ INSTALL ?= /usr/bin/install
 emit_distribution() {
 	if [ "$TOP_LEVEL" = "no" ] ; then return ; fi
 	
-	_distfiles=`echo "$DISTFILES" | tr ' ' '\n' | sort | uniq | tr '\n' ' '`
+	_distfiles=`echo "$DISTFILES" | sed 's/\\\//g' | tr ' ' '\n' | sort | uniq | tr '\n' ' '`
 	_mf_distribution="dist:
 	mkdir \$(PACKAGE_NAME)-\$(PACKAGE_VERSION)
 	for file in $_distfiles ; do \
@@ -488,6 +495,15 @@ emit_cleanup() {
 	for dir in $SUBDIRS ; do cd \$\$dir && \$(MAKE) clean && cd .. ; done
 "
 	fi
+}
+
+emit_distclean() {
+	_buf="distclean: clean"
+	for _dir in $SUBDIRS ; do 
+		_buf="$_buf${lftab}\$(MAKE) -C $_dir distclean"
+	done
+	_buf="$_buf${lftab}rm -f config.h vars.sh depends.mk config.mk config.log"
+	_mf_distclean_rules=$_buf
 }
 
 emit_subdir_rules() {
@@ -516,6 +532,7 @@ write_makefile() {
 	emit_tests
 	emit_distribution
 	emit_cleanup
+	emit_distclean
 	emit_subdir_rules
 	emit_vendored_items
 	emit_platform_tweaks
@@ -546,6 +563,7 @@ $_mf_distribution
 $_mf_install_directory_rules
 $_mf_install_rules
 $_mf_clean_rules
+$_mf_distclean_rules
 $_mf_dependencies
 $EXTRA_TARGETS
 

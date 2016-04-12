@@ -18,6 +18,8 @@
 . ../config.sub
 . ../vars.sh
 
+SUBDIRS="bind-wrapper"
+
 sbin_PROGRAMS=launchd
 bin_SCRIPTS=launchctl
 launchd_CFLAGS="-include ../config.h -std=c99 -Wall -Werror -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
