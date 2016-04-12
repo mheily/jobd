@@ -22,25 +22,48 @@
 #include "database.h"
 #include "util.h"
 
-char databasedir[PATH_MAX];
+static char * path_to_property(const char *property);
+
+static char databasedir[PATH_MAX];
 
 int database_init()
 {
-	char path[PATH_MAX];
-
 	if (getuid() == 0) {
 		path_sprintf(&databasedir, "%s", DATABASEDIR);
 	} else {
 		path_sprintf(&databasedir, "%s/.launchd/cfg", getenv("HOME"));
 	}
-	mkdir_idempotent(path, 0700);
+	mkdir_idempotent(databasedir, 0700);
+
+	//database_set("com.heily", "this is a test");
+	//database_set("com.heily.enabled", "YES");
 
 	return 0;
 }
 
 int database_set(const char *property, const char *value)
 {
-	return -1;
+	char *path;
+	int fd;
+	size_t value_len;
+	ssize_t written;
+
+	path = path_to_property(property);
+	fd = open(path, O_WRONLY | O_TRUNC | O_CREAT | O_EXLOCK, 0755);
+	if (fd < 0) {
+		log_errno("open(2) of %s", path);
+		return -1;
+	}
+
+	value_len = strlen(value);
+	written = write(fd, value, value_len);
+	if (written < value_len) {
+		log_errno("write(2) of %s", path);
+	}
+
+	(void) close(fd);
+
+	return 0;
 }
 
 int database_get(char **value, const char *property)
@@ -51,4 +74,10 @@ int database_get(char **value, const char *property)
 int database_subscribe(const char *property)
 {
 	return -1;
+}
+
+static char * path_to_property(const char *property) {
+	static char buf[PATH_MAX]; /* Not threadsafe */
+	path_sprintf(&buf, "%s/%s", databasedir, property);
+	return ((char *) &buf);
 }
