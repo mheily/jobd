@@ -1,0 +1,4 @@
+{
+	"Label": "org.freebsd.syslogd",
+	"ProgramArguments": ["/usr/sbin/syslogd", "-s", "-s", "-F"],
+}
