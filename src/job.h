@@ -28,12 +28,14 @@
 typedef enum {
 	JOB_SCHEDULE_NONE = 0,
 	JOB_SCHEDULE_PERIODIC,
-	JOB_SCHEDULE_CALENDAR
+	JOB_SCHEDULE_CALENDAR,
+	JOB_SCHEDULE_KEEPALIVE
 } job_schedule_t;
 
 struct job {
 	LIST_ENTRY(job)	joblist_entry;
 	SLIST_ENTRY(job) start_interval_sle;
+	SLIST_ENTRY(job) watchdog_sle;
 	job_manifest_t jm;
 	enum {
 		JOB_STATE_DEFINED,
