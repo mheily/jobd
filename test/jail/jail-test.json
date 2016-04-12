@@ -7,6 +7,7 @@
 		"Hostname": "jail-test",
 		"Machine": "amd64",
 		"Release": "10.3-RELEASE",
+		"DestroyAtUnload": true,
 	},
 	"Sockets": {
 		"thttpd": {

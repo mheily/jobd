@@ -257,7 +257,7 @@ static int _jail_write_config(jail_config_t jc)
 	if (fprintf(f,
 			"# Automatically generated -- do not edit\n"
 			"exec.start = \"/bin/sh /usr/local/bin/launchctl load /usr/local/etc/launchd/daemons /usr/local/share/launchd/daemons\";\n"
-			"exec.stop = \"/bin/sh /usr/local/bin/launchctl shutdown\";\n"
+			"exec.stop = \"/bin/pkill -INT launchd\";\n"
 			"exec.clean;\n"
 			"mount.devfs;\n"
 			"\n"
@@ -324,11 +324,6 @@ int jail_create(jail_config_t jc)
 		goto out;
 	}
 
-	if (run_system(&buf, "jail -f %s -q -c", jc->config_file) < 0) {
-		log_errno("jail(1)");
-		goto out;
-	}
-
 	if (bootstrap_pkg(jc) < 0) {
 		log_error("unable to bootstrap pkg");
 		goto out;
@@ -339,6 +334,22 @@ int jail_create(jail_config_t jc)
 		goto out;
 	}
 
+	if (run_system(&buf, "jail -f %s -q -c", jc->config_file) < 0) {
+		log_errno("jail(1)");
+		goto out;
+	}
+
+	const char *github = "https://raw.githubusercontent.com/mheily/relaunchd/manifests/";
+	const char *daemons = "/usr/local/share/launchd/daemons";
+	if (run_system(&buf, "fetch -o %s/%s %s/org.freebsd.syslogd.json", jc->rootdir, daemons, github) < 0) {
+		log_errno("post-jail-create failed");
+		goto out;
+	}
+
+	if (run_system(&buf, "jexec %d launchctl load %s", jail_getid(jc->name), daemons) < 0) {
+		log_errno("loading daemons failed");
+		goto out;
+	}
 	retval = 0;
 
 out:
@@ -487,6 +498,11 @@ int jail_job_unload(job_manifest_t manifest)
 		}
 	}
 
+	if (cfg->destroy_at_unload && jail_destroy(cfg) < 0) {
+		log_error("jail_destroy()");
+		return -1;
+	}
+
 	cfg->jid = -1;
 
 	return 0;
@@ -510,7 +526,7 @@ int jail_parse_manifest(job_manifest_t manifest, const ucl_object_t *obj)
 
 	while ((cur = ucl_object_iterate_safe(it, true)) != NULL) {
 		const char *key = ucl_object_key(cur);
-		const char *val = ucl_object_tostring(cur);
+		const char *val = ucl_object_tostring_forced(cur);
 		log_debug("key=%s val=%s", key, val);
 
 		if (!strcmp(key, "Name")) {
@@ -521,6 +537,8 @@ int jail_parse_manifest(job_manifest_t manifest, const ucl_object_t *obj)
 			result = jail_config_set_machine(jconf, val);
 		} else if (!strcmp(key, "Release")) {
 			result = jail_config_set_release(jconf, val);
+		} else if (!strcmp(key, "DestroyAtUnload")) {
+			result = ucl_object_toboolean_safe(cur, &jconf->destroy_at_unload) ? 0 : -1;
 		} else {
 			log_error("Syntax error: unknown key: %s", key);
 			ucl_object_iterate_free(it);
@@ -586,7 +604,7 @@ static int _jail_bootstrap_launchd(const jail_config_t cfg)
 		log_error("unable to install launchd package");
 		return -1;
 	}
-
+#if 0
 	if (run_system(&buf, "cp /usr/local/sbin/launchd %s/usr/local/sbin/launchd", cfg->rootdir) < 0) {
 		log_error("copy failed");
 		return -1;
@@ -596,7 +614,7 @@ static int _jail_bootstrap_launchd(const jail_config_t cfg)
 		log_error("copy failed");
 		return -1;
 	}
-
+#endif
 	if (run_system(&buf, "cp /usr/local/lib/liblaunch-socket.so.0 %s/usr/local/lib/liblaunch-socket.so", cfg->rootdir) < 0) {
 		log_errno("copy failed");
 		return -1;

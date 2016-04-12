@@ -162,6 +162,11 @@ uninstall)
 	fi
 	;;
 
+# Popule a jail with launchd goodies after it is first created.
+post-jail-create)
+	/usr/local/bin/launchctl install org.freebsd.syslogd daemons
+	;;
+
 *)
 	echo "invalid command"
 	exit 1

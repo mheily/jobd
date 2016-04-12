@@ -31,6 +31,7 @@ struct jail_config {
 	char *package; /** Package to install in the jail; FIXME: should be an array */
 	char *release; /** The release version of FreeBSD */
 	char *machine; /** The machine name (from uname -m) */
+	bool destroy_at_unload; /** If true, all files in the jail will be destroyed when the job is unloaded */
 
 	/* Internal variables, not to be exposed to the user */
 	char base_txz_path[PATH_MAX]; /** Path to the base.txz used to install the jail */
