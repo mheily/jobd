@@ -35,9 +35,6 @@ int database_init()
 	}
 	mkdir_idempotent(databasedir, 0700);
 
-	//database_set("com.heily", "this is a test");
-	//database_set("com.heily.enabled", "YES");
-
 	return 0;
 }
 
@@ -48,6 +45,11 @@ int database_set(const char *property, const char *value)
 	size_t value_len;
 	ssize_t written;
 
+	if (!property || !value) {
+		log_error("null value passed in");
+		return -1;
+	}
+
 	path = path_to_property(property);
 	fd = open(path, O_WRONLY | O_TRUNC | O_CREAT | O_EXLOCK, 0755);
 	if (fd < 0) {
@@ -55,7 +57,7 @@ int database_set(const char *property, const char *value)
 		return -1;
 	}
 
-	value_len = strlen(value);
+	value_len = strlen(value) + 1;
 	written = write(fd, value, value_len);
 	if (written < value_len) {
 		log_errno("write(2) of %s", path);
@@ -68,11 +70,57 @@ int database_set(const char *property, const char *value)
 
 int database_get(char **value, const char *property)
 {
-	return -1;
+	char *path;
+	int fd;
+	ssize_t bytes;
+     	struct stat sb;
+
+	if (!property || !value) {
+		log_error("null value passed in");
+		return -1;
+	}
+
+	path = path_to_property(property);
+	fd = open(path, O_RDONLY | O_EXLOCK);
+	if (fd < 0) {
+		log_errno("open(2) of %s", path);
+		return -1;
+	}
+
+     	if (fstat(fd, &sb) < 0) {
+		log_errno("fstat(2) of %s", path);
+		(void) close(fd);
+		return -1;
+	}
+
+     	if (sb.st_size == 0 || sb.st_size >= INT_MAX) {
+		log_error("invalid size of %s", path);
+		(void) close(fd);
+		return -1;
+	}
+
+	*value = malloc(sb.st_size);
+	if (!value) {
+		log_errno("malloc(3)");
+		(void) close(fd);
+		return -1;
+	}
+
+	bytes = read(fd, *value, sb.st_size);
+	if (bytes < sb.st_size) {
+		log_errno("read(2) of %s", path);
+		(void) close(fd);
+		return -1;
+	}
+
+	(void) close(fd);
+
+	return 0;
 }
 
 int database_subscribe(const char *property)
 {
+	/* TODO */
 	return -1;
 }
 

@@ -15,45 +15,18 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-if [ `id -u` -eq 0 ] ; then
-	databasedir="/var/db/launchd/cfg"
-else
-	databasedir="$HOME/.launchd/cfg"
-fi
+TESTS="database"
 
-command=$1
-shift
+. ../../config.sub
+. ../../vars.sh
+. ../vars.sh
 
-case $command in
-get)
-	path="$databasedir/$1"
-	if [ -e $path ] ; then
-		printf "%s\n" "$(cat $path)"
-	else
-		printf ""
-		exit 1
-	fi
-	;;
+srcdir="../../src"
 
-set)
-	# WARNING: no locking here, and will cause an unlink event
-	printf "%s\0" "$2" > "$databasedir/$1"
-	;;
+database_CFLAGS=$TEST_CFLAGS
+database_LDFLAGS=$TEST_LDFLAGS
+database_SOURCES="database-test.c $TEST_SOURCES"
+database_LDADD=$TEST_LDADD
+database_DEPENDS="$TEST_DEPENDS"
 
-unset)
-	rm -f "$databasedir/$1"
-	;;
-
-list)
-	cd $databasedir 
-	for key in * ; do 
-		printf "%s=\"%s\"\n" "$key" "$(cat $key)"
-	done
-	;;
-
-*)
-	echo "invalid command"
-	exit 1
-esac
-
-exit 0
+write_makefile
