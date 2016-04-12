@@ -14,44 +14,41 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef _RELAUNCHD_UTIL_H_
-#define _RELAUNCHD_UTIL_H_
+#include <fcntl.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#include <stdarg.h>
-#include <limits.h>
-#include <sys/stat.h>
+#include "log.h"
+#include "database.h"
+#include "util.h"
 
-static inline void
-path_sprintf(char (*buf)[PATH_MAX], const char *format, ...)
+char databasedir[PATH_MAX];
+
+int database_init()
 {
-	int len;
-	va_list args;
+	char path[PATH_MAX];
 
-	if (buf == NULL)
-		errx(1, "null pointer");
-	
-	va_start(args, format);
-	len = vsnprintf((char *)buf, sizeof(*buf), format, args);
-	va_end(args);
-	
-	if (len < 0) 
-		err(1, "vsnprintf(3)");
-        if (len >= (int)sizeof(*buf)) {
-                errno = ENAMETOOLONG;
-		err(1, "vsnprintf(3)");
-        }
-}
-
-/* Make a directory idempotently */
-static inline void
-mkdir_idempotent(const char *path, mode_t mode)
-{
-	if (mkdir(path, mode) < 0) {
-		if (errno == EEXIST)
-			return;
-
-		err(1, "mkdir(2)");
+	if (getuid() == 0) {
+		path_sprintf(&databasedir, "%s", DATABASEDIR);
+	} else {
+		path_sprintf(&databasedir, "%s/.launchd/cfg", getenv("HOME"));
 	}
+	mkdir_idempotent(path, 0700);
+
+	return 0;
 }
 
-#endif /* _RELAUNCHD_UTIL_H_ */
+int database_set(const char *property, const char *value)
+{
+	return -1;
+}
+
+int database_get(char **value, const char *property)
+{
+	return -1;
+}
+
+int database_subscribe(const char *property)
+{
+	return -1;
+}

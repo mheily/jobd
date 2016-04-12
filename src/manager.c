@@ -30,6 +30,7 @@
 #include "calendar.h"
 #include "log.h"
 #include "job.h"
+#include "database.h"
 #include "manager.h"
 #include "pidfile.h"
 #include "socket.h"
@@ -349,6 +350,8 @@ void manager_init(struct pidfh *pfh)
 		errx(1, "setup_timers()");
 	if (calendar_init(main_kqfd) < 0)
 		errx(1, "calendar_init()");
+	if (database_init() < 0)
+		errx(1, "database_init()");
 }
 
 void manager_update_jobs()

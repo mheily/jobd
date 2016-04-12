@@ -14,44 +14,28 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef _RELAUNCHD_UTIL_H_
-#define _RELAUNCHD_UTIL_H_
+#ifndef RELAUNCHD_DATABASE_H_
+#define RELAUNCHD_DATABASE_H_
 
-#include <stdarg.h>
-#include <limits.h>
-#include <sys/stat.h>
+/**
+ * Configuration database for jobs.
+ */
 
-static inline void
-path_sprintf(char (*buf)[PATH_MAX], const char *format, ...)
-{
-	int len;
-	va_list args;
+#define DATABASEDIR "/var/db/launchd/cfg"
 
-	if (buf == NULL)
-		errx(1, "null pointer");
-	
-	va_start(args, format);
-	len = vsnprintf((char *)buf, sizeof(*buf), format, args);
-	va_end(args);
-	
-	if (len < 0) 
-		err(1, "vsnprintf(3)");
-        if (len >= (int)sizeof(*buf)) {
-                errno = ENAMETOOLONG;
-		err(1, "vsnprintf(3)");
-        }
-}
+/** One-time initialization at program startup */
+int database_init();
 
-/* Make a directory idempotently */
-static inline void
-mkdir_idempotent(const char *path, mode_t mode)
-{
-	if (mkdir(path, mode) < 0) {
-		if (errno == EEXIST)
-			return;
+/** Set the value of a property */
+int database_set(const char *property, const char *value);
 
-		err(1, "mkdir(2)");
-	}
-}
+/** Get the value of a property */
+int database_get(char **value, const char *property);
 
-#endif /* _RELAUNCHD_UTIL_H_ */
+/** Return a file descriptor that can be monitored for unlink(2)
+ * and write(2) events, at which time the property's value should
+ * be refreshed via a call to database_get().
+ */
+int database_subscribe(const char *property);
+
+#endif /* RELAUNCHD_DATABASE_H_ */
