@@ -36,8 +36,6 @@
 #endif
 
 
-static int reset_signal_handlers();
-
 static void job_dump(job_t job) {
 	log_debug("job dump: label=%s state=%d", job->jm->label, job->state);
 }
@@ -328,7 +326,7 @@ err_out:
 	return -1;
 }
 
-static int 
+int 
 reset_signal_handlers()
 {
 	extern const int launchd_signals[];
@@ -496,7 +494,6 @@ int job_unload(job_t job)
 		}
 		job->state = JOB_STATE_KILLED;
 		//TODO: start a timer to send a SIGKILL if it doesn't die gracefully
-		return 0;
 	} else {
 		//TODO: update the timer interval in timer.c?
 		job->state = JOB_STATE_DEFINED;

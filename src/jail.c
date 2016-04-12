@@ -252,8 +252,8 @@ out:
 
 int jail_create(jail_config_t jc)
 {
+	char buf[COMMAND_MAX];
 	int retval = -1;
-	char *cmd = NULL;
 
 	set_base_txz_path(&(jc->base_txz_path), jc->release, jc->machine);
 	if (access(jc->base_txz_path, F_OK) < 0) {
@@ -271,24 +271,13 @@ int jail_create(jail_config_t jc)
 		goto out;
 	}
 
-	if (asprintf(&cmd, "tar -xf %s -C %s", jc->base_txz_path, jc->rootdir) < 0) {
-		log_errno("asprintf(3)");
+	if (run_system(&buf, "tar -xf %s -C %s", jc->base_txz_path, jc->rootdir) < 0) {
+		log_error("unpacking base system failed");
 		goto out;
 	}
 
-	if (system(cmd) < 0) {
-		log_error("command failed: %s", cmd);
-		goto out;
-	}
-
-	free(cmd);
-	if (asprintf(&cmd, "cp /etc/resolv.conf /etc/localtime %s", jc->rootdir) < 0) {
-		log_errno("asprintf(3)");
-		goto out;
-	}
-
-	if (system(cmd) < 0) {
-		log_error("command failed: %s", cmd);
+	if (run_system(&buf, "cp /etc/resolv.conf /etc/localtime %s/etc", jc->rootdir) < 0) {
+		log_error("unable to setup /etc files");
 		goto out;
 	}
 
@@ -299,14 +288,8 @@ int jail_create(jail_config_t jc)
 		goto out;
 	}
 
-	free(cmd);
-	if (asprintf(&cmd, "jail -f %s -q -c", jc->config_file) < 0) {
-		log_errno("asprintf(3)");
-		goto out;
-	}
-
-	if (system(cmd) < 0) {
-		log_error("command failed: %s", cmd);
+	if (run_system(&buf, "jail -f %s -q -c", jc->config_file) < 0) {
+		log_errno("jail(1)");
 		goto out;
 	}
 
@@ -318,7 +301,6 @@ int jail_create(jail_config_t jc)
 	retval = 0;
 
 out:
-	free(cmd);
 	return retval;
 }
 

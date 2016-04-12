@@ -8,4 +8,10 @@
 		"Machine": "amd64",
 		"Release": "10.3-RELEASE",
 	},
+	"Sockets": {
+		"thttpd": {
+			"SockServiceName": "80",
+		},
+	},
+	"EnvironmentVariables": {"LD_PRELOAD":"/tmp/sa-wrapper.so"}
 }

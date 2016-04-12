@@ -19,6 +19,9 @@
 
 #include <stdarg.h>
 #include <limits.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 /* A buffer large enough to hold a reasonable command line string */
 #define COMMAND_MAX 8092
@@ -52,14 +55,16 @@ mkdir_idempotent(const char *path, mode_t mode)
 		if (errno == EEXIST)
 			return;
 
-		err(1, "mkdir(2)");
+		err(1, "mkdir(2) of %s", path);
 	}
 }
 
 /* Execute a command */
+int reset_signal_handlers(); //FIXME; bad place for this
 static inline int
 run_system(char (*buf)[COMMAND_MAX], const char *format, ...)
 {
+	pid_t pid;
 	int len;
 	va_list args;
 
@@ -78,7 +83,21 @@ run_system(char (*buf)[COMMAND_MAX], const char *format, ...)
      }
       log_debug("executing: %s", (char *)buf);
 
-      return system((char *)buf);
+	pid = fork();
+	if (pid == 0) {
+		/* Child */
+		reset_signal_handlers();
+		execl("/bin/sh", "sh", "-c", (char *)buf, (char *)NULL);
+		_exit(127);
+	} else if (pid < 0) {
+		return -1;
+	} else {
+		/* Parent */
+		int status;
+		if (waitpid (pid, &status, 0) != pid)
+			status = -1;
+		return status;
+	}
 }
 
 #endif /* _RELAUNCHD_UTIL_H_ */

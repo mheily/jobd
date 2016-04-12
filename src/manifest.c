@@ -412,7 +412,10 @@ static int job_manifest_parse_sockets(job_manifest_t manifest, const ucl_object_
 
 static int job_manifest_parse_sock_service_name(struct job_manifest_socket *socket, const ucl_object_t *object)
 {
-	return (socket->sock_service_name = strdup(ucl_object_tostring(object))) ? 0 : -1;
+	socket->sock_service_name = strdup(ucl_object_tostring(object));
+	if (!socket->sock_service_name)
+		return -1;
+	return (job_manifest_socket_get_port(socket));
 }
 
 /* TODO: check the return value of strdup() so we don't crash elsewhere in the program 

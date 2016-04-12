@@ -74,6 +74,14 @@ int job_manifest_socket_open(job_t job, struct job_manifest_socket *jms)
 		return -1;
 	}
 
+	//WORKAROUND: this should be called in the parser, but it isn't working
+	if (jms->port == 0) {
+		if (job_manifest_socket_get_port(jms) < 0) {
+			log_error("unable to get port number");
+			return -1;
+		}
+	}
+
 #ifdef SOCK_CLOEXEC
 	sd = socket(jms->sock_family, jms->sock_type | SOCK_CLOEXEC, 0);
 #else
@@ -123,6 +131,7 @@ int job_manifest_socket_open(job_t job, struct job_manifest_socket *jms)
 
 	jms->sd = sd;
 
+	log_debug("bound to socket on port %d", jms->port);
 	return 0;
 
 err_out:
@@ -158,6 +167,7 @@ int job_manifest_socket_get_port(struct job_manifest_socket *jms)
 		/* TODO: copy the protocol from se to jms */
 	} else {
 		if (sscanf(jms->sock_service_name, "%d", &jms->port) != 1) {
+			log_error("unable to convert name to port");
 			return -1;
 		}
 	}

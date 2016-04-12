@@ -37,9 +37,14 @@
 #include "timer.h"
 #include "util.h"
 
+#ifdef __FreeBSD__
+#include "jail.h"
+#endif
+
 /* A list of signals that are meaningful to launchd(8) itself. */
+/* XXX-FIXME add sigchld back to this list once run_system() uses kqueue to get child status. This workaround may cause zombies */
 const int launchd_signals[] = {
-	SIGHUP, SIGUSR1, SIGCHLD, SIGINT, SIGTERM, 0
+	SIGHUP, SIGUSR1, SIGINT, SIGTERM, 0
 };
 
 static void setup_job_dirs();
@@ -349,6 +354,10 @@ void manager_init(struct pidfh *pfh)
 		errx(1, "setup_timers()");
 	if (calendar_init(main_kqfd) < 0)
 		errx(1, "calendar_init()");
+#ifdef __FreeBSD__
+	if (jail_opts_init() < 0)
+		errx(1, "jail_opts_init()");
+#endif
 }
 
 void manager_update_jobs()
@@ -482,6 +491,8 @@ setup_job_dirs()
 
 		path_sprintf(&buf, "%s/run", &basedir);
 		mkdir_idempotent(buf, 0700);
+	} else {
+        	mkdir_idempotent(options.pkgstatedir, 0700);
 	}
 
         mkdir_idempotent(options.activedir, 0700);
