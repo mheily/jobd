@@ -55,13 +55,15 @@ if [ ! -f $pidfile ] ; then
 	fi
 fi
 
-for path in $*
-do
-	if [ ! -e "$path" ] ; then
-		echo "ERROR: $path does not exist" > /dev/stderr
-		exit 1
-	fi
-done
+if [ $command != "search" -a $command != "install" -a $command != "uninstall" ] ; then
+	for path in $*
+	do
+		if [ ! -e "$path" ] ; then
+			echo "ERROR: $path does not exist" > /dev/stderr
+			exit 1
+		fi
+	done
+fi
 
 case $command in
 load)
@@ -99,6 +101,65 @@ list)
 
 shutdown)
 	kill -INT `cat $pidfile`
+	;;
+
+fetch)
+	printf "Updating the list of available job manifests.. "
+	fetch -q -o $pkgdatadir/manifests-INDEX https://raw.githubusercontent.com/mheily/relaunchd/manifests/INDEX 	
+	echo "done"
+	;;
+
+search)
+	if [ -z "$1" ] ; then
+		query="."
+	else
+		query="$1"
+	fi
+	grep "$query" $pkgdatadir/manifests-INDEX | sed 's/\.json$//'
+	exit 1
+	;;
+
+install)
+	label=$1
+	download_to=$2
+
+	if [ -z "$label" -o -z "$download_to" ] ; then
+		echo "usage: install <label> <agents|daemons>"
+		exit 1
+	fi
+
+	if [ "$download_to" != "agents" -a "$download_to" != "daemons" ] ; then
+		echo "usage: install <label> <agents|daemons>"
+		exit 1
+	fi
+
+	if [ `id -u` -eq 0 ] ; then
+		manifestdir="/usr/local/etc/launchd/$download_to"
+	else
+		manifestdir="/usr/local/etc/launchd/$download_to"
+	fi
+
+	fetch -q -o "$manifestdir/$label.json" "https://raw.githubusercontent.com/mheily/relaunchd/manifests/$label.json"
+	echo "$label has been successfully installed."
+	/usr/local/bin/launchctl load "$manifestdir/$label.json"
+	;;
+
+uninstall)
+	label=$1
+
+	if [ `id -u` -eq 0 ] ; then
+		path=$(find ${sysconfdir}/launchd/agents ${sysconfdir}/launchd/daemons -name $label.json)
+	else
+		path=$(find $HOME/.launchd/agents $HOME/.launchd/daemons -name $label.json)
+	fi
+	if [ -n "$path" -a -e "$path" ] ; then
+		/usr/local/bin/launchctl unload $path
+		rm $path || exit 1
+		echo "$label has been uninstalled."
+	else
+		echo "ERROR: $label not found"
+		exit 1
+	fi
 	;;
 
 *)
