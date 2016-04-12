@@ -97,6 +97,10 @@ list)
 	cat $listfile
 	;;
 
+shutdown)
+	kill -INT `cat $pidfile`
+	;;
+
 *)
 	echo "invalid command"
 	exit 1
