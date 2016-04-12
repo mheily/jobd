@@ -37,8 +37,7 @@
 static void get_host_release(void);
 static int fetch_distfiles(const char *machine, const char *release);
 static void set_base_txz_path(char (*path)[PATH_MAX], const char *release, const char *machine);
-static int bootstrap_pkg(const jail_config_t cfg);
-static int _jail_bootstrap_launchd(const jail_config_t cfg);
+static int _jail_bootstrap_launchd(const char *rootdir);
 
 /* Global options for jails */
 static struct {
@@ -123,10 +122,17 @@ int jail_opts_init()
 		err(1, "asprintf(3)");
 
 	if (access(jail_opts.jail_prefix, F_OK) < 0) {
+		//FIXME: very hardcoded
+		char buf[COMMAND_MAX];
+		if (run_system(&buf, "zfs create zroot/usr/launchd-jails") < 0)
+			err(1, "unable to create jail dataset");
+#if DISABLED
+		// if not using zfs:
 		if (mkdir(jail_opts.jail_prefix, 0700) < 0) {
 			log_errno("mkdir(2) of %s", jail_opts.jail_prefix);
 			return -1;
 		}
+#endif
 	}
 
 	get_host_release();
@@ -286,10 +292,20 @@ out:
 	return retval;
 }
 
-int jail_create(jail_config_t jc)
-{
+static int jail_template_create(jail_config_t jc) {
+	char name[PATH_MAX];
+	char rootdir[PATH_MAX];
 	char buf[COMMAND_MAX];
-	int retval = -1;
+
+	path_sprintf(&name, "template_%s_%s", jc->release, jc->machine);
+	path_sprintf(&rootdir, "%s/%s", jail_opts.jail_prefix, name);
+	if (access(rootdir, F_OK) == 0) {
+		// the template exists, nothing to do
+		return 0;
+	}
+
+	if (run_system(&buf, "zfs create zroot/usr/launchd-jails/%s",  name) < 0)
+		err(1, "unable to create jail dataset");
 
 	set_base_txz_path(&(jc->base_txz_path), jc->release, jc->machine);
 	if (access(jc->base_txz_path, F_OK) < 0) {
@@ -297,63 +313,73 @@ int jail_create(jail_config_t jc)
 			return -1;
 	}
 
+	if (run_system(&buf, "tar -xf %s -C %s", jc->base_txz_path, rootdir) < 0) {
+		log_error("unpacking base system failed");
+		return -1;
+	}
+
+	if (run_system(&buf, "cp /etc/resolv.conf /etc/localtime %s/etc", rootdir) < 0) {
+		log_error("unable to setup /etc files");
+		return -1;
+	}
+
+	/* Install the pkg(8) tool */
+	if (run_system(&buf, "env ASSUME_ALWAYS_YES=YES pkg --chroot %s bootstrap -f", rootdir) < 0) {
+		log_error("unable to bootstrap pkg");
+		return -1;
+	}
+
+	if (_jail_bootstrap_launchd(rootdir) < 0) {
+		log_error("launchd bootstrap failed");
+		return -1;
+	}
+
+	if (run_system(&buf, "zfs snapshot zroot/usr/launchd-jails/%s@base",  name) < 0)
+		return_errno(-1, "zfs(1)");
+
+	if (run_system(&buf, "zfs set canmount=off zroot/usr/launchd-jails/%s@base",  name) < 0)
+		return_errno(-1, "zfs(1)");
+
+	return 0;
+}
+
+int jail_create(jail_config_t jc)
+{
+	char buf[COMMAND_MAX];
+
+	if (jail_template_create(jc) < 0) {
+		log_error("unable to create the template");
+		return -1;
+	}
+
 	if (access(jc->rootdir, F_OK) == 0) {
 		log_error("refusing to create jail; %s already exists", jc->rootdir);
-		goto out;
+		return -1;
 	}
 
-	if (mkdir(jc->rootdir, 0700) < 0) {
-		log_errno("mkdir(2) of `%s", jc->rootdir);
-		goto out;
-	}
+	if (run_system(&buf, "zfs clone zroot/usr/launchd-jails/template_%s_%s@base zroot/usr/launchd-jails/%s",
+			jc->release, jc->machine, jc->name, 0700) < 0)
+		return_errno(-1, "zfs clone of template failed");
 
-	if (run_system(&buf, "tar -xf %s -C %s", jc->base_txz_path, jc->rootdir) < 0) {
-		log_error("unpacking base system failed");
-		goto out;
-	}
-
+	// TODO: convert these into launchd.plist(5) settings for the jail; don't assume they match the host
 	if (run_system(&buf, "cp /etc/resolv.conf /etc/localtime %s/etc", jc->rootdir) < 0) {
 		log_error("unable to setup /etc files");
-		goto out;
+		return -1;
 	}
 
 	/* TODO: set the hostname, which we don't know yet */
 
 	if (_jail_write_config(jc) < 0) {
 		log_error("unable to write the config file");
-		goto out;
-	}
-
-	if (bootstrap_pkg(jc) < 0) {
-		log_error("unable to bootstrap pkg");
-		goto out;
-	}
-
-	if (_jail_bootstrap_launchd(jc) < 0) {
-		log_error("launchd bootstrap failed");
-		goto out;
+		return -1;
 	}
 
 	if (run_system(&buf, "jail -f %s -q -c", jc->config_file) < 0) {
 		log_errno("jail(1)");
-		goto out;
+		return -1;
 	}
 
-	const char *github = "https://raw.githubusercontent.com/mheily/relaunchd/manifests/";
-	const char *daemons = "/usr/local/share/launchd/daemons";
-	if (run_system(&buf, "fetch -o %s/%s %s/org.freebsd.syslogd.json", jc->rootdir, daemons, github) < 0) {
-		log_errno("post-jail-create failed");
-		goto out;
-	}
-
-	if (run_system(&buf, "jexec %d launchctl load %s", jail_getid(jc->name), daemons) < 0) {
-		log_errno("loading daemons failed");
-		goto out;
-	}
-	retval = 0;
-
-out:
-	return retval;
+	return 0;
 }
 
 int jail_stop(jail_config_t jc)
@@ -380,49 +406,19 @@ int jail_stop(jail_config_t jc)
 
 int jail_destroy(jail_config_t jc)
 {
-	int retval = -1;
-	char *cmd = NULL;
+	char cmd[COMMAND_MAX];
 
 	/* TODO: Capture the output of this and write to the logfile */
-	if (asprintf(&cmd, "jail -f %s -r %s >/dev/null 2>&1", jc->config_file, jc->name) < 0) {
-		log_errno("asprintf(3)");
-		goto out;
-	}
-	if (system(cmd) < 0) {
-		log_error("command failed: %s", cmd);
-		goto out;
-	}
+	if (run_system(&cmd, "jail -f %s -r %s >/dev/null 2>&1", jc->config_file, jc->name) < 0)
+		return_errno(-1, "asprintf(3)");
 
-	free(cmd);
-	if (asprintf(&cmd, "chflags -R noschg %s", jc->rootdir) < 0) {
-		log_errno("asprintf(3)");
-		goto out;
-	}
-	if (system(cmd) < 0) {
-		log_error("command failed: %s", cmd);
-		goto out;
-	}
+	if (unlink(jc->config_file) < 0)
+		return_errno(-1, "unlink of %s", jc->config_file);
 
-	free(cmd);
-	if (asprintf(&cmd, "rm -rf %s", jc->rootdir) < 0) {
-		log_errno("asprintf(3)");
-		goto out;
-	}
-	if (system(cmd) < 0) {
-		log_error("command failed: %s", cmd);
-		goto out;
-	}
+	if (run_system(&cmd, "zfs destroy -f zroot/usr/launchd-jails/%s",  jc->name) < 0)
+		return_errno(-1, "zfs(1)");
 
-	if (unlink(jc->config_file) < 0) {
-		log_error("unlink of %s", jc->config_file);
-		goto out;
-	}
-
-	retval = 0;
-
-out:
-	free(cmd);
-	return retval;
+	return 0;
 }
 
 int jail_restart(struct jail_config *jc)
@@ -440,7 +436,7 @@ int jail_restart(struct jail_config *jc)
 	}
 
 	/* KLUDGE: ensure launchd is always up-to-date in the jail */
-	if (_jail_bootstrap_launchd(jc) < 0) {
+	if (_jail_bootstrap_launchd(jc->rootdir) < 0) {
 		log_error("launchd bootstrap failed");
 		return -1;
 	}
@@ -581,41 +577,38 @@ set_base_txz_path(char (*path)[PATH_MAX], const char *release, const char *machi
 			"/var/cache/launchd", release, machine);
 }
 
-/* Inject pkg into the jail and bootstrap it */
-static int bootstrap_pkg(const jail_config_t cfg)
-{
-	char buf[COMMAND_MAX];
-
-	if (run_system(&buf, "env ASSUME_ALWAYS_YES=YES pkg --chroot %s bootstrap -f", cfg->rootdir) < 0) {
-		log_error("unable to fetch pkg");
-		return -1;
-	}
-
-	return 0;
-}
-
 /* Inject launchd into the jail and bootstrap it */
 // FIXME hardcoded paths galore
-static int _jail_bootstrap_launchd(const jail_config_t cfg)
+static int _jail_bootstrap_launchd(const char *rootdir)
 {
 	char buf[COMMAND_MAX];
 
-	if (run_system(&buf, "pkg --chroot %s install -y relaunchd", cfg->rootdir) < 0) {
+	if (run_system(&buf, "pkg --chroot %s install -y relaunchd", rootdir) < 0) {
 		log_error("unable to install launchd package");
 		return -1;
 	}
+
+	/* KLUDGE: install jail-specific manifests */
+	const char *github = "https://raw.githubusercontent.com/mheily/relaunchd/manifests/";
+	const char *daemons = "/usr/local/share/launchd/daemons";
+	if (run_system(&buf, "fetch -o %s/%s %s/org.freebsd.syslogd.json", rootdir, daemons, github) < 0) {
+		log_errno("post-jail-create failed");
+		return -1;
+	}
+
+// disabled: creates problems: this causes a mismatch between ABI if the host is 11 and the jail is 10.3
 #if 0
-	if (run_system(&buf, "cp /usr/local/sbin/launchd %s/usr/local/sbin/launchd", cfg->rootdir) < 0) {
+	if (run_system(&buf, "cp /usr/local/sbin/launchd %s/usr/local/sbin/launchd", rootdir) < 0) {
 		log_error("copy failed");
 		return -1;
 	}
 
-	if (run_system(&buf, "cp /usr/local/bin/launchctl %s/usr/local/bin/launchctl", cfg->rootdir) < 0) {
+	if (run_system(&buf, "cp /usr/local/bin/launchctl %s/usr/local/bin/launchctl", rootdir) < 0) {
 		log_error("copy failed");
 		return -1;
 	}
 #endif
-	if (run_system(&buf, "cp /usr/local/lib/liblaunch-socket.so.0 %s/usr/local/lib/liblaunch-socket.so", cfg->rootdir) < 0) {
+	if (run_system(&buf, "cp /usr/local/lib/liblaunch-socket.so.0 %s/usr/local/lib/liblaunch-socket.so", rootdir) < 0) {
 		log_errno("copy failed");
 		return -1;
 	}

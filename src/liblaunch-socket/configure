@@ -22,7 +22,5 @@ LIBRARIES=wrapper
 wrapper_CFLAGS="-include ./config.h -std=c99 -Wall -Werror"
 wrapper_SOURCES="wrapper.c"
 wrapper_SONAME="liblaunch-socket.so.0"
-wrapper_REALNAME="liblaunch-socket.so"
-wrapper_INSTALLNAME="liblaunch-socket"
 
 write_makefile

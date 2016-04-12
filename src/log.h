@@ -59,4 +59,14 @@ void log_freopen(FILE *new_logfile);
 	exit((code)); \
 } while (0)
 
+/* A compact way of returning an error and logging it */
+#define return_error(code, format, ...) do { \
+	log_error(format, ## __VA_ARGS__); \
+	return((code)); \
+} while (0)
+
+#define return_errno(code, format, ...) do { \
+	log_errno(format, ## __VA_ARGS__); \
+	return((code)); \
+} while (0)
 #endif /* LOG_H_ */
