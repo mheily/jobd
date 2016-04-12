@@ -20,6 +20,7 @@
 #include <limits.h>
 #include <sys/param.h>
 #include <sys/jail.h>
+#include <netinet/in.h>
 
 #include "manifest.h"
 
@@ -36,6 +37,9 @@ struct jail_config {
 	char *config_file; /** Path to the jail(8) configuration file */
 	char *rootdir; /** The root of the jail filesystem heirarchy */
 	int jid; /** The jail ID number */
+	uint32_t launchd_jid; /** The internal launchd JID */
+	/* The loopback IP address */
+	struct in_addr lo_addr;
 };
 typedef struct jail_config *jail_config_t;
 
