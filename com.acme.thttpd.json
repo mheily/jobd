@@ -1,0 +1,17 @@
+{
+	"Label": "com.acme.thttpd",
+	"ProgramArguments": ["/usr/local/sbin/thttpd", "-D"],
+	"Packages": ["thttpd"],
+	"Jail": {
+		"Name": "com_acme_thttpd",
+		"Hostname": "thttpd",
+		"Machine": "amd64",
+		"Release": "10.3-RELEASE",
+		"DestroyAtUnload": true,
+	},
+	"Sockets": {
+		"thttpd": {
+			"SockServiceName": "80",
+		},
+	},
+}
