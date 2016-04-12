@@ -1,0 +1,7 @@
+{
+	"Label": "org.freebsd.rc",
+	"ProgramArguments": ["/bin/sh", "/etc/rc"],
+	"RunAtLoad": true,
+	"StandardOutPath": "/var/log/rc.out",
+	"StandardErrorPath": "/var/log/rc.err",
+}
