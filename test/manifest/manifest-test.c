@@ -54,7 +54,6 @@ static int test_allocator()
 //	assert(cvec_length(m->program_arguments) == 0);
 	assert(!m->working_directory);
 	assert(!m->root_directory);
-	assert(!m->jail_name);
 //	assert(m->environment_variables);
 //	assert(cvec_length(m->environment_variables) == 0);
 //	assert(m->watch_paths);
