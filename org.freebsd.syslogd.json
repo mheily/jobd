@@ -1,5 +1,5 @@
 {
 	"Label": "org.freebsd.syslogd",
-	"ProgramArguments": ["/usr/sbin/service", "syslogd", "start"],
+	"ProgramArguments": ["/usr/sbin/syslogd", "-s", "-s", "-F"],
 	"RunAtLoad": true,
 }
