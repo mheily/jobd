@@ -35,6 +35,7 @@
 #include "jail.h"
 #endif
 
+extern void keepalive_remove_job(struct job *job);
 
 static void job_dump(job_t job) {
 	log_debug("job dump: label=%s state=%d", job->jm->label, job->state);
@@ -504,12 +505,15 @@ int job_unload(job_t job)
 		job->state = JOB_STATE_DEFINED;
 	}
 
+	keepalive_remove_job(job);
+
 #ifdef __FreeBSD__
 	if (job->jm->jail_options && jail_job_unload(job->jm) < 0) {
 		log_error("failed to teardown jail");
 		return -1;
 	}
 #endif
+
 	return 0;
 }
 

@@ -30,6 +30,7 @@
 #include "calendar.h"
 #include "log.h"
 #include "job.h"
+#include "keepalive.h"
 #include "manager.h"
 #include "pidfile.h"
 #include "socket.h"
@@ -350,6 +351,8 @@ void manager_init(struct pidfh *pfh)
 	setup_signal_handlers();
 	setup_socket_activation(main_kqfd);
 	setup_job_dirs();
+	if (keepalive_init(main_kqfd) < 0)
+		errx(1, "keepalive_init()");
 	if (setup_timers(main_kqfd) < 0)
 		errx(1, "setup_timers()");
 	if (calendar_init(main_kqfd) < 0)
@@ -439,6 +442,10 @@ manager_reap_child(pid_t pid, int status)
 	log_debug("job %d exited with status %d", job->pid,
 			job->last_exit_status);
 	job->pid = 0;
+
+	if (keepalive_add_job(job) < 0)
+		log_error("keepalive_add_job()");
+
 	return;
 }
 
@@ -534,6 +541,7 @@ manager_main_loop()
 				err(1, "kevent(2)");
 			}
 		}
+		/* TODO: refactor this to eliminate the use of switch() and just jump directly to the handler function */
 		if ((void *)kev.udata == &setup_signal_handlers) {
 			switch (kev.ident) {
 			case SIGHUP:
@@ -573,6 +581,8 @@ manager_main_loop()
 		} else if ((void *)kev.udata == &calendar_init) {
 			if (calendar_handler() < 0)
 				errx(1, "calendar_handler()");
+		} else if ((void *)kev.udata == &keepalive_wake_handler) {
+			keepalive_wake_handler();
 		} else {
 			log_warning("spurious wakeup, no known handlers");
 		}

@@ -78,8 +78,12 @@ typedef struct job_manifest {
 	bool	 abandon_process_group;
 	bool     start_calendar_interval;
 	struct cron_spec calendar_interval;
+	struct {
+		bool always; /* Equivalent to setting { "KeepAlive": true } */
+		/* TODO: various other conditions */
+	} keep_alive;
 
-	// TODO: ResourceLimits, HopefullyExits*, KeepAlive, inetd, LowPriorityIO, LaunchOnlyOnce
+	// TODO: ResourceLimits, HopefullyExits*, inetd, LowPriorityIO, LaunchOnlyOnce
 	SLIST_HEAD(,job_manifest_socket) sockets;
 	int32_t refcount;
 } *job_manifest_t;

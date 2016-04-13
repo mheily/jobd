@@ -68,10 +68,12 @@ static int job_manifest_parse_init_groups(job_manifest_t manifest, const ucl_obj
 static int job_manifest_parse_abandon_process_group(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_environment_variables(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_packages(job_manifest_t manifest, const ucl_object_t *obj);
+static int job_manifest_parse_keepalive(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_program_arguments(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_watch_paths(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_queue_directories(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_start_interval(job_manifest_t manifest, const ucl_object_t *obj);
+static int job_manifest_parse_throttle_interval(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_cvec(cvec_t *dst, const ucl_object_t *obj);
 static int job_manifest_parse_sockets(job_manifest_t manifest, const ucl_object_t *obj);
 static int job_manifest_parse_sock_service_name(struct job_manifest_socket *socket, const ucl_object_t *object);
@@ -102,14 +104,13 @@ static const job_manifest_item_parser_t manifest_parser_map[] = {
 	{ "StartCalendarInterval", UCL_OBJECT,  job_manifest_parse_start_calendar_interval },
 	{ "Umask",                 UCL_STRING,  job_manifest_parse_umask },
 	{ "Packages",      UCL_ARRAY,   job_manifest_parse_packages },
-
+	{ "KeepAlive",               UCL_BOOLEAN,  job_manifest_parse_keepalive },
+	{ "ThrottleInterval",      UCL_INT,   job_manifest_parse_throttle_interval },
 	/*
 	{ "inetdCompatibility",    SKIP_ITEM,   NULL },
-	{ "KeepAlive",             SKIP_ITEM,   NULL },
 	{ "TimeOut",               SKIP_ITEM,   NULL },
 	{ "ExitTimeOut",           SKIP_ITEM,   NULL },
 	{ "Disabled",              SKIP_ITEM,   NULL },
-	{ "ThrottleInterval",      SKIP_ITEM,   NULL },
 	{ "Debug",                 SKIP_ITEM,   NULL },
 	{ "WaitForDebugger",       SKIP_ITEM,   NULL },
 	{ "SoftResourceLimits",    SKIP_ITEM,   NULL },
@@ -318,6 +319,12 @@ static int job_manifest_parse_start_interval(job_manifest_t manifest, const ucl_
 	return 0;
 }
 
+static int job_manifest_parse_throttle_interval(job_manifest_t manifest, const ucl_object_t *obj)
+{
+	manifest->throttle_interval = ucl_object_toint(obj);
+	return 0;
+}
+
 /** Parse a field within a crontab(5) specification */
 static int
 parse_cron_field(uint32_t *dst, const ucl_object_t *obj, const char *key, int64_t start, int64_t end)
@@ -497,6 +504,12 @@ out:
 	return retval;
 }
 
+static int job_manifest_parse_keepalive(job_manifest_t manifest, const ucl_object_t *obj)
+{
+	manifest->keep_alive.always = ucl_object_toboolean(obj);
+	return 0;
+}
+
 static int job_manifest_validate(job_manifest_t job_manifest)
 {
 	if (!job_manifest->label) {
@@ -545,6 +558,9 @@ job_manifest_t job_manifest_new(void)
 	job_manifest->throttle_interval = DEFAULT_THROTTLE_INTERVAL;
 	job_manifest->init_groups = true;
 	job_manifest->umask = S_IWGRP | S_IWOTH;
+	/* Implicitly set via calloc():
+	 job_manifest->keepalive.always = false;
+	*/
 
 	SLIST_INIT(&job_manifest->sockets);
 
