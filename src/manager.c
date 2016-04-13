@@ -434,8 +434,8 @@ manager_reap_child(pid_t pid, int status)
 			job->last_exit_status);
 	job->pid = 0;
 
-	if (keepalive_check(job) < 0)
-		log_error("keepalive_check()");
+	if (keepalive_add_job(job) < 0)
+		log_error("keepalive_add_job()");
 
 	return;
 }
