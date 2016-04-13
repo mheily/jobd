@@ -115,8 +115,8 @@ main(int argc, char *argv[])
 
 /* daemon(3) is deprecated on MacOS */
 //DISABLED: gcc hates these pragmas and will not compile
-//#pragma clang diagnostic push
-//#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+//pragma clang diagnostic push
+//pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
 	if (options.daemon && daemon(0, 0) < 0) {
 		fprintf(stderr, "ERROR: Unable to daemonize\n");
@@ -126,7 +126,7 @@ main(int argc, char *argv[])
 		log_freopen(stdout);
 	}
 
-//#pragma clang diagnostic pop
+//pragma clang diagnostic pop
 
 	pidfile_write(state.pfh);
 
