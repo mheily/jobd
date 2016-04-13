@@ -4,12 +4,16 @@ All notable changes to this project will be documented in this file
 using the [Keep A ChangeLog](http://keepachangelog.com/) style.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## HEAD - Not released yet
+## [0.6.0] - 2016/04/12
 ### Fixed
 - Create $HOME/.launchd if it does not exist.
 
 ### Added
-- Ported to MacOS X.
+- Partially ported to MacOS X. This fails to build, but some initial
+  work has been done.
+- Allow jobs to be automatically restarted by specifying the KeepAlive
+and ThrottleInterval keys. Only the basic "true/false" is supported for
+KeepAlive at the current time.
 
 ## [0.5.1] - 2016/03/31
 ### Fixed
