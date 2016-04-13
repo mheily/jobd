@@ -83,6 +83,7 @@ void keepalive_wake_handler(void)
 	time_t now = current_time();
 
 	log_debug("watchdog handler running");
+	update_wake_interval();
 
 	SLIST_FOREACH_SAFE(cur, &watchdog_list, watchdog_sle, tmp) {
 		if (now >= cur->restart_after) {
@@ -94,7 +95,6 @@ void keepalive_wake_handler(void)
 			free(cur);
 		}
 	}
-	update_wake_interval();
 }
 
 static struct watchdog *
