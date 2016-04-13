@@ -128,6 +128,8 @@ static void update_wake_interval()
 				next_wake_time = w->restart_after;
 		}
 		int time_delta = (next_wake_time - current_time()) * 1000;
+		if (time_delta <= 0)
+			time_delta = 1000;
 		EV_SET(&kev, JOB_SCHEDULE_KEEPALIVE, EVFILT_TIMER,
 					EV_ADD | EV_ENABLE, 0, time_delta, &keepalive_wake_handler);
 		if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
