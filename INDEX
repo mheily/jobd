@@ -1,3 +1,4 @@
 com.acme.thttpd.json
+com.heily.relaunchd.tinyproxy.json
 org.freebsd.rc.json
 org.freebsd.syslogd.json

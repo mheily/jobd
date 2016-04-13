@@ -27,10 +27,13 @@ UserName = "root";
 GroupName = "wheel";
 Packages = ["tinyproxy"];
 PostInstallScript = <<EOF
+  cp /usr/local/etc/tinyproxy.conf.sample /usr/local/etc/tinyproxy.conf
+  ifconfig lo1 | grep 127.89.0.1 || ifconfig lo1 127.89.0.1 alias
   sed -i -e '
-  	s/^#Listen .*/Listen 127.0.0.1/;
+  	s/^#Listen .*/Listen 127.89.0.1/;
   	s/^#Syslog On/Syslog On/;
   	s/^#PidFile .*/PidFile "\/var\/run\/tinyproxy.pid"/;
   	s/^Port 8888/Port 3128/;
+  	s/^Allow 127.0.0.1/Allow 127.89.0.0\/16/;
   ' /usr/local/etc/tinyproxy.conf
 EOF
