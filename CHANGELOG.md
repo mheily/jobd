@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file
 using the [Keep A ChangeLog](http://keepachangelog.com/) style.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## UNRELEASED
+### Changed
+- When launching daemons, set environment variables to match how daemon(8) 
+  does it on FreeBSD. (Fixes bug #59)
+
 ## [0.6.0] - 2016/04/12
 ### Fixed
 - Create $HOME/.launchd if it does not exist.
