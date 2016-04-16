@@ -124,8 +124,8 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 	cvec_t env = NULL;
 	char *curp, *buf = NULL;
 	char *logname_var = NULL, *user_var = NULL;
-	int i;
-	bool found[] = { false, false, false, false, false, false };
+	int i, uid;
+	bool found[] = { false, false, false, false, false, false, false };
 
 	env = cvec_new();
 	if (!env) goto err_out;
@@ -157,6 +157,8 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 			found[4] = true;
 		} else if (strcmp(curp, "TMPDIR") == 0) {
 			found[5] = true;
+		} else if (strcmp(curp, "PWD") == 0) {
+			found[6] = true;
 		} else {
 			char *keypair;
 			char *value;
@@ -174,32 +176,54 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 		}
 	}
 
-	/* TODO: refactor this to avoid goto */
+	/* TODO: refactor this to avoid goto and split out root env v.s. non-root env*/
 job_has_no_environment:
 
-	if (!found[0]) {
+	/* KLUDGE: when running as root, assume we are a system daemon and avoid adding any
+	 * 	session-related variables.
+	 * This is why we need a proper Domain variable for each job.
+	 *
+	 * The removal of these variables conforms to daemon(8) behavior on FreeBSD.
+	 */
+	uid = getuid();
+
+	if (uid && !found[0]) {
 		if (cvec_push(env, logname_var) < 0) goto err_out;
 	}
-	if (!found[1]) {
+	if (uid && !found[1]) {
 		if (cvec_push(env, user_var) < 0) goto err_out;
 	}
 	if (!found[2]) {
-		if (asprintf(&buf, "HOME=%s", pwent->pw_dir) < 0) goto err_out;
-		if (cvec_push(env, buf) < 0) goto err_out;
-		free(buf);
-		buf = NULL;
+		if (uid == 0) {
+			if (cvec_push(env, "HOME=/") < 0) goto err_out;
+		} else {
+			if (asprintf(&buf, "HOME=%s", pwent->pw_dir) < 0) goto err_out;
+			if (cvec_push(env, buf) < 0) goto err_out;
+			free(buf);
+			buf = NULL;
+		}
 	}
 	if (!found[3]) {
-		if (cvec_push(env, "PATH=/usr/bin:/bin:/usr/local/bin") < 0) goto err_out;
+		char *path;
+
+		if (uid == 0) {
+			path = "PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin";
+		} else {
+			path = "PATH=/usr/bin:/bin:/usr/local/bin";
+		}
+		if (cvec_push(env, path) < 0) goto err_out;
 	}
-	if (!found[4]) {
+	if (uid && !found[4]) {
 		if (asprintf(&buf, "SHELL=%s", pwent->pw_shell) < 0) goto err_out;
 		if (cvec_push(env, buf) < 0) goto err_out;
 		free(buf);
 		buf = NULL;
 	}
-	if (!found[5]) {
+	if (uid && !found[5]) {
 		if (cvec_push(env, "TMPDIR=/tmp") < 0) goto err_out;
+	}
+	if (!found[6]) {
+		if (cvec_push(env, "PWD=/") < 0) goto err_out;
 	}
 
 	if (add_standard_environment_variables(env) < 0)
@@ -333,19 +357,24 @@ static int
 reset_signal_handlers()
 {
 	extern const int launchd_signals[];
-	struct sigaction sa;
 	int i;
 
+	/* TODO: convert everything to use sigaction instead of signal()
+	struct sigaction sa;
 	sa.sa_handler = SIG_DFL;
 	sa.sa_flags = 0;
 	sigemptyset(&sa.sa_mask);
-
-	for (i = 0; launchd_signals[i] != 0; i++) {
 		if (sigaction(launchd_signals[i], &sa, NULL) < 0) {
 			log_errno("sigaction(2)");
 			return -1;
 		}
+	*/
+
+	for (i = 0; launchd_signals[i] != 0; i++) {
+		if (signal(launchd_signals[i], SIG_DFL) == SIG_ERR)
+			err(1, "signal(2): %d", launchd_signals[i]);
 	}
+
 	return 0;
 }
 

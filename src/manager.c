@@ -40,7 +40,7 @@
 
 /* A list of signals that are meaningful to launchd(8) itself. */
 const int launchd_signals[] = {
-	SIGHUP, SIGUSR1, SIGCHLD, SIGINT, SIGTERM, 0
+	SIGHUP, SIGUSR1, SIGINT, SIGTERM, 0
 };
 
 static void setup_job_dirs();
