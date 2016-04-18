@@ -26,9 +26,12 @@ extern "C" {
 #include <stdbool.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <ucl.h>
 #include "../vendor/FreeBSD/sys/queue.h"
 #include "cvec.h"
 #include "socket.h"
+
+struct dataset_list;
 
 /** A wildcard value in a crontab(5) specification */
 #define CRON_SPEC_WILDCARD UINT32_MAX
@@ -61,7 +64,7 @@ typedef struct job_manifest {
 	char    *jail_name;
 
 	cvec_t	 environment_variables;
-
+	struct dataset_list *dataset;
 	mode_t   umask;
 	uint32_t timeout;
 	uint32_t exit_timeout;
