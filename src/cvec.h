@@ -91,7 +91,7 @@ static inline int cvec_set(cvec_t cv, size_t index, char *val) {
 }
 
 static inline void cvec_free(cvec_t cv) {
-	int i;
+	size_t i;
 
 	if (cv == NULL) return;
 
@@ -107,11 +107,11 @@ static inline char ** cvec_to_array(cvec_t cv) {
 }
 
 static inline void cvec_debug(cvec_t cv) {
-	int i;
+	size_t i;
 
 	fprintf(stderr, "items: %zu\n", cv->length);
 	for (i = 0; i < cv->length; i++) {
-		fprintf(stderr, "  %d = %s\n", i, cv->items[i]);
+		fprintf(stderr, "  %u = %s\n", (unsigned int)i, cv->items[i]);
 	}
 }
 
@@ -125,7 +125,7 @@ static inline cvec_t cvec_dup(cvec_t cv)
 
 	cv2 = cvec_new();
 	if (cv2 == NULL) return NULL;
-	for (int i = 0; i < cv->length; i++) {
+	for (size_t i = 0; i < cv->length; i++) {
 		if (cvec_push(cv2, cv->items[i]) < 0) {
 			cvec_free(cv2);
 			return NULL;
