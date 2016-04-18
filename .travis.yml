@@ -13,7 +13,7 @@ addons:
     packages:
     - bc
     - libcurl4-openssl-dev
-    - g++
+    - g++-4.8
   coverity_scan:
     project:
       name: "mheily/relaunchd"
@@ -30,6 +30,6 @@ addons:
 #    - vendor/libkqueue-2.0.3
 
 script:
-- ./configure
-- make
-- make check
+- CXX="g++-4.8" CC="gcc-4.8" ./configure
+- CXX="g++-4.8" CC="gcc-4.8" make
+- CXX="g++-4.8" CC="gcc-4.8" make check
