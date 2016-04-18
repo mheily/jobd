@@ -55,6 +55,8 @@ err() {
 	message="[ERROR] $*"
 	printf "%s\n" "$message" >> config.log
 	echo "*** ERROR *** $*"
+	echo "Please review the contents of config.log to determine the cause: "
+	cat config.log
 	exit 1
 }
 
