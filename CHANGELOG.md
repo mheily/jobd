@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - When launching daemons, set environment variables to match how daemon(8) 
   does it on FreeBSD. (Fixes bug #59)
+- Start rewriting parts of launchd in C++.
 
 ## [0.6.0] - 2016/04/12
 ### Fixed

@@ -13,6 +13,7 @@ addons:
     packages:
     - bc
     - libcurl4-openssl-dev
+    - g++
   coverity_scan:
     project:
       name: "mheily/relaunchd"

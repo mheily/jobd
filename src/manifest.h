@@ -18,6 +18,10 @@
 #ifndef _MANIFEST_H_
 #define _MANIFEST_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -88,5 +92,9 @@ job_manifest_t job_manifest_new(void);
 void job_manifest_free(job_manifest_t job_manifest);
 int job_manifest_read(job_manifest_t job_manifest, const char *filename);
 int job_manifest_parse(job_manifest_t job_manifest, unsigned char *buf, size_t bufsize);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _MANIFEST_H_ */
