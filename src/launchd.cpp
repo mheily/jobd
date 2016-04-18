@@ -43,7 +43,7 @@
 #include "uset.h"
 #include "util.h"
 
-struct launchd_options options;
+extern launchd_options_t options;
 
 static struct {
 	struct pidfh *pfh;

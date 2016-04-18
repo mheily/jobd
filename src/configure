@@ -21,10 +21,10 @@
 sbin_PROGRAMS=launchd
 bin_SCRIPTS=launchctl
 launchd_CFLAGS="-include ../config.h -std=c99 -Wall -Werror -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
+launchd_CXXFLAGS="-include ../config.h -std=c++11 -Wall -Werror -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
 launchd_LDFLAGS="$libucl_LDFLAGS"
 launchd_LDADD="$libucl_LDADD $kqueue_LDADD"
-launchd_SOURCES="log.c job.c launchd.c manager.c manifest.c socket.c keepalive.c
-                 calendar.c timer.c pidfile.c flopen.c"
+launchd_SOURCES="log.c job.c launchd.cpp manager.c manifest.c socket.c keepalive.c calendar.c timer.c pidfile.c flopen.c"
 launchd_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS"
 
 # MacOS needs a POSIX clock_gettime() function

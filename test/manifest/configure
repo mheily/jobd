@@ -24,6 +24,7 @@ TESTS="manifest"
 srcdir="../../src"
 
 manifest_CFLAGS=$TEST_CFLAGS
+manifest_CXXFLAGS=$TEST_CXXFLAGS
 manifest_LDFLAGS=$TEST_LDFLAGS
 manifest_SOURCES="manifest-test.c $TEST_SOURCES"
 manifest_LDADD=$TEST_LDADD

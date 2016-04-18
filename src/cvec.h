@@ -17,6 +17,10 @@
 #ifndef __CVEC_H
 #define __CVEC_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -35,7 +39,7 @@ static inline cvec_t cvec_new()
 {
 	cvec_t cv;
 
-	cv = calloc(1, sizeof(*cv));
+	cv = (cvec_t) calloc(1, sizeof(*cv));
 	if (cv == NULL) return NULL;
 	return cv;
 }
@@ -45,7 +49,7 @@ static inline int cvec_resize(cvec_t cv, const size_t new_size)
 	char **new_items;
 
 	if (cv->allocated == cv->length) {
-		new_items = realloc(cv->items, cv->allocated + (50 * sizeof(char *)));
+		new_items = (char **) realloc(cv->items, cv->allocated + (50 * sizeof(char *)));
 		if (new_items == NULL) {
 			return (-1);
 		} else {
@@ -129,5 +133,9 @@ static inline cvec_t cvec_dup(cvec_t cv)
 	}
 	return cv2;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __CVEC_H */

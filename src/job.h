@@ -17,6 +17,10 @@
 #ifndef JOB_H_
 #define JOB_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <grp.h>
 #include <pwd.h>
 #include <sys/types.h>
@@ -32,19 +36,21 @@ typedef enum {
 	JOB_SCHEDULE_KEEPALIVE
 } job_schedule_t;
 
+typedef enum e_job_state {
+	JOB_STATE_DEFINED,
+	JOB_STATE_LOADED,
+	JOB_STATE_WAITING,
+	JOB_STATE_RUNNING,
+	JOB_STATE_KILLED,
+	JOB_STATE_EXITED,
+} job_state_t;
+
 struct job {
 	LIST_ENTRY(job)	joblist_entry;
 	SLIST_ENTRY(job) start_interval_sle;
 	SLIST_ENTRY(job) watchdog_sle;
 	job_manifest_t jm;
-	enum {
-		JOB_STATE_DEFINED,
-		JOB_STATE_LOADED,
-		JOB_STATE_WAITING,
-		JOB_STATE_RUNNING,
-		JOB_STATE_KILLED,
-		JOB_STATE_EXITED,
-	} state;
+	job_state_t state;
 	pid_t pid;
 	int last_exit_status, term_signal;
 	time_t  next_scheduled_start;
@@ -63,5 +69,9 @@ job_is_runnable(job_t job)
 {
 	return (job->state == JOB_STATE_LOADED && job->jm->run_at_load);
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* JOB_H_ */

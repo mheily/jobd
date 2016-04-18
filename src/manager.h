@@ -17,6 +17,10 @@
 #ifndef MANAGER_H_
 #define MANAGER_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "job.h"
 #include "pidfile.h"
 
@@ -60,5 +64,9 @@ void manager_pid_event_add(int pid);
 void manager_pid_event_delete(int pid);
 void manager_main_loop();
 void manager_unload_all_jobs();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* MANAGER_H_ */

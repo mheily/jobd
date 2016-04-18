@@ -24,6 +24,7 @@ TESTS="jmtest"
 srcdir="../../src"
 
 jmtest_CFLAGS="$TEST_CFLAGS"
+jmtest_CXXFLAGS="$TEST_CXXFLAGS"
 jmtest_LDFLAGS="$TEST_LDFLAGS"
 jmtest_SOURCES="jmtest.c $TEST_SOURCES"
 jmtest_LDADD="$TEST_LDADD"

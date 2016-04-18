@@ -17,6 +17,10 @@
 #ifndef __USET_H
 #define __USET_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -33,11 +37,11 @@ typedef struct uset *uset_t;
 static inline uset_t uset_new(void (*destructor)(void *)) {
 	uset_t us;
 
-	us = calloc(1, sizeof(struct uset));
+	us = (uset_t) calloc(1, sizeof(struct uset));
 	if (us == NULL) return NULL;
 	us->destructor = destructor;
 	us->allocated = 50;
-	us->items = calloc(us->allocated, sizeof(void *));
+	us->items = (void **) calloc(us->allocated, sizeof(void *));
 	us->length = 0;
 	return us;
 }
@@ -57,7 +61,7 @@ static inline int uset_add(uset_t us, void **item) {
 	}
 
 	/* Otherwise, add more slots */
-	new_items = realloc(us->items, us->allocated + 50);
+	new_items = (void **) realloc(us->items, us->allocated + 50);
 	if (new_items == NULL) {
 		return (-1);
 	} else {
@@ -93,5 +97,9 @@ static inline void uset_free(uset_t us) {
 static inline void uset_dump(uset_t us) {
 	printf("uset stats: length=%zu, allocated=%zu\n", us->length, us->allocated);
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __USET_H */

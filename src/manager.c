@@ -49,7 +49,7 @@ static void setup_logging();
 static void do_shutdown();
 
 struct pidfh *pidfile_handle;
-extern struct launchd_options options;
+launchd_options_t options;
 
 static LIST_HEAD(,job_manifest) pending; /* Jobs that have been submitted but not loaded */
 static LIST_HEAD(,job) jobs;			/* All active jobs */

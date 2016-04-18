@@ -28,6 +28,13 @@ export TOPDIR
 # LIBRARIES=""
 # install_DIRS=""
 
+# Use this LF variable to inject newlines into strings
+lf='
+'
+# Use this LF+TAB variable to inject new Make rules into strings
+lftab='
+	'
+
 # If set to "yes", this is the top-level ./configure script within the project
 TOP_LEVEL="yes"
 
@@ -301,7 +308,7 @@ emit_compilation_units() {
 		test -n "$_prefix" && _obj="${_prefix}${_obj}"
 		echo $source | egrep -q '\.cpp'
 		if [ $? -eq 0 ] ; then 
-			_compiler="$CXX"
+                       _compiler="$CXX"
 			_compiler_mk="\$(CXX)"
 			compiler_mk="$_compiler_mk"
 			_flags="$cxxflags $CXXFLAGS"
@@ -314,6 +321,7 @@ emit_compilation_units() {
 			_flags_mk="\$(CFLAGS)"
 		fi
 		_mkdep_command="$_compiler $_flags -MM -MT $_obj"
+
 		log_debug "checking dependencies of ${_obj}:\\n + ${_mkdep_command} ${source}"
 		_mkdeps=`${_mkdep_command} $source 2>>config.log`
 		test $? -eq 0 || err "Unable to generate dependencies for $source"
@@ -329,8 +337,9 @@ $_mkdeps
 
 emit_static_library() {
 	install_DIRS="$install_DIRS ${libdir}"
+	_installname=$(echo $soname | sed 's/\.so.*/.a/')
 	_mf_install_rules="$_mf_install_rules
-	\$(INSTALL) -m 755 ${_library}.a \$\$DESTDIR\$(LIBDIR)"
+	\$(INSTALL) -m 755 ${_library}.a \$\$DESTDIR\$(LIBDIR)/${_installname}"
 
 	_objs=`echo $sources | sort | sed 's/\.c/.o/g'`
 	_curdir_objs=`for x in $_objs ; do basename $x ; done | sed 's/^/static-/g' | tr '\n' ' '`
@@ -347,20 +356,21 @@ ${_library}.a: $_curdir_objs $depends
 emit_shared_library() {
 	_saved_cflags=$cflags
 		
+	_basic_libname=$(echo $soname | sed 's/\.so\..*/.so/')
+	
 	install_DIRS="$install_DIRS ${libdir}"
 	_mf_install_rules="$_mf_install_rules
-	\$(INSTALL) -s -m 755 $realname \$\$DESTDIR\$(LIBDIR)
-	\$(INSTALL) -ls $realname \$\$DESTDIR\$(LIBDIR)/$soname
-	\$(INSTALL) -ls $realname \$\$DESTDIR\$(LIBDIR)/$_library.so
+	\$(INSTALL) -s -m 755 ${_basic_libname} \$\$DESTDIR\$(LIBDIR)/$soname
+	ln -s \$\$DESTDIR\$(LIBDIR)/$soname \$\$DESTDIR\$(LIBDIR)/${_basic_libname} 
 "
 
 	_objs=`echo $sources | sort | sed 's/\.c/.o/g'`
 	_curdir_objs=`for x in $_objs ; do basename $x ; done | tr '\n' ' '`
 
-	_mf_default_target="$_mf_default_target $realname"
-	_mf_clean_files="$_mf_clean_files $realname $soname $_library.so"
+	_mf_default_target="$_mf_default_target ${_basic_libname}"
+	_mf_clean_files="$_mf_clean_files ${_basic_libname}"
 	_mf_targets="$_mf_targets
-$realname: $_curdir_objs $depends
+${_basic_libname}: $_curdir_objs $depends
 	$compiler_mk -shared -fvisibility=hidden -Wl,-soname,$soname -o \$@ \\
 	    $ldflags \$(LDFLAGS) $_curdir_objs $ldadd \$(LDADD)
 
@@ -376,6 +386,7 @@ emit_libraries() {
 		# common to all targets
 		eval "sources=\$${_library}_SOURCES"
 		eval "cflags=\$${_library}_CFLAGS"
+		eval "cxxflags=\$${_library}_CXXFLAGS"
 		eval "ldflags=\$${_library}_LDFLAGS"
 		eval "ldadd=\$${_library}_LDADD"
 		eval "depends=\$${_library}_DEPENDS"
@@ -383,9 +394,7 @@ emit_libraries() {
 		eval "compiler_mk=\"\\\$(CC)\""
 		# specific to libraries
 		eval "soname=\$${_library}_SONAME"
-		eval "realname=\$${_library}_REALNAME"
 		
-	
 		emit_static_library
 		emit_shared_library
 	done
@@ -415,9 +424,8 @@ emit_programs() {
 		eval "ldflags=\$${_program}_LDFLAGS"
 		eval "ldadd=\$${_program}_LDADD"
 		eval "depends=\$${_program}_DEPENDS"
-		eval "compiler=\$${_program}_COMPILER"
 		eval "compiler_mk=\"\\\$(CC)\""
-		_objs=`echo "$sources " | sort | sed 's/\.c /.o /g; s/\.cpp /.o /;'`
+		_objs=`echo "$sources " | sort | sed 's/\.c /.o /g; s/\.cpp /.o /;'`	
 		_curdir_objs=`for x in $_objs ; do basename $x ; done | tr '\n' ' '`
 
 		emit_compilation_units
@@ -489,7 +497,7 @@ INSTALL ?= /usr/bin/install
 emit_distribution() {
 	if [ "$TOP_LEVEL" = "no" ] ; then return ; fi
 	
-	_distfiles=`echo "$DISTFILES" | tr ' ' '\n' | sort | uniq | tr '\n' ' '`
+	_distfiles=`echo "$DISTFILES" | sed 's/\\\//g' | tr ' ' '\n' | sort | uniq | tr '\n' ' '`
 	_mf_distribution="dist:
 	mkdir \$(PACKAGE_NAME)-\$(PACKAGE_VERSION)
 	for file in $_distfiles ; do \
@@ -509,6 +517,15 @@ emit_cleanup() {
 	for dir in $SUBDIRS ; do cd \$\$dir && \$(MAKE) clean && cd .. ; done
 "
 	fi
+}
+
+emit_distclean() {
+	_buf="distclean: clean"
+	for _dir in $SUBDIRS ; do 
+		_buf="$_buf${lftab}\$(MAKE) -C $_dir distclean"
+	done
+	_buf="$_buf${lftab}rm -f config.h vars.sh depends.mk config.mk config.log"
+	_mf_distclean_rules=$_buf
 }
 
 emit_subdir_rules() {
@@ -537,6 +554,7 @@ write_makefile() {
 	emit_tests
 	emit_distribution
 	emit_cleanup
+	emit_distclean
 	emit_subdir_rules
 	emit_vendored_items
 	emit_platform_tweaks
@@ -567,6 +585,7 @@ $_mf_distribution
 $_mf_install_directory_rules
 $_mf_install_rules
 $_mf_clean_rules
+$_mf_distclean_rules
 $_mf_dependencies
 $EXTRA_TARGETS
 
