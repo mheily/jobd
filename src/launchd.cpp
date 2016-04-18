@@ -40,7 +40,6 @@
 #include "pidfile.h"
 #include "socket.h"
 #include "timer.h"
-#include "uset.h"
 #include "util.h"
 
 extern launchd_options_t options;
