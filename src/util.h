@@ -19,6 +19,12 @@
 
 #include <stdarg.h>
 #include <limits.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+/* A buffer large enough to hold a reasonable command line string */
+#define COMMAND_MAX 8092
 
 static inline void
 path_sprintf(char (*buf)[PATH_MAX], const char *format, ...)
@@ -49,7 +55,48 @@ mkdir_idempotent(const char *path, mode_t mode)
 		if (errno == EEXIST)
 			return;
 
-		err(1, "mkdir(2)");
+		err(1, "mkdir(2) of %s", path);
+	}
+}
+
+/* Execute a command */
+int reset_signal_handlers(); //FIXME; bad place for this
+static inline int
+run_system(char (*buf)[COMMAND_MAX], const char *format, ...)
+{
+	pid_t pid;
+	int len;
+	va_list args;
+
+	if (buf == NULL)
+		return -1;
+
+	va_start(args, format);
+	len = vsnprintf((char *)buf, sizeof(*buf), format, args);
+	va_end(args);
+
+	if (len < 0)
+		err(1, "vsnprintf(3)");
+        if (len >= (int)sizeof(*buf)) {
+                errno = ENAMETOOLONG;
+		err(1, "vsnprintf(3)");
+     }
+      log_debug("executing: %s", (char *)buf);
+
+	pid = fork();
+	if (pid == 0) {
+		/* Child */
+		//FIXME: Want to do this, but having linker issues: reset_signal_handlers();
+		execl("/bin/sh", "sh", "-c", (char *)buf, (char *)NULL);
+		_exit(127);
+	} else if (pid < 0) {
+		return -1;
+	} else {
+		/* Parent */
+		int status;
+		if (waitpid (pid, &status, 0) != pid)
+			status = -1;
+		return status;
 	}
 }
 

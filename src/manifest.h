@@ -64,7 +64,7 @@ typedef struct job_manifest {
 	char    *jail_name;
 
 	cvec_t	 environment_variables;
-	struct dataset_list *dataset;
+	struct dataset_list *datasets;
 	mode_t   umask;
 	uint32_t timeout;
 	uint32_t exit_timeout;

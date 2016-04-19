@@ -35,9 +35,12 @@
 #include "timer.h"
 #include "util.h"
 
+// Temporary, until resource acquisition moved to manager.c
+#include "dataset.h"
+
 extern void keepalive_remove_job(struct job *job);
 
-static int reset_signal_handlers();
+int reset_signal_handlers();
 
 static void job_dump(job_t job) {
 	log_debug("job dump: label=%s state=%d", job->jm->label, job->state);
@@ -353,7 +356,7 @@ err_out:
 	return -1;
 }
 
-static int 
+int
 reset_signal_handlers()
 {
 	extern const int launchd_signals[];
@@ -519,6 +522,8 @@ int job_unload(job_t job)
 	}
 
 	keepalive_remove_job(job);
+	if (job->jm->datasets)
+		dataset_list_unload_handler(job->jm->datasets);
 
 	return 0;
 }
@@ -529,6 +534,14 @@ int job_run(job_t job)
 	struct passwd *pwent;
 	struct group *grent;
 	pid_t pid;
+
+	// KLUDGE: should be in a separate function, maybe actually in manager.c
+	// BEGIN: Acquire resources
+	if (job->jm->datasets && dataset_list_load_handler(job->jm->datasets) < 0) {
+		log_error("unable to create datasets");
+		return -1;
+	}
+	// END: Acquire resources
 
 	if ((pwent = getpwnam(job->jm->user_name)) == NULL) {
 		log_errno("getpwnam");

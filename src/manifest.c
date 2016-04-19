@@ -24,6 +24,7 @@
 #include "cvec.h"
 #include "log.h"
 #include "manifest.h"
+#include "dataset.h"
 
 static const uint32_t DEFAULT_EXIT_TIMEOUT = 20;
 static const uint32_t DEFAULT_THROTTLE_INTERVAL = 10;
@@ -100,6 +101,8 @@ static const job_manifest_item_parser_t manifest_parser_map[] = {
 	{ "Umask",                 UCL_STRING,  job_manifest_parse_umask },
 	{ "KeepAlive",               UCL_BOOLEAN,  job_manifest_parse_keepalive },
 	{ "ThrottleInterval",      UCL_INT,   job_manifest_parse_throttle_interval },
+	/* Keys below here are not found in the original launchd.plist(5) */
+	{ "CreateDataset",         UCL_OBJECT, dataset_parse_manifest },
 	/*
 	{ "inetdCompatibility",    SKIP_ITEM,   NULL },
 	{ "TimeOut",               SKIP_ITEM,   NULL },
