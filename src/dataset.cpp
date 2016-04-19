@@ -63,15 +63,15 @@ int DatasetList::parse_manifest(const ucl_object_t *obj)
 		const char *val = ucl_object_tostring_forced(cur);
 
 		if (!strcmp(key, "Name")) {
-			ds->name = val;
+			ds->name = val; //FIXME:SECURITY - validation needed
 		} else if (!strcmp(key, "Pool")) {
-			ds->pool = val;
+			ds->pool = val; //FIXME:SECURITY - validation needed
 		} else if (!strcmp(key, "Origin")) {
-			ds->origin = val;
+			ds->origin = val; //FIXME:SECURITY - validation needed
 		} else if (!strcmp(key, "Quota")) {
-			ds->quota = val;
+			ds->quota = val; //FIXME:SECURITY - validation needed
 		} else if (!strcmp(key, "MountPoint")) {
-			ds->mountPoint = val;
+			ds->mountPoint = val; //FIXME:SECURITY - validation needed
 		} else if (!strcmp(key, "DestroyAtUnload")) {
 			if (!ucl_object_toboolean_safe(cur, &ds->destroyAtUnload)) {
 				log_error("Syntax error: boolean expected");

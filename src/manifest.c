@@ -588,6 +588,9 @@ void job_manifest_free(job_manifest_t job_manifest)
 		job_manifest_socket_free(jms);
 	}
 
+	if (job_manifest->datasets) dataset_list_free(job_manifest->datasets);
+	//FIXME: audit for remaining things to free, e.g. keepalive
+
 	free(job_manifest);
 }
 

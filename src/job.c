@@ -28,6 +28,7 @@
 #endif
 
 #include "calendar.h"
+#include "dataset.h"
 #include "job.h"
 #include "log.h"
 #include "manager.h"
@@ -35,9 +36,8 @@
 #include "timer.h"
 #include "util.h"
 
-// Temporary, until resource acquisition moved to manager.c
-#include "dataset.h"
 
+static int job_acquire_resources(job_t job);
 extern void keepalive_remove_job(struct job *job);
 
 int reset_signal_handlers();
@@ -464,6 +464,7 @@ job_t job_new(job_manifest_t jm)
 void job_free(job_t job)
 {
 	if (job == NULL) return;
+	//XXX-FIXME-LEAK: manifest never freed
 	free(job->jm);
 	free(job);
 }
@@ -535,14 +536,11 @@ int job_run(job_t job)
 	struct group *grent;
 	pid_t pid;
 
-	// KLUDGE: should be in a separate function, maybe actually in manager.c
-	// BEGIN: Acquire resources
-	if (job->jm->datasets && dataset_list_load_handler(job->jm->datasets) < 0) {
-		log_error("unable to create datasets");
+	if (job_acquire_resources(job) < 0) {
+		log_error("unable to acquire resources for job");
 		return -1;
-	}
-	// END: Acquire resources
 
+	}
 	if ((pwent = getpwnam(job->jm->user_name)) == NULL) {
 		log_errno("getpwnam");
 		return (-1);
@@ -580,4 +578,13 @@ int job_run(job_t job)
 	}
 #endif
 	return (0);
+}
+
+static int job_acquire_resources(job_t job)
+{
+	if (job->jm->datasets && dataset_list_load_handler(job->jm->datasets) < 0) {
+		log_error("unable to create datasets");
+		return -1;
+	}
+	return 0;
 }

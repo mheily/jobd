@@ -5,9 +5,11 @@ using the [Keep A ChangeLog](http://keepachangelog.com/) style.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## UNRELEASED
+### Added
+- Support for the CreateDataset key, which creates ZFS datasets on-demand when the job
+  is launched.
+ 
 ### Changed
-- When launching daemons, set environment variables to match how daemon(8) 
-  does it on FreeBSD. (Fixes bug #59)
 - Start rewriting parts of launchd in C++.
 
 ## [0.6.0] - 2016/04/12
