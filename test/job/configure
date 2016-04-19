@@ -24,6 +24,7 @@ TESTS="jobtest"
 srcdir="../../src"
 
 jobtest_CFLAGS="$TEST_CFLAGS -include ../../config.h"
+jobtest_CXXFLAGS="$TEST_CXXFLAGS"
 jobtest_LDFLAGS="$TEST_LDFLAGS"
 jobtest_SOURCES="jobtest.c $TEST_SOURCES"
 jobtest_LDADD="$TEST_LDADD"
