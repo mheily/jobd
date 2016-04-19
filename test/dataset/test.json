@@ -1,0 +1,12 @@
+{
+	"Label": "hello.world",
+	"ProgramArguments": [ "/bin/echo", "Hello world!" ],
+	"CreateDataset": {
+		"Pool": "scratch",
+		"MountPoint": "/scratch/hello_world_test",
+		"Name": "hello_world_test",
+		"Quota": "20G",
+		"DestroyAtUnload": true,
+	},
+	"RunAtLoad": true,
+}

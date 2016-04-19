@@ -427,7 +427,7 @@ emit_programs() {
 		eval "ldadd=\$${_program}_LDADD"
 		eval "depends=\$${_program}_DEPENDS"
 		eval "compiler_mk=\"\\\$(CC)\""
-		_objs=`echo "$sources " | sort | sed 's/\.c /.o /g; s/\.cpp /.o /;'`	
+		_objs=`echo "$sources " | sort | sed 's/\.c /.o /g; s/\.cpp /.o /g;'`	
 		_curdir_objs=`for x in $_objs ; do basename $x ; done | tr '\n' ' '`
 
 		emit_compilation_units

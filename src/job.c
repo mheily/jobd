@@ -28,6 +28,7 @@
 #endif
 
 #include "calendar.h"
+#include "dataset.h"
 #include "job.h"
 #include "log.h"
 #include "manager.h"
@@ -35,9 +36,11 @@
 #include "timer.h"
 #include "util.h"
 
+
+static int job_acquire_resources(job_t job);
 extern void keepalive_remove_job(struct job *job);
 
-static int reset_signal_handlers();
+int reset_signal_handlers();
 
 static void job_dump(job_t job) {
 	log_debug("job dump: label=%s state=%d", job->jm->label, job->state);
@@ -353,7 +356,7 @@ err_out:
 	return -1;
 }
 
-static int 
+int
 reset_signal_handlers()
 {
 	extern const int launchd_signals[];
@@ -461,6 +464,7 @@ job_t job_new(job_manifest_t jm)
 void job_free(job_t job)
 {
 	if (job == NULL) return;
+	//XXX-FIXME-LEAK: manifest never freed
 	free(job->jm);
 	free(job);
 }
@@ -519,6 +523,8 @@ int job_unload(job_t job)
 	}
 
 	keepalive_remove_job(job);
+	if (job->jm->datasets)
+		dataset_list_unload_handler(job->jm->datasets);
 
 	return 0;
 }
@@ -530,6 +536,11 @@ int job_run(job_t job)
 	struct group *grent;
 	pid_t pid;
 
+	if (job_acquire_resources(job) < 0) {
+		log_error("unable to acquire resources for job");
+		return -1;
+
+	}
 	if ((pwent = getpwnam(job->jm->user_name)) == NULL) {
 		log_errno("getpwnam");
 		return (-1);
@@ -567,4 +578,13 @@ int job_run(job_t job)
 	}
 #endif
 	return (0);
+}
+
+static int job_acquire_resources(job_t job)
+{
+	if (job->jm->datasets && dataset_list_load_handler(job->jm->datasets) < 0) {
+		log_error("unable to create datasets");
+		return -1;
+	}
+	return 0;
 }
