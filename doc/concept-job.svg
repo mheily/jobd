@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/PR-SVG-20010719/DTD/svg10.dtd">
+<svg width="9cm" height="9cm" viewBox="329 -2 172 172" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <g>
+    <ellipse style="fill: #0000ff" cx="414.85" cy="84.6" rx="84.65" ry="84.65"/>
+    <ellipse style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" cx="414.85" cy="84.6" rx="84.65" ry="84.65"/>
+    <ellipse style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" cx="414.85" cy="84.6" rx="84.65" ry="84.65"/>
+  </g>
+  <g>
+    <ellipse style="fill: #ffffff" cx="415.225" cy="84.975" rx="56.025" ry="56.025"/>
+    <ellipse style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" cx="415.225" cy="84.975" rx="56.025" ry="56.025"/>
+    <ellipse style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" cx="415.225" cy="84.975" rx="56.025" ry="56.025"/>
+  </g>
+  <g>
+    <ellipse style="fill: #ff0000" cx="414.488" cy="86.2375" rx="28.7625" ry="28.7625"/>
+    <ellipse style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" cx="414.488" cy="86.2375" rx="28.7625" ry="28.7625"/>
+    <ellipse style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" cx="414.488" cy="86.2375" rx="28.7625" ry="28.7625"/>
+  </g>
+  <text font-size="12.7998" style="fill: #000000;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="391.85" y="89.75">
+    <tspan x="391.85" y="89.75">Process</tspan>
+  </text>
+  <text font-size="12.7998" style="fill: #000000;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="391.625" y="51.25">
+    <tspan x="391.625" y="51.25">Context</tspan>
+  </text>
+  <text font-size="12.7998" style="fill: #ffff00;text-anchor:start;font-family:sans-serif;font-style:normal;font-weight:normal" x="384.2" y="22.65">
+    <tspan x="384.2" y="22.65">Resources</tspan>
+  </text>
+</svg>
