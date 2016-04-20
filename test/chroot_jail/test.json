@@ -1,0 +1,10 @@
+{
+	"Label": "hello.world",
+	"ProgramArguments": [ "/bin/sleep", "60" ],
+	"ChrootJail": {
+		"RootDirectory": "/scratch/chroot_jail_test",
+		"Archive": "/var/tmp/base.txz",
+		"DestroyAtUnload": true,
+	}
+	"RunAtLoad": true,
+}

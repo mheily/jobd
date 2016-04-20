@@ -27,6 +27,7 @@
 #include <sys/jail.h>
 #endif
 
+#include "chroot.h"
 #include "calendar.h"
 #include "dataset.h"
 #include "job.h"
@@ -35,7 +36,6 @@
 #include "socket.h"
 #include "timer.h"
 #include "util.h"
-
 
 static int job_acquire_resources(job_t job);
 extern void keepalive_remove_job(struct job *job);
@@ -415,8 +415,15 @@ start_child_process(const job_t job, const struct passwd *pwent, const struct gr
 			goto err_out;
 		}
 	}
+	/* TODO: deprecate the root_directory logic in favor of chroot_jail */
 	if (job->jm->root_directory && getuid() == 0) {
 		if (chroot(job->jm->root_directory) < 0) {
+			log_error("unable to chroot to %s", job->jm->root_directory);
+			goto err_out;
+		}
+	}
+	if (job->jm->chroot_jail && getuid() == 0) {
+		if (chroot_jail_context_handler(job->jm->chroot_jail) < 0) {
 			log_error("unable to chroot to %s", job->jm->root_directory);
 			goto err_out;
 		}
@@ -525,6 +532,8 @@ int job_unload(job_t job)
 	keepalive_remove_job(job);
 	if (job->jm->datasets)
 		dataset_list_unload_handler(job->jm->datasets);
+	if (job->jm->chroot_jail)
+		chroot_jail_unload_handler(job->jm->chroot_jail);
 
 	return 0;
 }
@@ -584,6 +593,10 @@ static int job_acquire_resources(job_t job)
 {
 	if (job->jm->datasets && dataset_list_load_handler(job->jm->datasets) < 0) {
 		log_error("unable to create datasets");
+		return -1;
+	}
+	if (job->jm->chroot_jail && chroot_jail_load_handler(job->jm->chroot_jail) < 0) {
+		log_error("unable to create chroot(2) jail");
 		return -1;
 	}
 	return 0;
