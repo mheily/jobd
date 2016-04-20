@@ -178,7 +178,10 @@ int ChrootJail::set_execution_context() {
 
 int chroot_jail_parse_manifest(job_manifest_t manifest, const ucl_object_t *obj) {
 	ChrootJail *jail = new ChrootJail();
-	if (jail->parse_manifest(obj) < 0) return -1;
+	if (jail->parse_manifest(obj) < 0) {
+		delete jail;
+		return -1;
+	}
 	manifest->chroot_jail = reinterpret_cast<struct chroot_jail *>(jail);
 	return 0;
 }
