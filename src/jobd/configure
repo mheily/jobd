@@ -1,0 +1,50 @@
+#!/bin/sh
+#
+# Copyright (c) 2016 Mark Heily <mark@heily.com>
+#
+# Permission to use, copy, modify, and distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+
+. ../../config.sub
+. ../../vars.sh
+
+bin_PROGRAMS=jobd
+
+jobd_CXXFLAGS="-I../.. -I.. -I. -include ../../config.h -std=c++11 -Wall -Werror -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
+jobd_LDFLAGS="-L/usr/lib -L/usr/local/lib $libucl_LDFLAGS"
+jobd_LDADD="$libucl_LDADD $kqueue_LDADD"
+jobd_SOURCES=`ls *.cpp *.c | tr '\n' ' '`
+#log.c job.c chroot.cpp launchd.cpp dataset.cpp manager.c manifest.c socket.c keepalive.c calendar.c timer.c pidfile.c flopen.c"
+jobd_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS"
+
+uname=$(uname)
+if [ "`uname`" = 'FreeBSD' ] ; then
+        #jobd_SOURCES="${jobd_SOURCES} jail.cpp"
+        jobd_LDADD="${jobd_LDADD} -ljail"
+fi
+
+# DEADWOOD: no time for this port right now
+## MacOS needs a POSIX clock_gettime() function
+##if [ `uname` = "Darwin" ] ; then
+#	launchd_SOURCES="$launchd_SOURCES ../vendor/PosixMachTiming/src/timing_mach.c"
+#fi
+     
+# TODO: add a --debug option to configure; this wont work because CFLAGS specifies -O2
+#if [ -n "$DEBUG" ] ; then
+#	launchd_CFLAGS="$launchd_CFLAGS -O0 -g"
+#fi
+
+#TODO: add a valgrinding option:
+#make clean ; make all CFLAGS="-g -O0" && valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes ./launchd -fv 2>&1|less
+
+write_makefile

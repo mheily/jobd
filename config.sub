@@ -305,12 +305,16 @@ emit_compilation_units() {
 	_prefix=$1
 	
 	_all_mkdeps=""
+	_curdir_objs=""
 	for source in $sources ; do
 		_obj=`echo $source | sed 's/\.c\$/.o/; s/\.cpp\$/.o/;' | sed 's/.*\///'`
 		test -n "$_prefix" && _obj="${_prefix}${_obj}"
-		echo $source | egrep -q '\.cpp'
+		_curdir_objs="${_curdir_objs} ${_obj}"
+		
+		# Detect C++ vs C
+		echo $source | egrep -q '\.(cc|cpp|cxx)$'
 		if [ $? -eq 0 ] ; then 
-                       _compiler="$CXX"
+            _compiler="$CXX"
 			_compiler_mk="\$(CXX)"
 			compiler_mk="$_compiler_mk"
 			_flags="$cxxflags $CXXFLAGS"
@@ -343,16 +347,15 @@ emit_static_library() {
 	_mf_install_rules="$_mf_install_rules
 	\$(INSTALL) -m 755 ${_library}.a \$\$DESTDIR\$(LIBDIR)/${_installname}"
 
-	_objs=`echo $sources | sort | sed 's/\.c/.o/g'`
-	_curdir_objs=`for x in $_objs ; do basename $x ; done | sed 's/^/static-/g' | tr '\n' ' '`
-
 	_mf_default_target="$_mf_default_target ${_library}.a"
 	_mf_clean_files="$_mf_clean_files ${_library}.a"
+
+	emit_compilation_units 'static-'
+
 	_mf_targets="$_mf_targets
 ${_library}.a: $_curdir_objs $depends
 	\$(AR) rcs ${_library}.a $_curdir_objs
 "
-	emit_compilation_units 'static-'
 }
 
 emit_shared_library() {
@@ -366,21 +369,19 @@ emit_shared_library() {
 	ln -s \$\$DESTDIR\$(LIBDIR)/$soname \$\$DESTDIR\$(LIBDIR)/${_basic_libname} 
 "
 
-	_objs=`echo $sources | sort | sed 's/\.c/.o/g'`
-	_curdir_objs=`for x in $_objs ; do basename $x ; done | tr '\n' ' '`
-
 	_mf_default_target="$_mf_default_target ${_basic_libname}"
 	_mf_clean_files="$_mf_clean_files ${_basic_libname}"
+
+	cflags="$cflags -fpic -fvisibility=hidden"
+	emit_compilation_units ''
+	cflags=$_saved_cflags
+
 	_mf_targets="$_mf_targets
 ${_basic_libname}: $_curdir_objs $depends
 	$compiler_mk -shared -fvisibility=hidden -Wl,-soname,$soname -o \$@ \\
 	    $ldflags \$(LDFLAGS) $_curdir_objs $ldadd \$(LDADD)
 
 "
-
-	cflags="$cflags -fpic -fvisibility=hidden"
-	emit_compilation_units ''
-	cflags=$_saved_cflags
 }
 
 emit_libraries() {
@@ -439,7 +440,7 @@ emit_programs() {
 		eval "ldadd=\$${_program}_LDADD"
 		eval "depends=\$${_program}_DEPENDS"
 		eval "compiler_mk=\"\\\$(CC)\""
-		_objs=`echo "$sources " | sort | sed 's/\.c /.o /g; s/\.cpp /.o /g;'`	
+		_objs=`echo "$sources " | sort | sed 's/\..* /.o /g; s/\.cpp /.o /g;'`	
 		_curdir_objs=`for x in $_objs ; do basename $x ; done | tr '\n' ' '`
 
 		emit_compilation_units
