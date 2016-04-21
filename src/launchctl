@@ -55,6 +55,11 @@ if [ ! -f $pidfile ] ; then
 	fi
 fi
 
+if [ "$command" = "start" -o "$command" = "stop" -o "$command" = "restart" ] ; then
+	label=$1
+	shift
+fi
+
 for path in $*
 do
 	if [ ! -e "$path" ] ; then
@@ -78,6 +83,21 @@ unload)
 		label=`basename "$path" | sed 's/\.json$//'`
 		touch $watchdir/$label.unload
 	done
+	kill -HUP `cat $pidfile`
+	;;
+
+stop)
+	touch $watchdir/$label.stop
+	kill -HUP `cat $pidfile`
+	;;
+
+start)
+	touch $watchdir/$label.start
+	kill -HUP `cat $pidfile`
+	;;
+
+restart)
+	touch $watchdir/$label.restart
 	kill -HUP `cat $pidfile`
 	;;
 
