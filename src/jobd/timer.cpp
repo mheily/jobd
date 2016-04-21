@@ -49,7 +49,7 @@ static void update_min_interval()
 		if (min_interval == 0) {
 			return;
 		}
-		EV_SET(&kev, JOB_SCHEDULE_PERIODIC, EVFILT_TIMER, EV_ADD | EV_DISABLE, 0, 0, &setup_timers);
+		EV_SET(&kev, JOB_SCHEDULE_PERIODIC, EVFILT_TIMER, EV_ADD | EV_DISABLE, 0, 0, (void *)&setup_timers);
 		if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
 			err(1, "kevent(2)");
 		}
@@ -61,7 +61,7 @@ static void update_min_interval()
 		}
 		if (min_interval > 0 && saved_interval == 0) {
 			EV_SET(&kev, JOB_SCHEDULE_PERIODIC, EVFILT_TIMER,
-					EV_ADD | EV_ENABLE, 0, (1000 * min_interval), &setup_timers);
+					EV_ADD | EV_ENABLE, 0, (1000 * min_interval), (void *)&setup_timers);
 			if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
 				err(1, "kevent(2)");
 			}

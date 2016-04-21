@@ -14,8 +14,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "../vendor/FreeBSD/sys/queue.h"
+#include "../../vendor/FreeBSD/sys/queue.h"
 
+extern "C" {
 #include <dirent.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -24,6 +25,7 @@
 #include <sys/types.h>
 #include <sys/event.h>
 #include <sys/wait.h>
+}
 
 #include "../config.h"
 
@@ -39,7 +41,7 @@
 #include "util.h"
 
 /* A list of signals that are meaningful to launchd(8) itself. */
-const int launchd_signals[] = {
+const int launchd_signals[5] = {
 	SIGHUP, SIGUSR1, SIGINT, SIGTERM, 0
 };
 
@@ -511,7 +513,7 @@ static void setup_signal_handlers()
 		if (signal(launchd_signals[i], SIG_IGN) == SIG_ERR)
 			err(1, "signal(2): %d", launchd_signals[i]);
 		EV_SET(&kev, launchd_signals[i], EVFILT_SIGNAL, EV_ADD, 0, 0,
-				&setup_signal_handlers);
+				(void *)&setup_signal_handlers);
 		if (kevent(main_kqfd, &kev, 1, NULL, 0, NULL) < 0)
 			err(1, "kevent(2)");
 	}

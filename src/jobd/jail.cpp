@@ -120,7 +120,7 @@ jail_config_t jail_config_new()
 	if (!jail_opts.initialized && jail_opts_init() < 0)
 		return NULL;
 
-	jc = calloc(1, sizeof(*jc));
+	jc = (jail_config_t) calloc(1, sizeof(*jc));
 	return (jc);
 }
 

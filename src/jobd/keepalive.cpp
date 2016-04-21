@@ -100,7 +100,7 @@ void keepalive_wake_handler(void)
 static struct watchdog *
 watchdog_new(job_t job)
 {
-	watchdog_t w = malloc(sizeof(*w));
+	watchdog_t w = (watchdog_t) malloc(sizeof(*w));
 	if (w) {
 		w->job = job;
 		w->restart_after = current_time() + job->jm->throttle_interval;
@@ -116,7 +116,7 @@ static void update_wake_interval()
 	static int interval = 0;
 
 	if (SLIST_EMPTY(&watchdog_list)) {
-		EV_SET(&kev, JOB_SCHEDULE_KEEPALIVE, EVFILT_TIMER, EV_ADD | EV_DISABLE, 0, 0, &keepalive_wake_handler);
+		EV_SET(&kev, JOB_SCHEDULE_KEEPALIVE, EVFILT_TIMER, EV_ADD | EV_DISABLE, 0, 0, (void *)&keepalive_wake_handler);
 		if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
 			err(1, "kevent(2)");
 		}
@@ -133,7 +133,7 @@ static void update_wake_interval()
 			time_delta = 10000;
 		if (interval != time_delta) {
 			EV_SET(&kev, JOB_SCHEDULE_KEEPALIVE, EVFILT_TIMER,
-						EV_ADD | EV_ENABLE, 0, time_delta, &keepalive_wake_handler);
+						EV_ADD | EV_ENABLE, 0, time_delta, (void *)&keepalive_wake_handler);
 			if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
 					err(1, "kevent(2)");
 			}

@@ -45,7 +45,7 @@ struct job_manifest_socket {
 	char *	multicast_group;	/* optional */
 };
 
-void setup_socket_activation();
+void setup_socket_activation(int);
 int socket_activation_handler();
 
 struct job_manifest_socket * job_manifest_socket_new();

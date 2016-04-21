@@ -14,6 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+extern "C" {
 #include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
@@ -26,6 +27,7 @@
 #include <sys/param.h>
 #include <sys/jail.h>
 #endif
+}
 
 #include "chroot.h"
 #include "calendar.h"
@@ -36,6 +38,7 @@
 #include "socket.h"
 #include "timer.h"
 #include "util.h"
+
 
 static int job_acquire_resources(job_t job);
 extern void keepalive_remove_job(struct job *job);
@@ -129,6 +132,7 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 	char *logname_var = NULL, *user_var = NULL;
 	int i, uid;
 	bool found[] = { false, false, false, false, false, false, false };
+	size_t offset = 0;
 
 	env = cvec_new();
 	if (!env) goto err_out;
@@ -207,7 +211,7 @@ job_has_no_environment:
 		}
 	}
 	if (!found[3]) {
-		char *path;
+		const char *path;
 
 		if (uid == 0) {
 			path = "PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin";
@@ -232,7 +236,6 @@ job_has_no_environment:
 	if (add_standard_environment_variables(env) < 0)
 		goto err_out;
 
-	size_t offset = 0;
 	SLIST_FOREACH(jms, &job->jm->sockets, entry) {
 		job_manifest_socket_export(jms, env, offset++);
 	}
@@ -454,7 +457,7 @@ job_t job_new(job_manifest_t jm)
 {
 	job_t j;
 
-	j = calloc(1, sizeof(*j));
+	j = (job_t) calloc(1, sizeof(*j));
 	if (!j) return NULL;
 	j->jm = jm;
 	j->state = JOB_STATE_DEFINED;

@@ -37,7 +37,7 @@ job_manifest_socket_new()
 {
 	struct job_manifest_socket *jms;
 
-	jms = calloc(1, sizeof(*jms));
+	jms = (struct job_manifest_socket *) calloc(1, sizeof(*jms));
 	if (!jms) return NULL;
 
 	jms->sd = -1;
@@ -195,7 +195,7 @@ void setup_socket_activation(int kqfd)
 	if (socket_kqfd < 0)
 		err(1, "kqueue(2)");
 
-	EV_SET(&kev, socket_kqfd, EVFILT_READ, EV_ADD, 0, 0, &setup_socket_activation);
+	EV_SET(&kev, socket_kqfd, EVFILT_READ, EV_ADD, 0, 0, (void *)&setup_socket_activation);
 	if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0)
 		err(1, "kevent(2)");
 }

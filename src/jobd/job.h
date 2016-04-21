@@ -17,17 +17,15 @@
 #ifndef JOB_H_
 #define JOB_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <grp.h>
 #include <pwd.h>
 #include <sys/types.h>
-#include "../vendor/FreeBSD/sys/queue.h"
+#include "../../vendor/FreeBSD/sys/queue.h"
 #include <unistd.h>
 
 #include "manifest.h"
+
+extern const int launchd_signals[];
 
 typedef enum {
 	JOB_SCHEDULE_NONE = 0,
@@ -69,9 +67,5 @@ job_is_runnable(job_t job)
 {
 	return (job->state == JOB_STATE_LOADED && job->jm->run_at_load);
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* JOB_H_ */
