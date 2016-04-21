@@ -402,23 +402,35 @@ emit_libraries() {
 	done
 }
 
+# Add a single rule to install a single executable
+emit_install_rule() {
+	_id=$1
+	_match=""
+
+	for _program in $bin_PROGRAMS ; do
+	if [ $_id = $_program ] ; then
+		install_DIRS="$install_DIRS ${bindir}"
+		_mf_install_rules="$_mf_install_rules${lftab}\$(INSTALL) -s -m 755 $_id \$\$DESTDIR\$(BINDIR)${lf}"
+		return
+	fi
+	done
+
+	for _program in $sbin_PROGRAMS ; do
+	if [ $_id = $_program ] ; then
+		install_DIRS="$install_DIRS ${sbindir}"
+		_mf_install_rules="$_mf_install_rules${lftab}\$(INSTALL) -s -m 755 $_id \$\$DESTDIR\$(SBINDIR)${lf}"
+		return
+	fi
+	done
+}
+	
 emit_programs() {
 	if [ -n "$bin_PROGRAMS" ] ; then install_DIRS="$install_DIRS ${bindir}" ; fi
 	if [ -n "$sbin_PROGRAMS" ] ; then install_DIRS="$install_DIRS ${sbindir}" ; fi
 
 	for _program in $bin_PROGRAMS $sbin_PROGRAMS $TESTS; do
 
-		# KLUDGE: only needed because this function does too much
-		_should_install=yes
-		for _x in $TESTS ; do
-			if [ "$_x" = "$_program" ] ; then _should_install=no ; break ; fi
-		done
-
-		if [ "$_should_install" = "yes" ] ; then
-		install_DIRS="$install_DIRS ${sbindir}"
-		_mf_install_rules="$_mf_install_rules
-	\$(INSTALL) -s -m 755 $_program \$\$DESTDIR\$(SBINDIR)"
-		fi
+		emit_install_rule $_program
 
 		eval "sources=\$${_program}_SOURCES"
 		eval "cflags=\$${_program}_CFLAGS"

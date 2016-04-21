@@ -15,11 +15,19 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-. ../config.sub
-. ../vars.sh
+. ../../config.sub
+. ../../vars.sh
 
-SUBDIRS="jobd job"
+bin_PROGRAMS=job
 
-bin_SCRIPTS=launchctl
+job_CXXFLAGS="-include ../../config.h -std=c++11 -Wall -Werror -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
+job_LDFLAGS="$libucl_LDFLAGS"
+job_LDADD="$libucl_LDADD $kqueue_LDADD"
+job_SOURCES=`ls *.cpp | tr '\n' ' '`
+jobd_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS"
+
+if [ "`uname`" = 'FreeBSD' ] ; then
+        jobd_LDADD="${jobd_LDADD} -ljail"
+fi
 
 write_makefile
