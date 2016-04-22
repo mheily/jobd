@@ -97,6 +97,12 @@ static ssize_t poll_watchdir()
 	job_manifest_t jm;
 	ssize_t found_jobs = 0;
 	char *ext;
+	enum {
+		start,
+		stop,
+		load,
+		unload,
+	} action;
 
 	if ((dirp = opendir(options.watchdir)) == NULL)
 		err(1, "opendir(3)");
@@ -113,7 +119,22 @@ static ssize_t poll_watchdir()
 			log_error("skipping %s: no file extension", entry.d_name);
 			continue;
 		}
-		if (strcmp(ext, ".json") == 0) {
+
+		/* Determine the action to take */
+		if (!strcmp(ext, ".json"))
+				action = load;
+		else if (!strcmp(ext, ".unload"))
+				action = unload;
+		else if (!strcmp(ext, ".start"))
+				action = start;
+		else if (!strcmp(ext, ".stop"))
+				action = stop;
+		else {
+			log_error("skipping %s: unknown file extension", entry.d_name);
+			continue;
+		}
+
+		if (action == load) {
 			jm = read_job(entry.d_name);
 			if (jm) {
 				LIST_INSERT_HEAD(&pending, jm, jm_le);
@@ -121,7 +142,7 @@ static ssize_t poll_watchdir()
 			} else {
 				// note the failure?
 			}
-		} else if (strcmp(ext, ".unload") == 0) {
+		} else if (action == unload || action == start || action == stop) {
 			char *path;
 			if (asprintf(&path, "%s/%s", options.watchdir, entry.d_name) < 0) {
 				log_errno("asprintf");
@@ -137,8 +158,35 @@ static ssize_t poll_watchdir()
 			if (dot) {
 				*dot = '\0';
 			}
-			if (manager_unload_job(entry.d_name) < 0) {
-				log_error("unable to unload job: %s", entry.d_name);
+
+			job_t job = manager_get_job_by_label(entry.d_name);
+			if (!job) {
+				log_error("no job found with label: `%s'", entry.d_name);
+				continue;
+			}
+
+			switch (action) {
+			case unload:
+				if (manager_unload_job(entry.d_name) < 0) {
+					log_error("unable to unload job: %s", entry.d_name);
+				}
+				break;
+
+			case start:
+				if (job_run(job) < 0) {
+					log_error("unable to start job: %s", entry.d_name);
+				}
+				break;
+
+			case stop:
+				if (job_kill(job) < 0) {
+					log_error("unable to kill job: %s", entry.d_name);
+				}
+				break;
+
+			case load:
+				log_error("/*NOTREACHED*/");
+				break;
 			}
 		} else {
 			log_error("skipping %s: unsupported file extension", entry.d_name);

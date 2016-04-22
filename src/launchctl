@@ -15,6 +15,21 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
+# Wait up to 90 seconds for launchd to remove a file
+wait_with_timeout() {
+	file=$1
+	
+	count=0
+	while [ -f $file ] ; do
+		sleep 0.2
+		count=$((count + 1))
+		if [ $count -eq 450 ] ; then
+			echo "ERROR: no response from launchd" > /dev/stderr
+			exit 1
+		fi
+	done
+}
+	
 # KLUDGE: hardcoded for Linux. This should be hooked into ./configure output somehow.
 #
 if [ `uname` = 'Linux' ] ; then
@@ -89,16 +104,24 @@ unload)
 stop)
 	touch $watchdir/$label.stop
 	kill -HUP `cat $pidfile`
+	wait_with_timeout "$watchdir/$label.stop"
 	;;
 
 start)
 	touch $watchdir/$label.start
 	kill -HUP `cat $pidfile`
+	wait_with_timeout "$watchdir/$label.start"
 	;;
 
 restart)
-	touch $watchdir/$label.restart
+	touch $watchdir/$label.stop
 	kill -HUP `cat $pidfile`
+	wait_with_timeout "$watchdir/$label.stop"
+
+
+	touch $watchdir/$label.start
+	kill -HUP `cat $pidfile`
+	wait_with_timeout "$watchdir/$label.start"
 	;;
 
 list)

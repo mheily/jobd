@@ -506,13 +506,8 @@ int job_load(job_t job)
 int job_unload(job_t job)
 {
 	if (job->state == JOB_STATE_RUNNING) {
-		log_debug("sending SIGTERM to process group %d", job->pid);
-		if (kill(-1 * job->pid, SIGTERM) < 0) {
-			log_errno("killpg(2) of pid %d", job->pid);
-			/* not sure how to handle the error, we still want to clean up */
-		}
+		(void) job_kill(job);
 		job->state = JOB_STATE_KILLED;
-		//TODO: start a timer to send a SIGKILL if it doesn't die gracefully
 	} else {
 		//TODO: update the timer interval in timer.c?
 		job->state = JOB_STATE_DEFINED;
@@ -523,12 +518,36 @@ int job_unload(job_t job)
 	return 0;
 }
 
+int job_kill(job_t job)
+{
+	if (job->state != JOB_STATE_RUNNING) {
+		log_warning("tried to kill a non-running job");
+		return 0;
+	}
+
+	log_debug("sending SIGTERM to process group %d", job->pid);
+	if (kill(-1 * job->pid, SIGTERM) < 0) {
+		log_errno("killpg(2) of pid %d", job->pid);
+		return -1;
+		/* not sure how to handle the error, we still want to clean up */
+	}
+
+	//TODO: start a timer to send a SIGKILL if it doesn't die gracefully
+
+	return 0;
+}
+
 int job_run(job_t job)
 {
 	struct job_manifest_socket *jms;
 	struct passwd *pwent;
 	struct group *grent;
 	pid_t pid;
+
+	if (job->state != JOB_STATE_EXITED && job->state != JOB_STATE_DEFINED && job->state != JOB_STATE_LOADED) {
+		log_error("tried to run a job in the wrong state (state=%d)", job->state);
+		return -1;
+	}
 
 	if ((pwent = getpwnam(job->jm->user_name)) == NULL) {
 		log_errno("getpwnam");

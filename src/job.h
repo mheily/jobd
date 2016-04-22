@@ -57,6 +57,7 @@ void	job_free(job_t job);
 int	job_load(job_t job);
 int	job_unload(job_t job);
 int	job_run(job_t job);
+int job_kill(job_t job);
 
 static inline int
 job_is_runnable(job_t job)
