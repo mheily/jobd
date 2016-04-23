@@ -27,7 +27,9 @@ static LibJob libjob;
 void usage() {
 	std::cout <<
 		"Usage:\n\n"
-		"  job <label> [load|unload|enable|disable|start|stop|restart|status]\n"
+		"  jobctl <label> [enable|disable|clear|status]\n"
+		"  -or-\n"
+		"  jobctl list\n"
 		"  -or-\n"
 		"  job [-h|--help|-v|--version]\n"
 		"\n"

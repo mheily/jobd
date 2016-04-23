@@ -1,0 +1,32 @@
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"
+          "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">
+<refentry id="jobctl">
+
+<refmeta>
+<refentrytitle>jobctl</refentrytitle>
+<manvolnum>1</manvolnum>
+</refmeta>
+
+<refnamediv>
+<refname>jobctl</refname>
+<refpurpose>control jobs</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+<cmdsynopsis>
+<command>jobctl</command>
+<arg choice="opt">label</arg>
+<arg choice="opt">
+  <option>enable</option>
+  <option>disable</option>
+</arg>
+</cmdsynopsis>
+</refsynopsisdiv>
+
+<refsect1><title>Description</title>
+<para>
+<command>jobctl</command> manages jobs for jobd.
+</para>
+<para>&hellip;</para>
+</refsect1>
+</refentry>
