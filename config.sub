@@ -536,13 +536,10 @@ emit_distribution() {
 }
 
 emit_cleanup() {
-	_mf_clean_rules="clean:
-	rm -f *.o $_mf_clean_files"
-	if [ -n "$SUBDIRS" ] ; then
-		_mf_clean_rules="$_mf_clean_rules
-	for dir in $SUBDIRS ; do cd \$\$dir && \$(MAKE) clean && cd .. ; done
-"
-	fi
+	_mf_clean_rules="clean:${lftab}rm -f *.o ${_mf_clean_files}${lf}"
+	for _ec_dir in $SUBDIRS ; do
+		_mf_clean_rules="${_mf_clean_rules}	\$(MAKE) -C $_ec_dir clean${lf}" 
+	done
 }
 
 emit_distclean() {
