@@ -269,6 +269,24 @@ rc_script() {
 	\$(INSTALL) -m 755 $_prog \$\$DESTDIR${RC_SCRIPT_DIR}/${_name}"
 }
 
+# Declare a custom make(1) target.
+custom_target() {
+	_ct_targets=$1
+	shift
+	_ct_deps=$1
+	shift
+	
+	_mf_targets="${_mf_targets}${_ct_targets}: ${_ct_deps}${lf}"	
+	while [ -n "$1" ] ; do
+		_mf_targets="${_mf_targets}	$1${lf}"
+		shift
+	done
+	_mf_targets="${_mf_targets}${lf}"
+	
+	_mf_default_target="${_mf_default_target} ${_ct_targets}"
+	_mf_clean_files="$_mf_clean_files ${_ct_targets}"
+}
+
 emit_scripts() {
 	if [ -n "$bin_SCRIPTS" ] ; then install_DIRS="$install_DIRS ${bindir}" ; fi
 	if [ -n "$sbin_SCRIPTS" ] ; then install_DIRS="$install_DIRS ${sbindir}" ; fi
@@ -447,7 +465,7 @@ emit_programs() {
 
 		_mf_default_target="$_mf_default_target $_program"
 		_mf_clean_files="$_mf_clean_files $_program"
-		_mf_targets="$mf_targets
+		_mf_targets="$_mf_targets
 $_program: $_curdir_objs $depends
 	$compiler_mk -o \$@ $ldflags \$(LDFLAGS) $_curdir_objs $ldadd \$(LDADD)
 
@@ -466,19 +484,12 @@ emit_vendored_items() {
 
 emit_tests() {
     _cwd=`pwd`
-	_test_rules=`echo $TESTS | tr ' ' '\n' | sed "s,^,	${_cwd}/,"`
-	if [ -n "$TESTS" ] ; then
-		_mf_targets="$_mf_targets
-
-check: $TESTS
-$_test_rules
-"
-	else
-	_mf_targets="$_mf_targets
-
-check:
-"
-	fi
+    if [ -n "$TESTS" ] ; then
+    	_test_rules="`echo $TESTS | tr ' ' '\n' | sed "s,^,	${_cwd}/,"`${lf}"
+    else
+    	_test_rules="	@/usr/bin/true${lf}"
+    fi
+	_mf_targets="$_mf_targets${lf}check: ${TESTS}${lf}${_test_rules}${lf}"
 	if [ -n "$SUBDIRS" ] ; then
 		_mf_targets="$_mf_targets
 	for dir in $SUBDIRS ; do cd \$\$dir && \$(MAKE) check && cd .. ; done
@@ -594,7 +605,7 @@ $_mf_vars
 # Files to include in the tarball
 DISTFILES = configure config.sub $DISTFILES
 
-$_mf_default_target
+$_mf_default_target${lf}
 $_mf_targets
 $_mf_distribution
 $_mf_install_directory_rules
