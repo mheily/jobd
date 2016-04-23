@@ -18,8 +18,6 @@
 . ../config.sub
 . ../vars.sh
 
-SUBDIRS="jobd job"
-
-bin_SCRIPTS=launchctl
+SUBDIRS="libjob jobd jobctl"
 
 write_makefile

@@ -20,6 +20,10 @@ extern "C" {
 	#include <getopt.h>
 }
 
+#include "../libjob/job.h"
+
+static LibJob libjob;
+
 void usage() {
 	std::cout <<
 		"Usage:\n\n"
@@ -34,7 +38,7 @@ void usage() {
 }
 
 void show_version() {
-	std::cout << "job version 0.0.0" << std::endl;
+	std::cout << "job version " + libjob.version << std::endl;
 }
 
 int

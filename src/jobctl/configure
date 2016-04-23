@@ -18,16 +18,16 @@
 . ../../config.sub
 . ../../vars.sh
 
-bin_PROGRAMS=job
+bin_PROGRAMS=jobctl
 
-job_CXXFLAGS="-include ../../config.h -std=c++11 -Wall -Werror -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
-job_LDFLAGS="$libucl_LDFLAGS"
-job_LDADD="$libucl_LDADD $kqueue_LDADD"
-job_SOURCES=`ls *.cpp | tr '\n' ' '`
-jobd_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS"
+jobctl_CXXFLAGS="-include ../../config.h -std=c++11 -Wall -Werror -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
+jobctl_LDFLAGS="-L ../libjob $libucl_LDFLAGS"
+jobctl_LDADD="$libucl_LDADD $kqueue_LDADD -ljob"
+jobctl_SOURCES=`ls *.cpp | tr '\n' ' '`
+jobctl_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS"
 
 if [ "`uname`" = 'FreeBSD' ] ; then
-        jobd_LDADD="${jobd_LDADD} -ljail"
+        jobctl_LDADD="${jobctl_LDADD} -ljail"
 fi
 
 write_makefile

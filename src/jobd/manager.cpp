@@ -473,6 +473,7 @@ setup_job_dirs()
 {
 	char basedir[PATH_MAX], buf[PATH_MAX];
 
+	// TODO: switch to using libjob
 	if (getuid() == 0) {
 		path_sprintf(&options.pkgstatedir, PKGSTATEDIR);
 	} else {
