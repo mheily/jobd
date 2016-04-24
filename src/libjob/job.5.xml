@@ -1,0 +1,205 @@
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"
+          "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">
+<refentry id="job_5">
+
+<refmeta>
+<refentrytitle>job</refentrytitle>
+<manvolnum>5</manvolnum>
+</refmeta>
+
+<refnamediv>
+<refname>job</refname>
+<refpurpose>configuration format for jobd</refpurpose>
+</refnamediv>
+
+<refsect1>
+	<title>DESCRIPTION</title>
+	<para>
+	Jobs are configured using a JSON configuration file.
+	</para>
+	<para>
+	The following configuration options are available:
+	</para>
+	<variablelist>
+		<varlistentry>
+		<term>EnableGlobbing</term>
+		<listitem>
+		<para>If true, the program arguments will be passed to 
+		<citerefentry><refentrytitle>glob</refentrytitle><manvolnum>3</manvolnum></citerefentry>
+		for possible expansion.
+		</para>
+		<para>Not currently implemented.</para>
+		</listitem>
+		</varlistentry>
+		
+		<varlistentry>
+		<term>EnvironmentVariables</term>
+		<listitem>
+		<para>A dictionary of environment variables to set in the process.
+		</para>
+		</listitem>
+		</varlistentry>
+		
+		<varlistentry>
+		<term>GroupName</term>
+		<listitem>
+		<para>The name of the group that the program will run as.
+		</para>
+		</listitem>
+		</varlistentry>
+
+     
+		<varlistentry>
+		<term>InitGroups</term>
+		<listitem>
+		<para>If this key is set to false, the
+		<citerefentry><refentrytitle>initgroups</refentrytitle><manvolnum>3</manvolnum></citerefentry>
+		function will not be called to setup the supplemental groups.
+		</para>
+		</listitem>
+		</varlistentry>
+		
+		<varlistentry>
+		<term>KeepAlive</term>
+		<listitem>
+		<para>
+		If true, the program will be automatically restarted if it exits.
+		</para>
+		</listitem>
+		</varlistentry>
+		
+		<varlistentry>
+		<term>Label</term>
+		<listitem>
+		<para>
+		A globally unique job identifier. Labels should
+		be constructed using reverse domain name notation.
+		</para>
+		</listitem>
+		</varlistentry>
+
+		<varlistentry>
+		<term>Program</term>
+		<listitem>
+		<para>If a string is provided, the string will be treated as the full path to the program to be executed. If the program takes any arguments, you must pass an array instead.</para>
+		<para>If an array is provided, the array contains arguments that will be passed to
+			<citerefentry><refentrytitle>exec</refentrytitle><manvolnum>3</manvolnum></citerefentry>
+			to execute the program.</para>
+		</listitem>
+		</varlistentry>
+
+		<varlistentry>
+		<term>Sockets</term>
+		<listitem>
+		<para>
+		An array of sockets to be created by 
+		<citerefentry><refentrytitle>jobd</refentrytitle><manvolnum>8</manvolnum></citerefentry>
+		and used to launch the job when a client connects to a socket. (TODO: more documentation on this)
+		</para>
+		</listitem>
+		</varlistentry>
+		
+		<varlistentry>
+		<term>StandardErrorPath</term>
+		<listitem>
+		<para>
+		The path to a file where 
+		<citerefentry><refentrytitle>stdio</refentrytitle><manvolnum>3</manvolnum></citerefentry>
+		standard error should be redirected. By default, errors will be
+		redirected to /dev/null.
+		</para>
+		</listitem>
+		</varlistentry>
+		
+		<varlistentry>
+		<term>StandardInPath</term>
+		<listitem>
+		<para>
+		The path to a file where 
+		<citerefentry><refentrytitle>stdio</refentrytitle><manvolnum>3</manvolnum></citerefentry>
+		standard input should be redirected. By default, input will be
+		redirected from /dev/null.
+		</para>
+		</listitem>
+		</varlistentry>
+		<varlistentry>
+		
+		<term>StandardOutPath</term>
+		<listitem>
+		<para>
+		The path to a file where 
+		<citerefentry><refentrytitle>stdio</refentrytitle><manvolnum>3</manvolnum></citerefentry>
+		standard output should be redirected. By default, output will be
+		redirected to /dev/null.
+		</para>
+		</listitem>
+		</varlistentry>
+		
+		<varlistentry>
+		<term>StartInterval</term>
+		<listitem>
+		<para>
+		If an integer is provided, the job will be started on a regular interval. The interval should be specified in seconds.
+		</para>
+		</listitem>
+		</varlistentry>
+
+		<varlistentry>
+		<term>Umask</term>
+		<listitem>
+		<para>The value to pass to
+			<citerefentry><refentrytitle>umask</refentrytitle><manvolnum>2</manvolnum></citerefentry>
+			before executing the program. It should be specified in octal notation using a
+     string.</para>
+		</listitem>
+		</varlistentry>
+	
+		<varlistentry>
+		<term>RootDirectory</term>
+		<listitem>
+		<para>
+		An alternate root directory for the process, entered via a call to chroot(2).  
+		</para>
+		</listitem>
+		</varlistentry>
+
+		<varlistentry>
+		<term>ThrottleInterval</term>
+		<listitem>
+		<para>
+		The amount of time to wait before automatically restarting a process if it dies.
+		This has no effect unless the KeepAlive key is set to true. The default throttle
+		interval is ten seconds.  
+		</para>
+		</listitem>
+		</varlistentry>
+   
+		<varlistentry>
+		<term>UserName</term>
+		<listitem>
+		<para>The name of the user that the program will run as.
+		</para>
+		</listitem>
+		</varlistentry>
+
+		<varlistentry>
+		<term>WorkingDirectory</term>
+		<listitem>
+		<para>
+		(Optional) A directory to chdir(2) into prior to executing the process.
+		</para>
+		</listitem>
+		</varlistentry>
+		
+	</variablelist>
+</refsect1>
+
+<refsect1><title>EXAMPLES</title>
+<para>
+Example #1:
+<programlisting>
+TODO: put example here
+</programlisting>
+</para>
+</refsect1>
+</refentry>

@@ -1,0 +1,80 @@
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"
+          "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">
+<refentry id="jobd">
+
+<refmeta>
+<refentrytitle>jobd</refentrytitle>
+<manvolnum>8</manvolnum>
+</refmeta>
+
+<refnamediv>
+<refname>jobd</refname>
+<refpurpose>job management daemon</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+
+	<cmdsynopsis>
+	<command>jobd</command>
+	<arg choice='opt'>-f</arg>
+	<arg choice='opt'>-v</arg>
+	</cmdsynopsis>
+	
+</refsynopsisdiv>
+
+<refsect1><title>Description</title>
+<para>
+<command>jobd</command> manages jobs.
+</para>
+
+</refsect1>
+
+<refsect1>
+	<title>OPTIONS</title>
+	<para>
+	The following options are available:
+	</para>
+	<variablelist>
+		<varlistentry>
+		<term>-f</term>
+		<listitem>
+		<para>Do not become a daemon.</para>
+		</listitem>
+		</varlistentry>
+
+		<varlistentry>
+		<term>-v</term>
+		<listitem>
+		<para>Increase the logging verbosity.</para>
+		</listitem>
+		</varlistentry>
+	</variablelist>
+</refsect1>
+
+<refsect1>
+	<title>EXIT STATUS</title>
+	<para>
+	The <command>jobd</command> command exits 0 on success, and >0 if an error occurs
+	</para>
+</refsect1>
+
+<refsect1>
+	<title>SEE ALSO</title>
+	<para>
+	<citerefentry><refentrytitle>jobctl</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+	<citerefentry><refentrytitle>job</refentrytitle><manvolnum>5</manvolnum></citerefentry>
+	</para>
+</refsect1>
+
+<refsect1>
+	<title>AUTHORS</title>
+	<para>
+	<author>
+		<firstname>Mark</firstname>
+		<surname>Heily</surname>
+	</author>
+	<email>mark@heily.com</email>
+	</para>
+</refsect1>
+
+</refentry>

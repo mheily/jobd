@@ -13,20 +13,107 @@
 </refnamediv>
 
 <refsynopsisdiv>
+
+	<cmdsynopsis>
+	<command>jobctl</command>
+	<arg choice='req'><replaceable>label</replaceable></arg>
+	<arg choice='plain'>disable</arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	<command>jobctl</command>
+	<arg choice='req'><replaceable>label</replaceable></arg>
+	<arg choice='plain'>enable</arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	<command>jobctl</command>
+	<arg choice='req'><replaceable>label</replaceable></arg>
+	<arg choice='plain'>refresh</arg>
+	</cmdsynopsis>
+	
+	<cmdsynopsis>
+	<command>jobctl</command>
+	<arg choice='req'><replaceable>label</replaceable></arg>
+	<arg choice='plain'>restart</arg>
+	</cmdsynopsis>
+	
 <cmdsynopsis>
 <command>jobctl</command>
-<arg choice="opt">label</arg>
-<arg choice="opt">
-  <option>enable</option>
-  <option>disable</option>
-</arg>
+<arg choice='req'><replaceable>label</replaceable></arg>
+<arg choice='plain'>mark</arg>
+	<group>
+	<arg choice='plain'>degraded</arg>
+  	<arg choice='plain'>maintenance</arg>
+  	</group>
 </cmdsynopsis>
+
+<cmdsynopsis>
+<command>jobctl</command>
+<arg choice='req'><replaceable>label</replaceable></arg>
+<arg choice='req'><replaceable>clear</replaceable></arg>
+</cmdsynopsis>
+
 </refsynopsisdiv>
 
 <refsect1><title>Description</title>
 <para>
-<command>jobctl</command> manages jobs for jobd.
+<command>jobctl</command> manages jobs for jobd. Each job has a unique label.
 </para>
-<para>&hellip;</para>
+
+<para>
+	<cmdsynopsis>
+	<command>jobctl</command>
+	<arg choice='req'><replaceable>label</replaceable></arg>
+	<arg choice='plain'>disable</arg>
+	</cmdsynopsis>
+</para>
+<para>
+Disable the job. If the job is currently running, it will be automatically stopped.
+</para>
+
+<para>
+	<cmdsynopsis>
+	<command>jobctl</command>
+	<arg choice='req'><replaceable>label</replaceable></arg>
+	<arg choice='plain'>disable</arg>
+	</cmdsynopsis>
+</para>
+<para>
+Enable the job. If the job is currently stopped, it will be automatically started.
+</para>
+
+<refsect2><title>Fault management</title>
+<para>Jobs may enter a faulted state. The following <command>jobctl</command>subcommands
+deal with managing faulted jobs.</para>
+
+</refsect2>
 </refsect1>
+
+<refsect1>
+	<title>EXIT STATUS</title>
+	<para>
+	The <command>jobctl</command> command exits 0 on success, and >0 if an error occurs
+	</para>
+</refsect1>
+
+<refsect1>
+	<title>SEE ALSO</title>
+	<para>
+	jobd(8), job(5)
+	</para>
+</refsect1>
+
+<refsect1>
+	<title>AUTHORS</title>
+	<para>
+	<author>
+		<firstname>Mark</firstname>
+		<surname>Heily</surname>
+	</author>
+	<email>mark@heily.com</email>
+	</para>
+</refsect1>
+
+
 </refentry>
