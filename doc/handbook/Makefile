@@ -14,11 +14,15 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-all: clean
-	xmlto -o html html book.xml
-	xmlto -o html-nochunks html-nochunks book.xml
+all: clean build-html build-html-nochunks
 	
-preview: all
+build-html:
+	xmlto -o html html book.xml
+
+build-html-nochunks:
+	xmlto -o html-nochunks html-nochunks book.xml
+
+preview: clean build-html-nochunks
 	firefox --new-window ./html-nochunks/book.html
 
 publish:

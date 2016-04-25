@@ -46,6 +46,7 @@
 	Here's the best template I could find for writing manpages in DocBook:
 			http://www.tldp.org/HOWTO/DocBook-Install/using.html  
 -->
+<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../src/jobcfg/jobcfg.1.xml" />
 <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../src/jobctl/jobctl.1.xml" />
 <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../src/libjob/job.5.xml" /> 
 <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../src/jobd/jobd.8.xml" /> 

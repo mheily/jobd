@@ -28,6 +28,12 @@
 
 	<cmdsynopsis>
 	<command>jobctl</command>
+	<arg choice='opt'><replaceable>label</replaceable></arg>
+	<arg choice='plain'>list</arg>
+	</cmdsynopsis>
+	
+	<cmdsynopsis>
+	<command>jobctl</command>
 	<arg choice='req'><replaceable>label</replaceable></arg>
 	<arg choice='plain'>refresh</arg>
 	</cmdsynopsis>
@@ -45,13 +51,14 @@
 	<group>
 	<arg choice='plain'>degraded</arg>
   	<arg choice='plain'>maintenance</arg>
+  	<arg choice='plain'>outdated</arg>
   	</group>
 </cmdsynopsis>
 
 <cmdsynopsis>
 <command>jobctl</command>
 <arg choice='req'><replaceable>label</replaceable></arg>
-<arg choice='req'><replaceable>clear</replaceable></arg>
+<arg choice='plain'>clear</arg>
 </cmdsynopsis>
 
 </refsynopsisdiv>
@@ -62,32 +69,187 @@
 </para>
 
 <para>
-	<cmdsynopsis>
-	<command>jobctl</command>
-	<arg choice='req'><replaceable>label</replaceable></arg>
-	<arg choice='plain'>disable</arg>
-	</cmdsynopsis>
+The following subcommands and options are available:
 </para>
-<para>
+	
+<variablelist>
+	<varlistentry>
+		<term>
+			<cmdsynopsis>
+			<command>jobctl</command>
+			<arg choice='req'><replaceable>label</replaceable></arg>
+			<arg choice='plain'>disable</arg>
+			</cmdsynopsis>
+		</term>
+	
+		<listitem>
+			<para>
 Disable the job. If the job is currently running, it will be automatically stopped.
-</para>
+			</para>
+		</listitem>
+	</varlistentry>
 
-<para>
-	<cmdsynopsis>
-	<command>jobctl</command>
-	<arg choice='req'><replaceable>label</replaceable></arg>
-	<arg choice='plain'>disable</arg>
-	</cmdsynopsis>
-</para>
-<para>
+	<varlistentry>
+		<term>
+			<cmdsynopsis>
+			<command>jobctl</command>
+			<arg choice='req'><replaceable>label</replaceable></arg>
+			<arg choice='plain'>enable</arg>
+			</cmdsynopsis>
+		</term>
+	
+		<listitem>
+			<para>
 Enable the job. If the job is currently stopped, it will be automatically started.
+			</para>
+		</listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>
+			<cmdsynopsis>
+			<command>jobctl</command>
+			<arg choice='opt'><replaceable>label</replaceable></arg>
+			<arg choice='plain'>list</arg>
+			</cmdsynopsis>
+		</term>
+	
+		<listitem>
+			<para>
+Display status information about a job. If <replaceable>label</replaceable> is omitted,
+status about all jobs will be displayed. 
+			</para>
+		</listitem>
+	</varlistentry>
+	
+	<varlistentry>
+		<term>
+			<cmdsynopsis>
+			<command>jobctl</command>
+			<arg choice='req'><replaceable>label</replaceable></arg>
+			<arg choice='plain'>refresh</arg>
+			</cmdsynopsis>
+		</term>
+	
+		<listitem>
+			<para>
+Signal the job to reload it's running configuration. If the job is currently stopped,
+this subcommand has no effect. Not all jobs support the ability to refresh their configuration.
+If the new configuration has errors, the job may be transitioned to the "degraded"
+or "maintenance" states, depending on the severity of the error.
+			</para>
+		</listitem>
+	</varlistentry>
+	
+	<varlistentry>
+		<term>
+			<cmdsynopsis>
+			<command>jobctl</command>
+			<arg choice='req'><replaceable>label</replaceable></arg>
+			<arg choice='plain'>restart</arg>
+			<arg choice='opt'>-f, --force</arg>
+			</cmdsynopsis>
+		</term>
+	
+		<listitem>
+			<para>
+Sends a SIGTERM to the process, waits for the process to exit, and then starts
+a new copy of the process.
+			</para>
+			<para>
+If the --force option is added, the process will be forcibly stopped by sending
+it a SIGKILL. This may cause data loss and is only recommended if the process
+cannot be stopped through normal means. 
+			</para>
+			
+<para>
+By default, all members of the process' process group are sent the same signal.
 </para>
+		</listitem>
+	</varlistentry>
+	
+	<varlistentry>
+		<term>
+			<cmdsynopsis>
+			<command>jobctl</command>
+			<arg choice='req'><replaceable>label</replaceable></arg>
+			<arg choice='plain'>mark</arg>
+				<group>
+				<arg choice='plain'>degraded</arg>
+			  	<arg choice='plain'>maintenance</arg>
+			  	<arg choice='plain'>outdated</arg>
+			  	</group>
+			</cmdsynopsis>
+		</term>
+	
+		<listitem>
+			<para>
+Mark a job as faulted. The fault states are: degraded, maintenance, and outdated.
+			</para>
+			
+			<para>
+A job is "degraded" when a non-critical problem is detected with the configuration
+or the environment. The job will continue to run, but may not be providing optimal
+service. This situation usually calls for manual intervention by a system administrator. 
+			</para>
 
-<refsect2><title>Fault management</title>
-<para>Jobs may enter a faulted state. The following <command>jobctl</command>subcommands
-deal with managing faulted jobs.</para>
+			<para>
+A job is in "maintenance" mode when a critical problem is detected with the configuration
+or the environment. The job will not run, and will be stopped as part of transitioning
+to maintenance mode. This situation calls for manual intervention by a system administrator. 
+			</para>
 
-</refsect2>
+<para>
+A job is in "outdated" mode when the job configuration has changed. The job will continue
+to run, but is using outdated information. This situation calls for an administrator to
+run the "jobctl refresh" command to cause the process to reload it's configuration. 
+</para>
+		</listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>
+			<cmdsynopsis>
+<command>jobctl</command>
+<arg choice='req'><replaceable>label</replaceable></arg>
+<arg choice='plain'>clear</arg>
+</cmdsynopsis>
+		</term>
+	
+		<listitem>
+			<para>
+Clear faults in a job, and attempt to bring the job back online.
+This command should be run by an administrator after they have taken
+action to correct the fault. 
+			</para>
+			
+			<para>
+If the job is currently in the "degraded" state, (TODO: what happens? refresh or restart?) 
+			</para>
+
+			<para>
+If the job is currently in "maintenance" mode, clearing the job will
+cause it to be started. 
+			</para>
+
+<para>
+If the job is currently in "outdated" mode, clearing the fault will cause
+the "refresh" command to be issued. Alternatively, running the "job refresh"
+command directly will implicitly clear the "outdated" fault. 
+</para>
+		</listitem>
+	</varlistentry>
+	
+
+</variablelist>
+
+</refsect1>
+
+<refsect1>
+	<title>ENVIRONMENT</title>
+	<para>
+	The <command>jobctl</command> command does not rely on any environment variables.
+	</para>
 </refsect1>
 
 <refsect1>
@@ -100,7 +262,9 @@ deal with managing faulted jobs.</para>
 <refsect1>
 	<title>SEE ALSO</title>
 	<para>
-	jobd(8), job(5)
+	<citerefentry><refentrytitle>jobcfg</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+	<citerefentry><refentrytitle>jobd</refentrytitle><manvolnum>8</manvolnum></citerefentry>
+	<citerefentry><refentrytitle>job</refentrytitle><manvolnum>5</manvolnum></citerefentry>
 	</para>
 </refsect1>
 

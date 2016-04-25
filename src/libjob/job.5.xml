@@ -15,12 +15,14 @@
 <refsect1>
 	<title>DESCRIPTION</title>
 	<para>
-	Jobs are configured using a JSON configuration file.
+	Jobs are configured using a set of key/value pairs within a JSON configuration file. The only required key is the Label; all other 
+	keys are optional.
 	</para>
 	<para>
 	The following configuration options are available:
 	</para>
 	<variablelist>
+	<!-- 
 		<varlistentry>
 		<term>EnableGlobbing</term>
 		<listitem>
@@ -31,11 +33,35 @@
 		<para>Not currently implemented.</para>
 		</listitem>
 		</varlistentry>
-		
+	-->
 		<varlistentry>
 		<term>EnvironmentVariables</term>
 		<listitem>
-		<para>A dictionary of environment variables to set in the process.
+		<para>
+		A dictionary of environment variables to set in the process.
+		</para>
+		<para>
+		All jobs will be started with a minimal set of environment variables
+		inherited from <command>jobd</command>. These variables may include
+		one or more of the following:
+		</para>
+			<itemizedlist>
+			<listitem><para>DISPLAY</para></listitem>
+			<listitem><para>HOME</para></listitem>
+			<listitem><para>i18n variables: NLSPATH, LANG</para></listitem>
+			<listitem><para>LOGNAME</para></listitem>
+			<listitem><para>PATH</para></listitem>
+			<listitem><para>LC_ALL, LC_COLATE, LC_CTYPE, and other POSIX locale variables.</para></listitem>
+			<listitem><para>PWD</para></listitem>
+			<listitem><para>SHELL</para></listitem>
+			<listitem><para>TMPDIR</para></listitem>
+			<listitem><para>TZ</para></listitem>
+			<listitem><para>USER</para></listitem>
+			</itemizedlist>
+		<para>
+	Any variables defined in the EnvironmentVariables section will override
+	the default values inherited from
+	<command>jobd</command>.
 		</para>
 		</listitem>
 		</varlistentry>
@@ -52,7 +78,7 @@
 		<varlistentry>
 		<term>InitGroups</term>
 		<listitem>
-		<para>If this key is set to false, the
+		<para>If false, the
 		<citerefentry><refentrytitle>initgroups</refentrytitle><manvolnum>3</manvolnum></citerefentry>
 		function will not be called to setup the supplemental groups.
 		</para>
@@ -186,7 +212,7 @@
 		<term>WorkingDirectory</term>
 		<listitem>
 		<para>
-		(Optional) A directory to chdir(2) into prior to executing the process.
+		A directory to chdir(2) into prior to executing the process.
 		</para>
 		</listitem>
 		</varlistentry>
@@ -201,5 +227,25 @@ Example #1:
 TODO: put example here
 </programlisting>
 </para>
+</refsect1>
+
+<refsect1>
+	<title>SEE ALSO</title>
+	<para>
+	<citerefentry><refentrytitle>jobcfg</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+	<citerefentry><refentrytitle>jobd</refentrytitle><manvolnum>8</manvolnum></citerefentry>
+	<citerefentry><refentrytitle>job</refentrytitle><manvolnum>5</manvolnum></citerefentry>
+	</para>
+</refsect1>
+
+<refsect1>
+	<title>AUTHORS</title>
+	<para>
+	<author>
+		<firstname>Mark</firstname>
+		<surname>Heily</surname>
+	</author>
+	<email>mark@heily.com</email>
+	</para>
 </refsect1>
 </refentry>

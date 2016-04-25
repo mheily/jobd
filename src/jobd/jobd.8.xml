@@ -24,7 +24,32 @@
 
 <refsect1><title>Description</title>
 <para>
-<command>jobd</command> manages jobs.
+<command>jobd</command> manages jobs that are defined in configuration files
+located under <filename>/usr/local/etc/job.d</filename>. The format of job
+configuration files is described in 
+	<citerefentry><refentrytitle>job</refentrytitle><manvolnum>5</manvolnum></citerefentry>
+.
+</para>
+
+<para>
+When a new job configuration file is created, <command>jobd</command>
+will automatically detect this and load the job into memory. By default,
+the job will be disabled. To enable the job, the <command>jobctl enable</command>
+command should be executed.
+</para>
+
+<para>
+When an existing job configuration file is deleted, <command>jobd</command>
+will automatically detect this and remove the job from memory. If the job
+is currently running, it will be stopped.
+</para>
+
+<para>
+When an existing configuration file is modified, <command>jobd</command>
+will automatically detect this and transition the job into the "refresh-needed" state.
+This alerts the system administrator that the job is running, but with an outdated configuration. is outdated
+and needs to be refreshed. To refresh the job, the <command>jobctl refresh</command>
+command should be executed.
 </para>
 
 </refsect1>
@@ -52,6 +77,24 @@
 </refsect1>
 
 <refsect1>
+	<title>ENVIRONMENT</title>
+	<para>
+	The <command>jobd</command> command does not rely on any environment variables.
+	</para>
+</refsect1>
+
+<refsect1>
+	<title>FILES</title>
+	<informaltable frame='none'>
+	<tgroup cols='2'>
+	<tbody>
+		<row><entry>/usr/local/etc/job.d</entry><entry>The directory where job manifests are stored.</entry></row>
+	</tbody>
+	</tgroup>
+	</informaltable>
+</refsect1>
+
+<refsect1>
 	<title>EXIT STATUS</title>
 	<para>
 	The <command>jobd</command> command exits 0 on success, and >0 if an error occurs
@@ -61,6 +104,7 @@
 <refsect1>
 	<title>SEE ALSO</title>
 	<para>
+	<citerefentry><refentrytitle>jobcfg</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 	<citerefentry><refentrytitle>jobctl</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 	<citerefentry><refentrytitle>job</refentrytitle><manvolnum>5</manvolnum></citerefentry>
 	</para>
