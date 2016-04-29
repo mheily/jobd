@@ -3,16 +3,15 @@
 # $FreeBSD$
 #
 
-# PROVIDE: launchd
+# PROVIDE: jobd
 # REQUIRE: DAEMON
 # BEFORE:  LOGIN
 
 . /etc/rc.subr
 
-name="launchd"
-rcvar="launchd_enable"
+name="jobd"
+rcvar="jobd_enable"
 command="/usr/local/sbin/${name}"
-start_postcmd="/usr/local/bin/launchctl load /usr/local/etc/launchd/daemons /usr/local/share/launchd/daemons"
 
 load_rc_config $name
 run_rc_command "$1"

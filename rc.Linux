@@ -1,33 +1,33 @@
 #!/bin/sh
 #
 ### BEGIN INIT INFO
-# Provides:          launchd
+# Provides:          jobd
 # Required-Start:    $remote_fs $syslog
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Start the launchd(8) daemon at boot time
-# Description:       Enable the launchd(8) service manager.
+# Short-Description: Start the jobd(8) daemon at boot time
+# Description:       Enable the jobd(8) service manager.
 ### END INIT INFO
 
 # TODO: use LSB, if this is still a thing?
 
-PATH=/sbin:/usr/sbin:/bin:/usr/bin
-PIDFILE=/var/run/launchd.pid
+export PATH=/usr/local/sbin:/sbin:/usr/sbin:/usr/local/bin:/bin:/usr/bin
+PIDFILE=/var/run/jobd.pid
 
 case $1 in
 start)
-	printf "Starting launchd.. "
+	printf "Starting jobd.. "
 	if [ -f $PIDFILE ] ; then
 		echo 'already running'
 		exit 1
 	else
-		launchctl load /etc/launchd/daemons /usr/share/launchd/daemons
+		/usr/bin/env jobd
 	fi
 	;;
 
 stop)
-	printf "Stopping launchd.. "
+	printf "Stopping jobd.. "
 	kill `cat $PIDFILE`
 	rm -f $PIDFILE
 	;;

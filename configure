@@ -74,9 +74,9 @@ get_install_directory 'cachedir' 'Cache directory' '/var/cache/jobd'
 
 uname=$(uname)
 if [ $uname = 'FreeBSD' ] ; then
-	rc_script 'launchd' 'rc.FreeBSD'
+	rc_script 'jobd' 'rc.FreeBSD'
 elif [ `uname` = 'Linux' ] ; then
-	rc_script 'launchd' 'rc.Linux'
+	rc_script 'jobd' 'rc.Linux'
 else
 	echo "**WARNING** Unable to determine the correct rc script to install"
 fi
