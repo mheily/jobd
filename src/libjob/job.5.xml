@@ -241,11 +241,7 @@ TODO: put example here
 <refsect1>
 	<title>AUTHORS</title>
 	<para>
-	<author>
-		<firstname>Mark</firstname>
-		<surname>Heily</surname>
-	</author>
-	<email>mark@heily.com</email>
+		Mark Heily &lt;mark@heily.com&gt;
 	</para>
 </refsect1>
 </refentry>

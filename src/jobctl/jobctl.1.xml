@@ -28,7 +28,7 @@
 
 	<cmdsynopsis>
 	<command>jobctl</command>
-	<arg choice='opt'><replaceable>label</replaceable></arg>
+	<arg choice='req'><replaceable>label</replaceable></arg>
 	<arg choice='plain'>list</arg>
 	</cmdsynopsis>
 	
@@ -75,11 +75,9 @@ The following subcommands and options are available:
 <variablelist>
 	<varlistentry>
 		<term>
-			<cmdsynopsis>
-			<command>jobctl</command>
-			<arg choice='req'><replaceable>label</replaceable></arg>
-			<arg choice='plain'>disable</arg>
-			</cmdsynopsis>
+			<literal>jobctl</literal>
+			<replaceable>label</replaceable>
+			<literal>disable</literal>
 		</term>
 	
 		<listitem>
@@ -91,11 +89,9 @@ Disable the job. If the job is currently running, it will be automatically stopp
 
 	<varlistentry>
 		<term>
-			<cmdsynopsis>
-			<command>jobctl</command>
-			<arg choice='req'><replaceable>label</replaceable></arg>
-			<arg choice='plain'>enable</arg>
-			</cmdsynopsis>
+			<literal>jobctl</literal>
+			<replaceable>label</replaceable>
+			<literal>enable</literal>
 		</term>
 	
 		<listitem>
@@ -107,11 +103,9 @@ Enable the job. If the job is currently stopped, it will be automatically starte
 
 	<varlistentry>
 		<term>
-			<cmdsynopsis>
-			<command>jobctl</command>
-			<arg choice='opt'><replaceable>label</replaceable></arg>
-			<arg choice='plain'>list</arg>
-			</cmdsynopsis>
+			<literal>jobctl</literal>
+			<replaceable>label</replaceable>
+			<literal>list</literal>
 		</term>
 	
 		<listitem>
@@ -124,11 +118,9 @@ status about all jobs will be displayed.
 	
 	<varlistentry>
 		<term>
-			<cmdsynopsis>
-			<command>jobctl</command>
-			<arg choice='req'><replaceable>label</replaceable></arg>
-			<arg choice='plain'>refresh</arg>
-			</cmdsynopsis>
+			<literal>jobctl</literal>
+			<replaceable>label</replaceable>
+			<replaceable>refresh</replaceable>
 		</term>
 	
 		<listitem>
@@ -143,12 +135,10 @@ or "maintenance" states, depending on the severity of the error.
 	
 	<varlistentry>
 		<term>
-			<cmdsynopsis>
-			<command>jobctl</command>
-			<arg choice='req'><replaceable>label</replaceable></arg>
-			<arg choice='plain'>restart</arg>
-			<arg choice='opt'>-f, --force</arg>
-			</cmdsynopsis>
+			<literal>jobctl</literal>
+			<replaceable>label</replaceable>
+			<literal>restart</literal>
+			[ <literal>-f, --force</literal> ]
 		</term>
 	
 		<listitem>
@@ -170,16 +160,10 @@ By default, all members of the process' process group are sent the same signal.
 	
 	<varlistentry>
 		<term>
-			<cmdsynopsis>
-			<command>jobctl</command>
-			<arg choice='req'><replaceable>label</replaceable></arg>
-			<arg choice='plain'>mark</arg>
-				<group>
-				<arg choice='plain'>degraded</arg>
-			  	<arg choice='plain'>maintenance</arg>
-			  	<arg choice='plain'>outdated</arg>
-			  	</group>
-			</cmdsynopsis>
+			<literal>jobctl</literal>
+			<replaceable>label</replaceable>
+			<literal>mark</literal>
+			<literal>&lt;degraded|maintenance|outdated&gt;</literal>
 		</term>
 	
 		<listitem>
@@ -209,11 +193,9 @@ run the "jobctl refresh" command to cause the process to reload it's configurati
 
 	<varlistentry>
 		<term>
-			<cmdsynopsis>
-<command>jobctl</command>
-<arg choice='req'><replaceable>label</replaceable></arg>
-<arg choice='plain'>clear</arg>
-</cmdsynopsis>
+			<literal>jobctl</literal>
+			<replaceable>label</replaceable>
+			<literal>clear</literal>
 		</term>
 	
 		<listitem>
@@ -271,11 +253,7 @@ command directly will implicitly clear the "outdated" fault.
 <refsect1>
 	<title>AUTHORS</title>
 	<para>
-	<author>
-		<firstname>Mark</firstname>
-		<surname>Heily</surname>
-	</author>
-	<email>mark@heily.com</email>
+		Mark Heily &lt;mark@heily.com&gt;
 	</para>
 </refsect1>
 
