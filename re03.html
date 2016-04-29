@@ -1,0 +1,71 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>job</title><meta name="generator" content="DocBook XSL Stylesheets V1.76.1"><link rel="home" href="index.html" title="jobd Handbook"><link rel="up" href="apa.html" title="Appendix A. Manual pages"><link rel="prev" href="re02.html" title="jobctl"><link rel="next" href="re04.html" title="jobd"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">job</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="re02.html">Prev</a> </td><th width="60%" align="center">Appendix A. Manual pages</th><td width="20%" align="right"> <a accesskey="n" href="re04.html">Next</a></td></tr></table><hr></div><div class="refentry" title="job"><a name="job_5"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>job — configuration format for jobd</p></div><div class="refsect1" title="DESCRIPTION"><a name="idp66202880"></a><h2>DESCRIPTION</h2><p>
+	Jobs are configured using a set of key/value pairs within a JSON configuration file. The only required key is the Label; all other 
+	keys are optional.
+	</p><p>
+	The following configuration options are available:
+	</p><div class="variablelist"><dl><dt><span class="term">EnvironmentVariables</span></dt><dd><p>
+		A dictionary of environment variables to set in the process.
+		</p><p>
+		All jobs will be started with a minimal set of environment variables
+		inherited from <span class="command"><strong>jobd</strong></span>. These variables may include
+		one or more of the following:
+		</p><div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>DISPLAY</p></li><li class="listitem"><p>HOME</p></li><li class="listitem"><p>i18n variables: NLSPATH, LANG</p></li><li class="listitem"><p>LOGNAME</p></li><li class="listitem"><p>PATH</p></li><li class="listitem"><p>LC_ALL, LC_COLATE, LC_CTYPE, and other POSIX locale variables.</p></li><li class="listitem"><p>PWD</p></li><li class="listitem"><p>SHELL</p></li><li class="listitem"><p>TMPDIR</p></li><li class="listitem"><p>TZ</p></li><li class="listitem"><p>USER</p></li></ul></div><p>
+	Any variables defined in the EnvironmentVariables section will override
+	the default values inherited from
+	<span class="command"><strong>jobd</strong></span>.
+		</p></dd><dt><span class="term">GroupName</span></dt><dd><p>The name of the group that the program will run as.
+		</p></dd><dt><span class="term">InitGroups</span></dt><dd><p>If false, the
+		<span class="citerefentry"><span class="refentrytitle">initgroups</span>(3)</span>
+		function will not be called to setup the supplemental groups.
+		</p></dd><dt><span class="term">KeepAlive</span></dt><dd><p>
+		If true, the program will be automatically restarted if it exits.
+		</p></dd><dt><span class="term">Label</span></dt><dd><p>
+		A globally unique job identifier. Labels should
+		be constructed using reverse domain name notation.
+		</p></dd><dt><span class="term">Program</span></dt><dd><p>If a string is provided, the string will be treated as the full path to the program to be executed. If the program takes any arguments, you must pass an array instead.</p><p>If an array is provided, the array contains arguments that will be passed to
+			<span class="citerefentry"><span class="refentrytitle">exec</span>(3)</span>
+			to execute the program.</p></dd><dt><span class="term">Sockets</span></dt><dd><p>
+		An array of sockets to be created by 
+		<span class="citerefentry"><span class="refentrytitle">jobd</span>(8)</span>
+		and used to launch the job when a client connects to a socket. (TODO: more documentation on this)
+		</p></dd><dt><span class="term">StandardErrorPath</span></dt><dd><p>
+		The path to a file where 
+		<span class="citerefentry"><span class="refentrytitle">stdio</span>(3)</span>
+		standard error should be redirected. By default, errors will be
+		redirected to /dev/null.
+		</p></dd><dt><span class="term">StandardInPath</span></dt><dd><p>
+		The path to a file where 
+		<span class="citerefentry"><span class="refentrytitle">stdio</span>(3)</span>
+		standard input should be redirected. By default, input will be
+		redirected from /dev/null.
+		</p></dd><dt><span class="term">StandardOutPath</span></dt><dd><p>
+		The path to a file where 
+		<span class="citerefentry"><span class="refentrytitle">stdio</span>(3)</span>
+		standard output should be redirected. By default, output will be
+		redirected to /dev/null.
+		</p></dd><dt><span class="term">StartInterval</span></dt><dd><p>
+		If an integer is provided, the job will be started on a regular interval. The interval should be specified in seconds.
+		</p></dd><dt><span class="term">Umask</span></dt><dd><p>The value to pass to
+			<span class="citerefentry"><span class="refentrytitle">umask</span>(2)</span>
+			before executing the program. It should be specified in octal notation using a
+     string.</p></dd><dt><span class="term">RootDirectory</span></dt><dd><p>
+		An alternate root directory for the process, entered via a call to chroot(2).  
+		</p></dd><dt><span class="term">ThrottleInterval</span></dt><dd><p>
+		The amount of time to wait before automatically restarting a process if it dies.
+		This has no effect unless the KeepAlive key is set to true. The default throttle
+		interval is ten seconds.  
+		</p></dd><dt><span class="term">UserName</span></dt><dd><p>The name of the user that the program will run as.
+		</p></dd><dt><span class="term">WorkingDirectory</span></dt><dd><p>
+		A directory to chdir(2) into prior to executing the process.
+		</p></dd></dl></div></div><div class="refsect1" title="EXAMPLES"><a name="idp68000512"></a><h2>EXAMPLES</h2><p>
+Example #1:
+</p><pre class="programlisting">
+TODO: put example here
+</pre><p>
+</p></div><div class="refsect1" title="SEE ALSO"><a name="idp68002048"></a><h2>SEE ALSO</h2><p>
+	<span class="citerefentry"><span class="refentrytitle">jobcfg</span>(1)</span>
+	<span class="citerefentry"><span class="refentrytitle">jobd</span>(8)</span>
+	<span class="citerefentry"><span class="refentrytitle">job</span>(5)</span>
+	</p></div><div class="refsect1" title="AUTHORS"><a name="idp68005504"></a><h2>AUTHORS</h2><p>
+		Mark Heily &lt;mark@heily.com&gt;
+	</p></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="re02.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="apa.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="re04.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">jobctl </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> jobd</td></tr></table></div></body></html>
