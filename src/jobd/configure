@@ -18,7 +18,7 @@
 . ../../config.sub
 . ../../vars.sh
 
-bin_PROGRAMS=jobd
+sbin_PROGRAMS=jobd
 
 jobd_CXXFLAGS="-I../.. -I.. -I. -include ../../config.h -std=c++11 -Wall -Werror -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
 jobd_LDFLAGS="-L/usr/lib -L/usr/local/lib $libucl_LDFLAGS"
@@ -32,6 +32,14 @@ if [ "`uname`" = 'FreeBSD' ] ; then
         #jobd_SOURCES="${jobd_SOURCES} jail.cpp"
         jobd_LDADD="${jobd_LDADD} -ljail"
 fi
+
+custom_target 'jobd.8' 'jobd.8.xml' \
+        'docbook2mdoc jobd.8.xml | mandoc -mdoc > jobd.1'
+
+custom_target 'jobd.8.html' 'jobd.8.xml' \
+        'docbook2mdoc jobd.8.xml | mandoc -mdoc -T html > jobd.8.html'
+
+manpage 'jobd.8'
 
 # DEADWOOD: no time for this port right now
 ## MacOS needs a POSIX clock_gettime() function
