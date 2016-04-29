@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "../vendor/FreeBSD/sys/queue.h"
+#include "../../vendor/FreeBSD/sys/queue.h"
 #if HAVE_SYS_LIMITS_H
 #include <sys/limits.h>
 #else

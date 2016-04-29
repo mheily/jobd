@@ -27,7 +27,7 @@ extern "C" {
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <ucl.h>
-#include "../vendor/FreeBSD/sys/queue.h"
+#include "../../vendor/FreeBSD/sys/queue.h"
 #include "cvec.h"
 #include "socket.h"
 

@@ -23,11 +23,11 @@ SUBDIRS="jmtest job manifest clang-analyzer"
 
 # These are common to all tests
 #
-make_define 'TEST_CFLAGS' "-g -O0 -std=c99 -DUNIT_TEST -DDEBUG -I../../src -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS -include `pwd`/../config.h"
-make_define 'TEST_CXXFLAGS' "-g -O0 -std=c++11 -DUNIT_TEST -DDEBUG -I../../src -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS -include `pwd`/../config.h"
+make_define 'TEST_CFLAGS' "-g -O0 -std=c99 -DUNIT_TEST -DDEBUG -I../../src/jobd -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS -include `pwd`/../config.h"
+make_define 'TEST_CXXFLAGS' "-g -O0 -std=c++11 -DUNIT_TEST -DDEBUG -I../src/jobd -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS -include `pwd`/../config.h"
 make_define 'TEST_LDFLAGS' "$libucl_LDFLAGS $kqueue_LDFLAGS $(test `uname` = 'FreeBSD' && echo -ljail)"
 make_define 'TEST_LDADD' "$libucl_LDADD $kqueue_LDADD"
 make_define 'TEST_DEPENDS' "$libucl_DEPENDS $kqueue_DEPENDS"
-make_define 'TEST_SOURCES' "$(find `pwd`/../src/*.c `pwd`/../src/*.cpp | grep -v jail.c | tr '\n' ' ')"
+make_define 'TEST_SOURCES' "$(find `pwd`/../src/jobd/*.c `pwd`/../src/jobd/*.cpp | grep -v jail.c | tr '\n' ' ')"
 
 write_makefile
