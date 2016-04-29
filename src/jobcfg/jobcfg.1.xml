@@ -1,0 +1,221 @@
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"
+          "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">
+<refentry id="jobcfg">
+
+<refmeta>
+<refentrytitle>jobcfg</refentrytitle>
+<manvolnum>1</manvolnum>
+</refmeta>
+
+<refnamediv>
+<refname>jobcfg</refname>
+<refpurpose>configure jobs</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+
+	<cmdsynopsis>
+	<command>jobcfg</command>
+	<arg choice='req'><replaceable>label</replaceable></arg>
+	<arg choice='plain'>get</arg>
+	<arg choice='req'><replaceable>key</replaceable></arg>
+	</cmdsynopsis>
+	
+	<cmdsynopsis>
+	<command>jobcfg</command>
+	<arg choice='req'><replaceable>label</replaceable></arg>
+	<arg choice='plain'>set</arg>
+	<arg choice='req'><replaceable>key="value"</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	<command>jobcfg</command>
+	<arg choice='req'><replaceable>label</replaceable></arg>
+	<arg choice='plain'>generate</arg>
+	</cmdsynopsis>
+	
+	<cmdsynopsis>
+	<command>jobcfg</command>
+	<arg choice='req'><replaceable>label</replaceable></arg>
+	<arg choice='plain'>list</arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	<command>jobcfg</command>
+	<arg choice='req'><replaceable>label</replaceable></arg>
+	<group>
+	<arg choice='plain'>export</arg>
+	<arg choice='plain'>import</arg>
+	</group>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	<command>jobcfg</command>
+	<arg choice='req'><replaceable>label</replaceable></arg>
+	<group>
+	<arg choice='plain'>snapshot</arg>
+	<arg choice='plain'>rollback</arg>
+	</group>
+	</cmdsynopsis>
+	
+</refsynopsisdiv>
+
+<refsect1><title>Description</title>
+<para>
+<command>jobcfg</command> deals with job configuration settings. The following subcommands
+are available:
+</para>
+
+<variablelist>
+	<varlistentry>
+		<term>
+			<literal>jobcfg</literal>
+			<replaceable>label</replaceable>
+			<literal>set</literal>
+			<replaceable>key="value"</replaceable>
+		</term>
+	
+		<listitem>
+			<para>
+Set a job variable.
+			</para>
+		</listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>
+		<literal>jobcfg</literal>
+		<replaceable>label</replaceable>
+		<literal>get</literal>
+		<replaceable>key</replaceable>
+		</term>
+	
+		<listitem>
+			<para>
+Print the value of a job property to standard output.
+			</para>
+		</listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>
+			<literal>jobcfg</literal>
+			<replaceable>label</replaceable>
+			<literal>list</literal>
+		</term>
+		<listitem>
+			<para>
+List all of the job properties, one per line.
+			</para>
+		</listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>
+			<literal>jobcfg</literal>
+			<replaceable>label</replaceable>
+			<literal>export</literal>
+		</term>
+		<listitem>
+			<para>
+Export the job configuration database to a plain-text file. This file can be
+restored using the "import" command.
+			</para>
+		</listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>
+			<literal>jobcfg</literal>
+			<replaceable>label</replaceable>
+			<literal>import</literal>
+		</term>
+		<listitem>
+			<para>
+Replace the job configuration database with values from a plain-text file
+that were previously created via "jobcfg export".
+			</para>
+		</listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>
+			<literal>jobcfg</literal>
+			<replaceable>label</replaceable>
+			<literal>snapshot</literal>
+		</term>
+		<listitem>
+			<para>
+Create a snapshot of the current values in the job configuration database.
+If a snapshot already exists, it will be replaced with a new snapshot.
+			</para>
+		</listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>
+			<literal>jobcfg</literal>
+			<replaceable>label</replaceable>
+			<literal>rollback</literal>
+		</term>
+		<listitem>
+			<para>
+Rollback the job configuration database to it's state at the time of the
+last call to "jobcfg snapshot".
+			</para>
+		</listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>
+			<literal>jobcfg</literal>
+			<replaceable>label</replaceable>
+			<literal>generate</literal>
+			<literal>--template=</literal><replaceable>input_path</replaceable>
+			<literal>--output=</literal><replaceable>output_path</replaceable>
+			<literal>--delimiter=</literal><replaceable>delimiter</replaceable>
+		</term>
+		<listitem>
+			<para>
+Generate a configuration file for a job based on a template. Values
+in the job configuration database will be substituted where possible.
+By default, the is a sequence of three at-symbols, i.e. "@@@", but this may 
+be overridden by using the <replaceable>--delimiter</replaceable> option. 
+			</para>
+		</listitem>
+	</varlistentry>			
+					
+</variablelist>
+
+</refsect1>
+
+<refsect1>
+	<title>ENVIRONMENT</title>
+	<para>
+	The <command>jobcfg</command> command does not rely on any environment variables.
+	</para>
+</refsect1>
+
+<refsect1>
+	<title>EXIT STATUS</title>
+	<para>
+	The <command>jobcfg</command> command exits 0 on success, and >0 if an error occurs
+	</para>
+</refsect1>
+
+<refsect1>
+	<title>SEE ALSO</title>
+	<para>
+	jobctl(1), jobd(8), job(5)
+	</para>
+</refsect1>
+
+<refsect1>
+	<title>AUTHORS</title>
+	<para>
+		Mark Heily &lt;mark@heily.com&gt;
+	</para>
+</refsect1>
+
+
+</refentry>
