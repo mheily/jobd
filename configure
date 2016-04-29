@@ -17,7 +17,7 @@
 
 . ./config.sub
 
-package 'relaunchd' '0.3.2'
+package 'jobd' '0.7.0'
 getopt "--help" "echo TODO"
 check_header 'sys/limits.h'
 
@@ -66,10 +66,8 @@ fi
 
 SUBDIRS="src test"
                  
-get_install_directory 'pkgconfdir' 'Package configuration' "${sysconfdir}/launchd"
-create_subdirectory 'pkgconfdir' 'agents' 'daemons'
-get_install_directory 'pkgdatadir' 'Package data' "${datadir}/launchd"
-create_subdirectory 'pkgdatadir' 'agents' 'daemons'
+get_install_directory 'pkgconfdir' 'Package configuration' "${sysconfdir}/job.d"
+create_subdirectory 'pkgconfdir'
 test -d /var/db && default_statedir=/var/db/launchd || default_statedir=/var/lib/launchd
 get_install_directory 'pkgstatedir' 'Package state directory' $default_statedir
 get_install_directory 'cachedir' 'Cache directory' '/var/cache/launchd'
