@@ -18,6 +18,6 @@
 . ../config.sub
 . ../vars.sh
 
-SUBDIRS="libjob jobd jobctl"
+SUBDIRS="libjob jobd jobcfg jobctl"
 
 write_makefile
