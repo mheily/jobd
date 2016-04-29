@@ -1,4 +1,12 @@
-# relaunchd
+# jobd
+
+## IMPORTANT NOTICE
+
+The relaunchd project has been renamed to jobd. This more accurately reflects the future
+direction of the project as a job manager, rather than a clone of the original launchd(8)
+system.
+
+For an introduction to jobd, please read the [jobd handbook](http://mheily.github.io/jobd/).
 
 ## Overview 
 
