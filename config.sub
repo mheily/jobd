@@ -489,12 +489,12 @@ emit_tests() {
     else
     	_test_rules="	@/usr/bin/true${lf}"
     fi
+    
+	for _et_dir in $SUBDIRS ; do
+		_test_rules="${_test_rules}	\$(MAKE) -C $_et_dir check${lf}" 
+	done
+	
 	_mf_targets="$_mf_targets${lf}check: ${TESTS}${lf}${_test_rules}${lf}"
-	if [ -n "$SUBDIRS" ] ; then
-		_mf_targets="$_mf_targets
-	for dir in $SUBDIRS ; do cd \$\$dir && \$(MAKE) check && cd .. ; done
-"
-	fi
 }
 
 emit_packaging() {

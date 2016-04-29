@@ -14,6 +14,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <cstdio>
+#include <cstdlib>
 #include <iostream>
 
 extern "C" {
@@ -74,7 +76,7 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	for (size_t i = 0; i < argc; i++) {
+	for (int i = 0; i < argc; i++) {
 		puts(argv[i]);
 	}
 

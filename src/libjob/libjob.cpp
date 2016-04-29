@@ -17,6 +17,8 @@
 #include <iostream>
 #include <string>
 
+#include <cstdlib>
+
 extern "C" {
 	#include <unistd.h>
 }

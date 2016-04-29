@@ -69,13 +69,13 @@ schedule_calendar_job(job_t job)
 	localtime_r(&t0, &tm);
 
 	/* Try to disqualify the job from running based on the current day */
-	if (cron->month != CRON_SPEC_WILDCARD && cron->month != tm.tm_mon) {
+	if (cron->month != CRON_SPEC_WILDCARD && cron->month != (uint32_t)tm.tm_mon) {
 		return 0;
 	}
-	if (cron->day != CRON_SPEC_WILDCARD && cron->day != tm.tm_mday) {
+	if (cron->day != CRON_SPEC_WILDCARD && cron->day != (uint32_t)tm.tm_mday) {
 		return 0;
 	}
-	if (cron->weekday != CRON_SPEC_WILDCARD && cron->weekday != tm.tm_wday) {
+	if (cron->weekday != CRON_SPEC_WILDCARD && cron->weekday != (uint32_t)tm.tm_wday) {
 		return 0;
 	}
 

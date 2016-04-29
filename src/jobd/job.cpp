@@ -130,7 +130,7 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 	cvec_t env = NULL;
 	char *curp, *buf = NULL;
 	char *logname_var = NULL, *user_var = NULL;
-	int i, uid;
+	unsigned int i, uid;
 	bool found[] = { false, false, false, false, false, false, false };
 	size_t offset = 0;
 

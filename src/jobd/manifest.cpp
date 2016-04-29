@@ -425,7 +425,8 @@ static int job_manifest_parse_sock_service_name(struct job_manifest_socket *sock
   if memory allocation fails */
 static int job_manifest_rectify(job_manifest_t job_manifest)
 {
-	int i, retval = -1;
+	int retval = -1;
+	unsigned int i;
 	cvec_t new_argv = NULL;
 	uid_t uid;
 	struct passwd *pwent;
