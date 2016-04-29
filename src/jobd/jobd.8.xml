@@ -85,13 +85,14 @@ command should be executed.
 
 <refsect1>
 	<title>FILES</title>
-	<informaltable frame='none'>
-	<tgroup cols='2'>
-	<tbody>
-		<row><entry>/usr/local/etc/job.d</entry><entry>The directory where job manifests are stored.</entry></row>
-	</tbody>
-	</tgroup>
-	</informaltable>
+	<variablelist>
+	<varlistentry>
+	<term>/usr/local/etc/job.d</term>
+	<listitem>
+	<para>Directory where job manifests are stored.</para>
+	</listitem>
+	</varlistentry>
+	</variablelist>
 </refsect1>
 
 <refsect1>
@@ -113,11 +114,7 @@ command should be executed.
 <refsect1>
 	<title>AUTHORS</title>
 	<para>
-	<author>
-		<firstname>Mark</firstname>
-		<surname>Heily</surname>
-	</author>
-	<email>mark@heily.com</email>
+	Mark Heily &lt;mark@heily.com&gt;
 	</para>
 </refsect1>
 
