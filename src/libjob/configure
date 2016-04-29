@@ -27,7 +27,7 @@ libjob_SOURCES=`ls *.cpp | tr '\n' ' '`
 libjob_SONAME="libjob.so.0"
 
 custom_target 'job.5' 'job.5.xml' \
-	'docbook2mdoc job.5.xml | mandoc -mdoc > job.5'
+	'docbook2mdoc job.5.xml > job.5'
 
 custom_target 'job.5.html' 'job.5.xml' \
 	'docbook2mdoc job.5.xml | mandoc -mdoc -T html > job.5.html'

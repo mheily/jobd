@@ -31,7 +31,7 @@ if [ "`uname`" = 'FreeBSD' ] ; then
 fi
 
 custom_target 'jobctl.1' 'jobctl.1.xml' \
-	'docbook2mdoc jobctl.1.xml | mandoc -mdoc > jobctl.1'
+	'docbook2mdoc jobctl.1.xml > jobctl.1'
 
 custom_target 'jobctl.1.html' 'jobctl.1.xml' \
 	'docbook2mdoc jobctl.1.xml | mandoc -mdoc -T html > jobctl.1.html'
