@@ -14,6 +14,8 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
+GH_PAGES_CHECKOUT=../../../jobd-gh-pages
+
 all: clean build-html build-html-nochunks
 	
 build-html:
@@ -26,13 +28,8 @@ preview: clean build-html-nochunks
 	firefox --new-window ./html-nochunks/book.html
 
 publish:
-	git checkout gh-pages
-	git merge master
-	xmlto html *.xml
-	git add *.html
-	git commit -m'publishing it'
-	git push
-	git checkout master
+	cp html/*.html $(GH_PAGES_CHECKOUT)
+	cd $(GH_PAGES_CHECKOUT) && git commit -a -m'Regenerate handbook' && git push origin gh-pages
 
 clean:
 	rm -rf html html-nochunks
