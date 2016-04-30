@@ -346,6 +346,11 @@ emit_compilation_units() {
 		fi
 		_mkdep_command="$_compiler $_flags -MM -MT $_obj"
 
+		# Add '-static' when building static libraries
+		if [ "$_prefix" = "static-" ] ; then
+			_flags="-static ${_flags}"
+		fi
+
 		log_debug "checking dependencies of ${_obj}:\\n + ${_mkdep_command} ${source}"
 		_mkdeps=`${_mkdep_command} $source 2>>config.log`
 		test $? -eq 0 || err "Unable to generate dependencies for $source"
