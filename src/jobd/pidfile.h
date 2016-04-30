@@ -39,6 +39,10 @@
 #ifndef _RELAUNCHD_PIDFILE_H_
 #define _RELAUNCHD_PIDFILE_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct pidfh;
 
 int flopen(const char *path, int flags, ...);
@@ -49,5 +53,9 @@ struct pidfh *
 	pidfile_open(const char *_path, mode_t _mode, pid_t *_pidptr);
 int	pidfile_remove(struct pidfh *_pfh);
 int	pidfile_write(struct pidfh *_pfh);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !_RELAUNCHD_PIDFILE_H_ */

@@ -17,10 +17,6 @@
 #ifndef __CVEC_H
 #define __CVEC_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -133,9 +129,5 @@ static inline cvec_t cvec_dup(cvec_t cv)
 	}
 	return cv2;
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* __CVEC_H */

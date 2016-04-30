@@ -19,10 +19,6 @@
 
 #include "manifest.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct chroot_jail;
 
 int chroot_jail_parse_manifest(job_manifest_t manifest, const ucl_object_t *obj);
@@ -30,10 +26,5 @@ int chroot_jail_load_handler(struct chroot_jail *jail);
 int chroot_jail_unload_handler(struct chroot_jail *jail);
 int chroot_jail_context_handler(struct chroot_jail *jail);
 void chroot_jail_free(struct chroot_jail *jail);
-
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RELAUNCHD_CHROOT_H_ */

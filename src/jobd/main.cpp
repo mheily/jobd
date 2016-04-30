@@ -14,6 +14,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <iostream>
+#include <string>
+
 #include <dirent.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -129,9 +132,19 @@ main(int argc, char *argv[])
 
 	pidfile_write(state.pfh);
 
-	manager_init(state.pfh);
-	manager_update_jobs();
-	manager_main_loop();
+	try {
+		manager_init(state.pfh);
+		manager_update_jobs();
+		manager_main_loop();
+	}
+	catch (std::exception& e) {
+		std::cout << "Caught fatal exception: " << e.what() << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	catch (...) {
+		std::cout << "Caught unknown exception; exiting" << std::endl;
+		exit(EXIT_FAILURE);
+	}
 
 	/* NOTREACHED */
 	exit(EXIT_SUCCESS);

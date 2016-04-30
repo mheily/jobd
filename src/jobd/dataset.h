@@ -19,10 +19,6 @@
 
 #include "manifest.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct dataset_list;
 
 struct dataset_list * dataset_list_new(void);
@@ -30,9 +26,5 @@ int dataset_parse_manifest(job_manifest_t job_manifest, const ucl_object_t *obj)
 int dataset_list_load_handler(struct dataset_list *);
 int dataset_list_unload_handler(struct dataset_list *);
 void dataset_list_free(struct dataset_list *dsl);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RELAUNCHD_DATASET_H_ */

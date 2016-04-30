@@ -40,6 +40,8 @@ extern "C" {
 #include "timer.h"
 #include "util.h"
 
+#include "../libjob/job.h"
+
 /* A list of signals that are meaningful to launchd(8) itself. */
 const int launchd_signals[5] = {
 	SIGHUP, SIGUSR1, SIGINT, SIGTERM, 0
@@ -56,6 +58,8 @@ launchd_options_t options;
 static LIST_HEAD(,job_manifest) pending; /* Jobs that have been submitted but not loaded */
 static LIST_HEAD(,job) jobs;			/* All active jobs */
 
+LibJob* libjob;
+
 /* The kqueue descriptor used by main_loop() */
 static int main_kqfd = -1;
 
@@ -71,7 +75,6 @@ read_job(const char *filename)
 		return NULL;
 	}
 
-	path_sprintf(&path, "%s/%s", options.watchdir, filename);
 	path_sprintf(&rename_to, "%s/%s", options.activedir, filename);
 
 	log_debug("loading %s", path);
@@ -100,7 +103,7 @@ static ssize_t poll_watchdir()
 	ssize_t found_jobs = 0;
 	char *ext;
 
-	if ((dirp = opendir(options.watchdir)) == NULL)
+	if ((dirp = opendir(libjob->jobdir.c_str())) == NULL)
 		err(1, "opendir(3)");
 
 	while (dirp) {
@@ -123,6 +126,7 @@ static ssize_t poll_watchdir()
 			} else {
 				// note the failure?
 			}
+#if 0
 		} else if (strcmp(ext, ".unload") == 0) {
 			char *path;
 			if (asprintf(&path, "%s/%s", options.watchdir, entry.d_name) < 0) {
@@ -143,6 +147,7 @@ static ssize_t poll_watchdir()
 				log_error("unable to unload job: %s", entry.d_name);
 			}
 		} else {
+#endif
 			log_error("skipping %s: unsupported file extension", entry.d_name);
 		}
 	}
@@ -241,7 +246,7 @@ int manager_write_status_file()
 	job_t job;
 
 	/* FIXME: should write to a .new file, then rename() over the old file */
-	if (asprintf(&path, "%s/launchctl.list", options.pkgstatedir) < 0)
+	if (asprintf(&path, "%s/launchctl.list", libjob->jobdir.c_str()) < 0)
 		err(1, "asprintf(3)");
 	if ((fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, 0644)) < 0)
 		err(1, "open(2)");
@@ -342,6 +347,12 @@ void manager_init(struct pidfh *pfh)
 	pidfile_handle = pfh;
 	LIST_INIT(&jobs);
 
+	try {
+		libjob = new LibJob();
+	}
+	catch (...) {
+		errx(1, "libjob failed to init");
+	}
 	if ((main_kqfd = kqueue()) < 0)
 		err(1, "kqueue(2)");
 	setup_logging();
@@ -442,6 +453,7 @@ manager_reap_child(pid_t pid, int status)
 	return;
 }
 
+#if 0
 /* Delete everything in a given directory */
 static void
 delete_directory_entries(const char *path)
@@ -467,35 +479,15 @@ delete_directory_entries(const char *path)
 	}
 	(void) closedir(dirp);
 }
+#endif
 
 static void
 setup_job_dirs()
 {
-	char basedir[PATH_MAX], buf[PATH_MAX];
-
-	// TODO: switch to using libjob
-	if (getuid() == 0) {
-		path_sprintf(&options.pkgstatedir, PKGSTATEDIR);
-	} else {
-		path_sprintf(&options.pkgstatedir, "%s/.launchd/run", getenv("HOME"));
-	}
-
-	path_sprintf(&options.watchdir, "%s/new", options.pkgstatedir);
-	path_sprintf(&options.activedir, "%s/cur", options.pkgstatedir);
-
-	if (getuid() > 0) {
-		path_sprintf(&basedir, "%s/.launchd", getenv("HOME"));
-		mkdir_idempotent(basedir, 0700);
-
-		path_sprintf(&buf, "%s/agents", &basedir);
-		mkdir_idempotent(buf, 0700);
-
-		path_sprintf(&buf, "%s/run", &basedir);
-		mkdir_idempotent(buf, 0700);
-	}
-
-        mkdir_idempotent(options.activedir, 0700);
-        mkdir_idempotent(options.watchdir, 0700);
+	log_debug("creating %s", libjob->jobdir.c_str());
+	mkdir_idempotent(libjob->jobdir.c_str(), 0700);
+#if 0
+	char buf[PATH_MAX];
 
 	/* Clear any record of active jobs that may be leftover from a previous program crash */
         path_sprintf(&buf, "%s", options.activedir);
@@ -503,6 +495,7 @@ setup_job_dirs()
 
         path_sprintf(&buf, "%s", options.watchdir);
         delete_directory_entries(buf);
+#endif
 }
 
 static void setup_signal_handlers()

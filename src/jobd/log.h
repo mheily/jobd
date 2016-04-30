@@ -17,10 +17,6 @@
 #ifndef LOG_H_
 #define LOG_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -62,9 +58,5 @@ void log_freopen(FILE *new_logfile);
 	_log_all(LOG_ERR, "**FATAL ERROR** " format, ## __VA_ARGS__); \
 	exit((code)); \
 } while (0)
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* LOG_H_ */
