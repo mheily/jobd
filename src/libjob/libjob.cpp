@@ -26,25 +26,28 @@ extern "C" {
 #include "job.h"
 
 LibJob::LibJob() {
-	set_pkgstatedir();
+	set_jobdir();
 }
 
-void LibJob::set_pkgstatedir() {
+void LibJob::set_jobdir() {
 	if (getuid() == 0) {
-		this->pkgstatedir = "/var/db/launchd";
+		this->jobdir = "/usr/local/etc/job.d"; //FIXME: harcoded prefix
 	} else {
-		std::string home(getenv("HOME")); // FIXME: check for null, illegal string
-		this->pkgstatedir = home + "/.launchd/run";
+		const char *xdg_config_home = getenv("XDG_CONFIG_HOME");
+		const char *home = getenv("HOME");
+		if (xdg_config_home == NULL && home == NULL)
+			throw "unable to locate configuration: HOME or XDG_CONFIG_HOME be set";
+
+		if (xdg_config_home) {
+			this->jobdir = std::string(xdg_config_home) + "/job.d";
+		} else {
+			this->jobdir = std::string(home) + "/.config/job.d";
+		}
 	}
+	this->logger.info("jobdir=" + this->jobdir);
 };
 
 struct libjob * libjob_new(void) {
         LibJob *libjob = new LibJob();
         return reinterpret_cast<struct libjob *>(libjob);
 }
-
-#if 0
-	char basedir[PATH_MAX], buf[PATH_MAX];
-
-
-#endif

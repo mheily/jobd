@@ -20,14 +20,24 @@
 struct job;
 
 #ifdef __cplusplus
+
+#include <string>
+
+#include "logger.h"
+
 class LibJob {
 public:
+	LibJobLogger logger;
+
 	std::string version = "0.0.0";
-	std::string pkgstatedir;
+
+	/** Directory where users submit job configuration files */
+	std::string jobdir;
+
 	LibJob();
 
 private:
-	void set_pkgstatedir();
+	void set_jobdir();
 };
 #endif
 
