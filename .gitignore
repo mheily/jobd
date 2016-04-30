@@ -10,5 +10,13 @@ vars.sh
 /test/jmtest.log
 *.tar.gz
 *.so
+*.a
 *.o
 *.log
+
+depends.mk
+
+
+# Manpages
+*.[12345678]
+*.[12345678].html
