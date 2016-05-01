@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sect1 PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"
+           "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
+
+<section><title>Terminology</title>
+<para>
+The following terms have specific meanings within the job framework:
+</para>
+
+<variablelist>
+		<varlistentry id="term_job">
+			<term>Job</term>
+			<listitem>
+				<para>
+A <wordasword>job</wordasword> is a set of one or more of the following:
+				</para>
+				<itemizedlist>
+<listitem><para>An executable <link linkend="term_program">program</link>,</para></listitem>
+<listitem><para>The <link linkend="term_context">execution context</link>,</para></listitem>
+<listitem><para>External <link linkend="term_resource">resources</link> to be acquired or created when the job runs,</para></listitem>
+<listitem><para><link linkend="term_dependency">Dependencies</link> that must be satisfied before the job can run,</para></listitem>
+<listitem><para><link linkend="term_method">Methods</link> that an administrator can invoke to manipulate the job,</para></listitem>
+<listitem><para>Configuration <link linkend="term_property">properties</link> that can be customized by an administrator.</para></listitem>
+				</itemizedlist>
+				
+				<para>
+				Jobs are defined in <link linkend="term_manifest">manifests</link>.
+				</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry id="term_manifest">
+			<term>Manifest</term>
+			<listitem>
+				<para>
+A <wordasword>manifest</wordasword> is a document that contains all of the information about a <link linkend="term_job">job</link>.
+Manifests are written in <ulink url="http://json.org/">JSON</ulink> format.
+				</para>
+				
+				<para>
+Here is a simple "hello world" manifest for a job:
+</para>
+<programlisting>
+{
+    "Label": "hello.world",
+    "Program": ["/bin/echo", "Hello world!"],
+    "StandardOutPath": "/tmp/job.log",
+}
+</programlisting>
+<para>
+When this job runs, it will write the words "Hello world!" to a file named */tmp/job.log*
+				</para>
+			</listitem>
+		</varlistentry>
+		
+		<varlistentry id="term_method">
+			<term>Method</term>
+			<listitem>
+				<para>
+	A
+	<link linkend="term_job">job</link>
+	can define custom
+	<wordasword>methods</wordasword>
+	in their
+	<link linkend="term_manifest">manifest</link>
+	. A method is a public API for the job, and can be thought of in
+	similar terms to methods in object-oriented programs. 
+				</para>
+				<para>
+Here is a simple manifest for a job that runs a daemon and offers a "status" method to display the current status:			
+				</para>
+				<programlisting>
+{
+    "Label": "com.example.my-daemon",
+    "Program": "/usr/local/sbin/my-daemon",
+    "Methods": {
+        "status": ["/bin/echo", "Here is my status output"],
+    },
+}				
+				</programlisting>
+				<para>
+This method can be invoked by *jobctl(1)* like this:			
+				</para>
+				<programlisting>
+# jobctl my-daemon status
+				</programlisting>
+				<para>
+The effect of running the above command is that the phrase "Here is my status output" will be printed to the standard output.
+				</para>
+				
+				<para>
+For more detail about methods, see the [specification](../wiki/Functional-Specification#methods).
+				</para>
+			</listitem>
+		</varlistentry>
+		
+		<varlistentry id="term_program">
+			<term>Program</term>
+			<listitem>
+				<para>
+	The
+	<wordasword>program</wordasword>
+	is the argument vector that is passed to
+	[execve(2)](https://www.freebsd.org/cgi/man.cgi?query=execve&amp;apropos=0&amp;sektion=0&amp;manpath=FreeBSD+10.3-RELEASE&amp;arch=default&amp;format=html)
+	when a job is launched. Jobs may also define methods and hooks that run
+	immediately before or after the program is executed; these are also programs specified in the same way.
+				</para>
+				
+				<para>
+				Here is an example of how a program is written out in JSON:
+				</para>
+				
+				<programlisting>
+["/bin/echo", "Hello world!"]
+				</programlisting>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry id="term_property">
+			<term>Property</term>
+			<listitem>
+				<para>
+	A manifest may contain one or more <wordasword>properties</wordasword> of the job. A property
+	is a simple key/value pair of strings. These properties may be
+	substituted as variables in various places throughout the manifest, and
+	may be retrieved or set by the *jobcfg(1)* command.
+
+				</para>
+				
+				<para>
+Here is an example manifest for a job that exposes a "greeting" property:
+				</para>
+				<programlisting>
+{
+    "Label": "hello.world",
+    "Program": ["/bin/echo", "${greeting}"],
+    "Properties": {
+         "greeting": "This is the default value",
+    },
+    "StandardOutPath": "/tmp/hello.log",
+}				
+				</programlisting>
+				
+				<para>
+When this job runs, it will write the words "This is the default value" to a file named */tmp/job.log*
+				</para>
+				
+				<para>
+An administrator can override the default value of a property by using the <command>jobcfg</command>. Example:
+				</para>
+				
+				<programlisting>
+# jobcfg hello.world set greeting="This is the overridden value"				
+				</programlisting>
+
+				<para>
+The next time the job is executed, it will write the words "This is the overridden value" to a file named */tmp/job.log*
+				</para>
+			</listitem>
+		</varlistentry>
+		
+		<varlistentry id="term_label">
+			<term>Label</term>
+			<listitem>
+				<para>
+	A <wordasword>label</wordasword> uniquely identifies each <link linkend="term_job">job</link>.
+	 Labels are written using
+	 <ulink url="https://en.wikipedia.org/wiki/Reverse_domain_name_notation">
+	 reverse domain name notation
+	 </ulink>.
+	The label for each job is specified in the <link linkend="term_manifest">manifest</link>.
+				</para>
+				
+				<para>
+Labels should be written in snake-case, to have a consistent style.
+For example, use 'com.example.nginx_web_server' to describe a job for running the NGINX web server.
+</para>
+<para>
+	For more about labels, see the
+	[specification](../wiki/Functional-Specification#labels).
+				</para>
+			</listitem>
+		</varlistentry>
+				
+		<varlistentry id="term_context">
+			<term>Execution Context</term>
+			<listitem>
+				<para>
+	Jobs are executed when the
+	<command>jobd</command>
+	daemon calls
+	<acronym>fork(2)</acronym> to create a child process. This child process eventually
+	becomes the job.
+	</para>
+	<para>The <wordasword>execution context</wordasword> refers to changes to the child process that take
+	place prior to calling execve(2) to
+	start the <link linkend="term_program">program</link>. Examples
+	include:
+				</para>
+				
+				<itemizedlist>
+					<listitem><para>setting environment variables</para></listitem>
+					<listitem><para>calling setuid(2) and setgid(2)</para></listitem>
+					<listitem><para>calling chdir(2) to change the working directory</para></listitem>
+					<listitem><para>calling chroot(2) to change the root directory</para></listitem>
+					<listitem><para>calling setrlimit(2) to adjust resource limits</para></listitem>
+					<listitem><para>calling jail_attach(2) to enter a FreeBSD jail</para></listitem>
+				</itemizedlist>
+			</listitem>
+		</varlistentry>
+		
+		<varlistentry id="term_resource">
+			<term>Resource</term>
+			<listitem>
+				<para>
+A <wordasword>resource</wordasword> is a generic term for external things to be acquired on behalf of 
+a <link linkend="term_job">job</link>. The resources are owned by the job, and may be automatically
+destroyed when the job terminates.
+				</para>
+				<para>
+ Examples include:
+				</para>
+				<itemizedlist>
+					<listitem><para>
+	creating sockets and binding them to ports
+						</para></listitem>
+					<listitem><para>
+	mounting filesystems
+					</para></listitem>
+					<listitem><para>
+	creating network interfaces
+					</para></listitem>
+					<listitem><para>
+	assigning IP addresses to network interfaces
+					</para></listitem>
+					<listitem><para>
+	installing packages
+					</para></listitem>
+					<listitem><para>
+	cloning ZFS datasets
+					</para></listitem>
+					<listitem><para>
+	creating jail(2) jails, chroot(2) jails, or Linux control groups
+					</para></listitem>
+				</itemizedlist>
+				
+				<para>
+	Resources are acquired at the time when the job is scheduled to run.
+	If the job is <link linkend="term_transient">transient</link>
+	, its resources will be destroyed when the job
+	terminates; otherwise, the resources will be re-used the next time the
+	job runs. When the job is unloaded, its resources will be destroyed.
+				</para>
+			</listitem>
+		</varlistentry>
+
+		
+		<varlistentry id="term_dependency">
+			<term>Dependency</term>
+			<listitem>
+				<para>
+A <wordasword>dependency</wordasword> is a generic term for things that determine whether or not a 
+ <link linkend="term_job">job</link> can be executed.
+				</para>
+				<para>
+Examples include:
+				</para>
+				<itemizedlist>
+					<listitem><para>
+	the status of other jobs,
+						</para></listitem>
+					<listitem><para>
+	one or more <link linkend="term_ondemand">on-demand conditions</link>,
+					</para></listitem>
+					<listitem><para>
+	the current system load average,
+					</para></listitem>
+					<listitem><para>
+	the amount of time the system has been idle,
+					</para></listitem>
+					<listitem><para>
+	special cases, such as when the computer is starting up or shutting down
+					</para></listitem>
+				</itemizedlist>
+				
+				<para>
+Jobs will be executed as soon as all of their dependencies are met.
+				</para>
+			</listitem>
+		</varlistentry>
+		
+		<varlistentry id="term_scheduler">
+			<term>Scheduler</term>
+			<listitem>
+				<para>
+A job <wordasword>scheduler</wordasword> manages the lifecycle of zero or more <link linkend="term_job">jobs</link>.
+The job lifecycle covers the following steps:
+</para>
+
+<orderedlist>
+	<listitem><para>
+	Loading the job into memory, i.e. parsing the manifest
+	</para></listitem>
+	<listitem><para>
+	Checking the dependencies to determine when the job can be executed
+	</para></listitem>
+	<listitem><para>
+	Acquiring resources when the job is ready to run
+	</para></listitem>
+	<listitem><para>
+	Forking a child process and executing the job's program
+	</para></listitem>
+	<listitem><para>
+	Waiting for the child process to exit
+	</para></listitem>
+	<listitem><para>
+	Restarting the child process automatically, if the manifest requires it
+	</para></listitem>
+	<listitem><para>
+	Updating the history of the job to record the exit status
+	</para></listitem>
+	<listitem><para>
+	Unloading the job from memory
+	</para></listitem>
+</orderedlist>
+
+<para>
+Depending on the settings in the <link linkend="term_manifest">manifest</link>,
+jobs may be launched immediately, or 
+<link linkend="term_ondemand">on-demand</link>
+when specific conditions are met.
+				</para>
+			</listitem>
+		</varlistentry>
+		
+		<varlistentry id="term_ondemand">
+			<term>On-Demand Scheduling</term>
+			<listitem>
+				<para>
+<link linkend="term_job">Jobs</link> 
+may be scheduled to run <wordasword>on-demand</wordasword> based on one 
+or more conditions, such as:
+				</para>
+				<itemizedlist>
+					<listitem><para>
+				periodic interval timers
+				</para></listitem>
+				<listitem><para>
+				calendar scheduling, like cron(8)
+				</para></listitem>		
+				<listitem><para>
+				incoming socket connections
+				</para></listitem>
+				<!-- 
+				<listitem><para>
+				IPC calls
+				</para><listitem>
+				-->
+				<listitem><para>
+				files being created within a spool directory
+				</para></listitem>
+				</itemizedlist>				
+			</listitem>
+		</varlistentry>
+		
+		<varlistentry id="term_transient">
+			<term>Transient</term>
+			<listitem>
+				<para>
+A <link linkend="term_job">job</link> can be designated as <wordasword>transient</wordasword> in
+its <link linkend="term_manifest">manifest</link>. This has the following effect: 
+ 				</para>
+ 				
+ 				<para>
+ When the <link linkend="term_program">program</link> exits, all <link linkend="term_resource">resources</link>
+ will be automatically destroyed. If the exit code is zero, the job will be automatically
+ be unloaded from the <link linkend="term_scheduler">scheduler</link>. Otherwise, if the
+ exit code is non-zero, the job will not be unloaded and remain in the scheduler to
+ alert the administrator that there is a failed job.
+			</para>
+			</listitem>
+		</varlistentry>
+	
+<!-- template for adding more:		
+		<varlistentry>
+			<term></term>
+			<listitem>
+				<para>
+
+				</para>
+			</listitem>
+		</varlistentry>
+ -->
+</variablelist>
+ 
+</section>

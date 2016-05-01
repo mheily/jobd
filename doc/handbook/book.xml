@@ -4,7 +4,7 @@
 
 <book lang="en_US">
 <bookinfo>
-<title>jobd Handbook</title>
+<title>Design and Implementation of the Job Framework</title>
 <date>April 23, 2016 </date><author>
 <firstname>Mark</firstname><surname>Heily</surname></author>
   <copyright>
@@ -34,9 +34,18 @@
 <chapter>
 
 <title>Overview</title>
-<section><title>What is jobd</title>
+<section><title>Synopsis</title>
 <para>TODO -- put introduction here</para>
 </section>
+
+	<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="sect1-terminology.xml" />
+
+</chapter>
+
+
+<chapter>
+	<title>Designing tools that use the Job Framework</title>
+	<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="sect1-service_manager.xml" />	
 </chapter>
 
 <appendix><title>Manual pages</title>

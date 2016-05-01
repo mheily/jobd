@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sect1 PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"
+           "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
+
+<sect1>
+
+<title>Service management</title>
+
+<para>TODO: Describe how a service manager could be written using the Job Framework.</para>
+
+<sect2><title>Terminology</title>
+<variablelist>
+		<varlistentry id="term_service">
+			<term>Service</term>
+			<listitem>
+				<para>
+A <wordasword>service</wordasword> is a type of <link linkend="term_job">job</link> that normally:
+				</para>
+				<itemizedlist>
+<listitem><para>runs as a background daemon</para></listitem>
+<listitem><para>is launched when the computer boots</para></listitem>
+<listitem><para>runs for the entire time the computer is powered on</para></listitem>
+<listitem><para>allows the administrator to execute <link linkend="term_runcontrol">run control</link> commands</para></listitem>
+				</itemizedlist>			
+			</listitem>
+		</varlistentry>
+		
+		<varlistentry id="term_servicemanager">
+			<term>Service Manager</term>
+			<listitem>
+				<para>
+A <wordasword>service manager</wordasword> is a program that manages <link linkend="term_service">services</link>.
+				</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry id="term_runcontrol">
+			<term>Service</term>
+			<listitem>
+				<para>
+Administrators can use <wordasword>run control</wordasword> commands to manipulate the state or
+configuration of services. These commands typically allow you to perform actions like:
+				</para>
+				<itemizedlist>
+<listitem><para>start</para></listitem>
+<listitem><para>stop</para></listitem>
+<listitem><para>restart</para></listitem>
+<listitem><para>reload</para></listitem>
+<listitem><para>enable</para></listitem>
+<listitem><para>disable</para></listitem>
+				</itemizedlist>			
+			</listitem>
+		</varlistentry>
+</variablelist>
+</sect2>
+</sect1>     
+
+<!-- 
+
+Extra text that could be used later:
+
+<a name="service-manager">
+**Service Manager**
+</a>
+
+A *service manager* is a command that allows you to manage [services](#service). 
+The launchadm(8) command is a service manager that controls services that run under launchd(8)
+. Examples of using a service manager include:
+
+1. Enabling a service named 'foo' to start at boot: `launchadm foo enable`
+1. Starting a service named 'bar' immediately: `launchadm foo start`
+1. Stopping a service named 'baz' immediately: `launchadm foo stop`
+
+<a name="system-manager">
+**System Manager**
+</a>
+
+A *system manager* is the first process that is created when the system is booted. It is responsible for critical tasks like:
+* mounting the root filesystem
+* entering single-user mode
+* starting the serial console and pseudo-terminals.
+
+A classic example of a system manager is the [init(8)](https://www.freebsd.org/cgi/man.cgi?query=init&apropos=0&sektion=0&manpath=FreeBSD+10.3-RELEASE&arch=default&format=html) program. 
+
+Relaunchd is **not** a system manager, and relies on your operating system vendor to provide the software that boots the computer into a usable state.
+
+ -->
