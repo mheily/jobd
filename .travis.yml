@@ -19,6 +19,7 @@ addons:
     packages:
     - bc
     - libcurl4-openssl-dev
+    - libboost-all-dev
   coverity_scan:
     project:
       name: "mheily/relaunchd"
