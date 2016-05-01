@@ -61,6 +61,18 @@
 <arg choice='plain'>clear</arg>
 </cmdsynopsis>
 
+	<cmdsynopsis>
+	<command>jobctl</command>
+	<arg choice='req'><replaceable>label</replaceable></arg>
+	<arg choice='plain'>unload</arg>
+	</cmdsynopsis>
+	
+	<cmdsynopsis>
+	<command>jobctl</command>
+	<arg choice='plain'>load</arg>
+	<arg choice='req'><replaceable>manifest</replaceable></arg>
+	</cmdsynopsis>
+
 </refsynopsisdiv>
 
 <refsect1><title>Description</title>
@@ -104,7 +116,7 @@ Enable the job. If the job is currently stopped, it will be automatically starte
 	<varlistentry>
 		<term>
 			<literal>jobctl</literal>
-			<replaceable>label</replaceable>
+			<replaceable>[label]</replaceable>
 			<literal>list</literal>
 		</term>
 	
@@ -138,7 +150,7 @@ or "maintenance" states, depending on the severity of the error.
 			<literal>jobctl</literal>
 			<replaceable>label</replaceable>
 			<literal>restart</literal>
-			[ <literal>-f, --force</literal> ]
+			<literal>[-f, --force]</literal>
 		</term>
 	
 		<listitem>
@@ -221,7 +233,38 @@ command directly will implicitly clear the "outdated" fault.
 </para>
 		</listitem>
 	</varlistentry>
+
+	<varlistentry>
+		<term>
+			<literal>jobctl</literal>
+			<replaceable>label</replaceable>
+			<literal>unload</literal>
+			<literal>[--purge]</literal>
+		</term>
 	
+		<listitem>
+		<para>
+		Permanently remove a job from the scheduler. If the job is currently running, it will
+		be stopped. If the --purge option is present, the job properties will be purged from
+		the database; otherwise, the properties will be saved and will be restored if the
+		job is loaded again in the future.
+		</para>
+		</listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>
+			<literal>jobctl</literal>
+			<literal>load</literal>
+			<replaceable>manifest</replaceable>
+		</term>
+	
+		<listitem>
+		<para>
+		Load a job into the scheduler. The path to the manifest must be provided.
+		</para>
+		</listitem>
+	</varlistentry>	
 
 </variablelist>
 
