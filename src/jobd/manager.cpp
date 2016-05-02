@@ -30,6 +30,7 @@ extern "C" {
 #include "../config.h"
 
 #include "calendar.h"
+#include "ipc.h"
 #include "log.h"
 #include "job.h"
 #include "keepalive.h"
@@ -58,7 +59,7 @@ launchd_options_t options;
 static LIST_HEAD(,job_manifest) pending; /* Jobs that have been submitted but not loaded */
 static LIST_HEAD(,job) jobs;			/* All active jobs */
 
-LibJob* libjob;
+LibJob* libjob2;
 
 /* The kqueue descriptor used by main_loop() */
 static int main_kqfd = -1;
@@ -103,7 +104,7 @@ static ssize_t poll_watchdir()
 	ssize_t found_jobs = 0;
 	char *ext;
 
-	if ((dirp = opendir(libjob->jobdir.c_str())) == NULL)
+	if ((dirp = opendir(libjob2->jobdir.c_str())) == NULL)
 		err(1, "opendir(3)");
 
 	while (dirp) {
@@ -118,7 +119,7 @@ static ssize_t poll_watchdir()
 			log_error("skipping %s: no file extension", entry.d_name);
 			continue;
 		}
-		if (strcmp(ext, ".json") == 0) {
+		if (strcmp(ext, ".load") == 0) {
 			jm = read_job(entry.d_name);
 			if (jm) {
 				LIST_INSERT_HEAD(&pending, jm, jm_le);
@@ -246,7 +247,7 @@ int manager_write_status_file()
 	job_t job;
 
 	/* FIXME: should write to a .new file, then rename() over the old file */
-	if (asprintf(&path, "%s/launchctl.list", libjob->jobdir.c_str()) < 0)
+	if (asprintf(&path, "%s/launchctl.list", libjob2->jobdir.c_str()) < 0)
 		err(1, "asprintf(3)");
 	if ((fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, 0644)) < 0)
 		err(1, "open(2)");
@@ -348,7 +349,7 @@ void manager_init(struct pidfh *pfh)
 	LIST_INIT(&jobs);
 
 	try {
-		libjob = new LibJob();
+		 libjob2 = new LibJob();
 	}
 	catch (...) {
 		errx(1, "libjob failed to init");
@@ -365,6 +366,8 @@ void manager_init(struct pidfh *pfh)
 		errx(1, "setup_timers()");
 	if (calendar_init(main_kqfd) < 0)
 		errx(1, "calendar_init()");
+	if (ipc_init(main_kqfd) < 0)
+		errx(1, "ipc_init()");
 }
 
 void manager_update_jobs()
@@ -484,8 +487,8 @@ delete_directory_entries(const char *path)
 static void
 setup_job_dirs()
 {
-	log_debug("creating %s", libjob->jobdir.c_str());
-	mkdir_idempotent(libjob->jobdir.c_str(), 0700);
+	log_debug("creating %s", libjob2->jobdir.c_str());
+	mkdir_idempotent(libjob2->jobdir.c_str(), 0700);
 #if 0
 	char buf[PATH_MAX];
 
@@ -545,6 +548,7 @@ manager_main_loop()
 			case SIGINT:
 				log_notice("caught SIGINT, exiting");
 				manager_unload_all_jobs();
+				do_shutdown();
 				exit(1);
 				break;
 			case SIGTERM:
@@ -568,6 +572,8 @@ manager_main_loop()
 				errx(1, "calendar_handler()");
 		} else if ((void *)kev.udata == &keepalive_wake_handler) {
 			keepalive_wake_handler();
+		} else if ((void *)kev.udata == &ipc_request_handler) {
+			ipc_request_handler();
 		} else {
 			log_warning("spurious wakeup, no known handlers");
 		}
@@ -585,5 +591,7 @@ static void do_shutdown()
 {
 	if (pidfile_handle)
 		pidfile_remove(pidfile_handle);
+	delete libjob2;
+	ipc_shutdown();
 }
 

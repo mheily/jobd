@@ -22,10 +22,10 @@ sbin_PROGRAMS=jobd
 
 jobd_CXXFLAGS="-I../.. -I.. -I. -include ../../config.h -std=c++11 -Wall -Werror -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
 jobd_LDFLAGS="-L/usr/lib -L/usr/local/lib -L../libjob/ $libucl_LDFLAGS"
-jobd_LDADD="$libucl_LDADD $kqueue_LDADD -ljob"
+jobd_LDADD="$libucl_LDADD $kqueue_LDADD ../libjob/libjob.a"
 jobd_SOURCES=`ls *.cpp *.c | tr '\n' ' '`
 #log.c job.c chroot.cpp launchd.cpp dataset.cpp manager.c manifest.c socket.c keepalive.c calendar.c timer.c pidfile.c flopen.c"
-jobd_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS"
+jobd_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS ../libjob/libjob.a"
 
 uname=$(uname)
 if [ "`uname`" = 'FreeBSD' ] ; then

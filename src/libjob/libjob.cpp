@@ -15,8 +15,8 @@
  */
 
 #include <iostream>
+#include <fstream>
 #include <string>
-
 #include <cstdlib>
 
 extern "C" {
@@ -44,10 +44,20 @@ void LibJob::set_jobdir() {
 			this->jobdir = std::string(home) + "/.config/job.d";
 		}
 	}
-	this->logger.info("jobdir=" + this->jobdir);
+	//log_info("jobdir=" + this->jobdir);
 };
 
-struct libjob * libjob_new(void) {
-        LibJob *libjob = new LibJob();
-        return reinterpret_cast<struct libjob *>(libjob);
+void LibJob::load_manifest(std::string path) {
+	std::cout << "loading: " + path + " into " + this->jobdir << '\n';
+
+	// TODO: check if src exists
+	// Copy the manifest into the configuration directory, using a special extension
+	std::ifstream src(path, std::ios::binary);
+	std::ofstream dst(this->jobdir + "/test.load", std::ios::binary);
+	dst << src.rdbuf();
+}
+
+struct libjob_s * libjob_new(void) {
+        LibJob *lj = new LibJob();
+        return reinterpret_cast<struct libjob_s *>(lj);
 }

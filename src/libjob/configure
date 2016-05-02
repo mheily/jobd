@@ -26,10 +26,6 @@ libjob_LDADD="$libucl_LDADD $kqueue_LDADD"
 libjob_SOURCES=`ls *.cpp | tr '\n' ' '`
 libjob_SONAME="libjob.so.0"
 
-# Boost.Log
-libjob_LDADD="${libjob_LDADD} -lboost_log -lboost_log_setup"
-libjob_CXXFLAGS="${libjob_CXXFLAGS} -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_THREADS"
-
 custom_target 'job.5' 'job.5.xml' \
 	'docbook2mdoc job.5.xml > job.5 || true'
 

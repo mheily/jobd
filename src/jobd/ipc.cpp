@@ -14,45 +14,22 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef LIBJOB_JOB_H_
-#define LIBJOB_JOB_H_
-
-#ifdef __cplusplus
-
-#include <string>
-
-#include "logger.h"
 #include "ipc.h"
+#include "../libjob/ipc.h"
 
-class LibJob {
-public:
+static int main_kqfd;
+static libjob::ipcServer* ipc_server;
 
-	std::string version = "0.0.0";
-
-	/** Directory where users submit job configuration files */
-	std::string jobdir;
-
-	LibJob();
-	void load_manifest(std::string path);
-
-private:
-	// Tell jobd to reload it's configuration
-	void signal_jobd_reload();
-
-	void set_jobdir();
-};
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-struct libjob_s;
-
-struct libjob_s * libjob_new(void);
-
-#ifdef __cplusplus
+int ipc_init(int kqfd) {
+	main_kqfd = kqfd;
+	ipc_server = new libjob::ipcServer("/tmp/test.sock");
+	return 0;
 }
-#endif
 
-#endif /* SOCKET_H_ */
+void ipc_shutdown() {
+	delete ipc_server;
+}
+
+void ipc_request_handler(void) {
+	return;
+}

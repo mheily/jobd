@@ -77,7 +77,12 @@ main(int argc, char *argv[])
 	argv += optind;
 
 	for (int i = 0; i < argc; i++) {
-		puts(argv[i]);
+		std::string arg = std::string(argv[i]);
+		if (arg == "load") {
+			libjob.load_manifest(std::string(argv[i+1]));
+		} else {
+		puts(arg.c_str());
+		}
 	}
 
 	return EXIT_SUCCESS;

@@ -14,45 +14,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef LIBJOB_JOB_H_
-#define LIBJOB_JOB_H_
+#pragma once
 
-#ifdef __cplusplus
+/** One-time initialization at program startup */
+int ipc_init(int kqfd);
 
-#include <string>
+/** Shutdown the IPC subsystem at program exit */
+void ipc_shutdown();
 
-#include "logger.h"
-#include "ipc.h"
-
-class LibJob {
-public:
-
-	std::string version = "0.0.0";
-
-	/** Directory where users submit job configuration files */
-	std::string jobdir;
-
-	LibJob();
-	void load_manifest(std::string path);
-
-private:
-	// Tell jobd to reload it's configuration
-	void signal_jobd_reload();
-
-	void set_jobdir();
-};
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-struct libjob_s;
-
-struct libjob_s * libjob_new(void);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* SOCKET_H_ */
+/** Handle an incoming IPC request */
+void ipc_request_handler(void);

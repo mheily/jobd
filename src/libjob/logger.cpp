@@ -14,41 +14,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#define BOOST_LOG_DYN_LINK 1
-
 #include <string>
-#include <boost/log/core.hpp>
-#include <boost/log/trivial.hpp>
-#include <boost/log/expressions.hpp>
-
 #include "logger.h"
 
-namespace logging = boost::log;
-
-LibJobLogger::LibJobLogger() {
-    logging::core::get()->set_filter
-    (
-        logging::trivial::severity >= logging::trivial::debug
-    );
-}
-
-void LibJobLogger::debug(std::string message)
-{
-	BOOST_LOG_TRIVIAL(debug) << message;
-}
-
-void LibJobLogger::info(std::string message)
-{
-	BOOST_LOG_TRIVIAL(info) << message;
-}
-
-void LibJobLogger::warning(std::string message)
-{
-	BOOST_LOG_TRIVIAL(warning) << message;
-}
-
-void LibJobLogger::error(std::string message)
-{
-	BOOST_LOG_TRIVIAL(debug) << message;
-}
+FILE *logfile;
 
