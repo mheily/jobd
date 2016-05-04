@@ -24,23 +24,32 @@
 #include "logger.h"
 #include "ipc.h"
 
-class LibJob {
-public:
+namespace libjob {
+	class jobdConfig {
+	public:
 
-	std::string version = "0.0.0";
+		std::string version = "0.0.0";
 
-	/** Directory where users submit job configuration files */
-	std::string jobdir;
+		/** Directory where users submit job configuration files */
+		std::string jobdir;
 
-	LibJob();
-	void load_manifest(std::string path);
+		/** Directory where runtime files are stored */
+		std::string runtimeDir;
 
-private:
-	// Tell jobd to reload it's configuration
-	void signal_jobd_reload();
+		/** The path to the IPC socket */
+		std::string socketPath;
 
-	void set_jobdir();
-};
+		jobdConfig();
+		//void load_manifest(std::string path);
+
+	private:
+		// Tell jobd to reload it's configuration
+		void signal_jobd_reload();
+
+		void set_jobdir();
+		void set_socketpath();
+	};
+}
 #endif
 
 #ifdef __cplusplus

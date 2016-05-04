@@ -59,7 +59,7 @@ launchd_options_t options;
 static LIST_HEAD(,job_manifest) pending; /* Jobs that have been submitted but not loaded */
 static LIST_HEAD(,job) jobs;			/* All active jobs */
 
-LibJob* libjob2;
+libjob::jobdConfig* jobd_config;
 
 /* The kqueue descriptor used by main_loop() */
 static int main_kqfd = -1;
@@ -104,7 +104,7 @@ static ssize_t poll_watchdir()
 	ssize_t found_jobs = 0;
 	char *ext;
 
-	if ((dirp = opendir(libjob2->jobdir.c_str())) == NULL)
+	if ((dirp = opendir(jobd_config->jobdir.c_str())) == NULL)
 		err(1, "opendir(3)");
 
 	while (dirp) {
@@ -247,7 +247,7 @@ int manager_write_status_file()
 	job_t job;
 
 	/* FIXME: should write to a .new file, then rename() over the old file */
-	if (asprintf(&path, "%s/launchctl.list", libjob2->jobdir.c_str()) < 0)
+	if (asprintf(&path, "%s/launchctl.list", jobd_config->jobdir.c_str()) < 0)
 		err(1, "asprintf(3)");
 	if ((fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, 0644)) < 0)
 		err(1, "open(2)");
@@ -349,7 +349,7 @@ void manager_init(struct pidfh *pfh)
 	LIST_INIT(&jobs);
 
 	try {
-		 libjob2 = new LibJob();
+		 jobd_config = new libjob::jobdConfig();
 	}
 	catch (...) {
 		errx(1, "libjob failed to init");
@@ -487,8 +487,8 @@ delete_directory_entries(const char *path)
 static void
 setup_job_dirs()
 {
-	log_debug("creating %s", libjob2->jobdir.c_str());
-	mkdir_idempotent(libjob2->jobdir.c_str(), 0700);
+	log_debug("creating %s", jobd_config->jobdir.c_str());
+	mkdir_idempotent(jobd_config->jobdir.c_str(), 0700);
 #if 0
 	char buf[PATH_MAX];
 
@@ -591,7 +591,7 @@ static void do_shutdown()
 {
 	if (pidfile_handle)
 		pidfile_remove(pidfile_handle);
-	delete libjob2;
+	delete jobd_config;
 	ipc_shutdown();
 }
 

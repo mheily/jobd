@@ -14,6 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <iostream>
 #include <system_error>
 
 extern "C" {
@@ -42,10 +43,10 @@ ipcServer::ipcServer(std::string path) {
 ipcClient::~ipcClient() {
 	if (this->sockfd >= 0)
 		(void) close(this->sockfd);
-
 }
 
 ipcServer::~ipcServer() {
+	std::cout << "ipc server shutdown:" << this->sockfd << '\n';
 	if (this->sockfd >= 0)
 		(void) close(this->sockfd);
 	if (this->socket_path != "")
@@ -58,7 +59,7 @@ void ipcClient::create_socket() {
         sock.sun_family = AF_LOCAL;
         strncpy(sock.sun_path, this->socket_path.c_str(), sizeof(sock.sun_path));
 
-        this->sockfd = socket(AF_LOCAL, SOCK_STREAM, 0);
+        this->sockfd = socket(AF_LOCAL, SOCK_DGRAM, 0);
         if (this->sockfd < 0)
         	throw std::system_error(errno, std::system_category());
 
@@ -73,15 +74,33 @@ void ipcServer::create_socket()
         name.sun_family = AF_LOCAL;
         strncpy(name.sun_path, this->socket_path.c_str(), sizeof(name.sun_path));
 
-        this->sockfd = socket(AF_LOCAL, SOCK_STREAM, 0);
+        this->sockfd = socket(AF_LOCAL, SOCK_DGRAM, 0);
         if (this->sockfd < 0)
         	throw std::system_error(errno, std::system_category());
 
         if (bind(this->sockfd, (struct sockaddr *) &name, SUN_LEN(&name)) < 0)
         	throw std::system_error(errno, std::system_category());
+}
 
-        if (listen(this->sockfd, 1024) < 0)
-        	throw std::system_error(errno, std::system_category());
+std::string ipcServer::parse_request() {
+	char request[4096];
+
+	ssize_t bytes = recv(this->sockfd, &request, sizeof(request), 0);
+	if (bytes < 0)
+		throw std::system_error(errno, std::system_category());
+	return std::string(request);
+}
+
+std::string ipcClient::request(std::string buf) {
+	char response[4096];
+
+	if (send(this->sockfd, buf.c_str(), buf.length(), 0) < 0)
+		throw std::system_error(errno, std::system_category());
+
+	ssize_t bytes = recv(this->sockfd, &response, sizeof(response), 0);
+	if (bytes < 0)
+		throw std::system_error(errno, std::system_category());
+	return std::string(response);
 }
 
 

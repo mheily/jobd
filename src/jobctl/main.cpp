@@ -24,7 +24,7 @@ extern "C" {
 
 #include "../libjob/job.h"
 
-static LibJob libjob;
+static std::unique_ptr<libjob::jobdConfig> jobd_config(new libjob::jobdConfig);
 
 void usage() {
 	std::cout <<
@@ -42,12 +42,13 @@ void usage() {
 }
 
 void show_version() {
-	std::cout << "job version " + libjob.version << std::endl;
+	std::cout << "job version " + jobd_config->version << std::endl;
 }
 
 int
 main(int argc, char *argv[])
 {
+
 	char ch;
 	static struct option longopts[] = {
 			{ "help", no_argument, NULL, 'h' },
@@ -76,13 +77,27 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	for (int i = 0; i < argc; i++) {
-		std::string arg = std::string(argv[i]);
-		if (arg == "load") {
-			libjob.load_manifest(std::string(argv[i+1]));
-		} else {
-		puts(arg.c_str());
+	try {
+		std::unique_ptr<libjob::ipcClient> ipc_client(new libjob::ipcClient(jobd_config->socketPath));
+
+		for (int i = 0; i < argc; i++) {
+			std::string arg = std::string(argv[i]);
+			if (arg == "load") {
+				ipc_client->request("load " + std::string(argv[i+1]));
+				i++;
+			} else {
+				puts(arg.c_str());
+			}
 		}
+
+
+	} catch(const std::system_error& e) {
+		std::cout << "Caught system_error with code " << e.code()
+	                  << " meaning " << e.what() << '\n';
+		exit(1);
+	} catch(...) {
+		std::cout << "Unhandled exception\n";
+		exit(1);
 	}
 
 	return EXIT_SUCCESS;

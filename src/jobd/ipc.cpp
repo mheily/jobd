@@ -14,15 +14,31 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/types.h>
+#include <sys/event.h>
+
 #include "ipc.h"
 #include "../libjob/ipc.h"
+#include "../libjob/job.h"
 
 static int main_kqfd;
 static libjob::ipcServer* ipc_server;
+extern libjob::jobdConfig* jobd_config;
 
 int ipc_init(int kqfd) {
+	struct kevent kev;
+
 	main_kqfd = kqfd;
-	ipc_server = new libjob::ipcServer("/tmp/test.sock");
+	log_debug("initializing IPC socket at %s", jobd_config->socketPath.c_str());
+	ipc_server = new libjob::ipcServer(jobd_config->socketPath);
+
+	log_debug("listening for connections on fd %d", ipc_server->get_sockfd());
+	EV_SET(&kev, ipc_server->get_sockfd(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, (void *)&ipc_request_handler);
+	if (kevent(main_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
+		log_errno("kevent(2)");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -31,5 +47,7 @@ void ipc_shutdown() {
 }
 
 void ipc_request_handler(void) {
+	std::string request = ipc_server->parse_request();
+	log_debug("got IPC request: %s", request.c_str());
 	return;
 }

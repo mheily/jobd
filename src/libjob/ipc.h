@@ -14,12 +14,15 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#pragma once
+
 #include <string>
 
 namespace libjob {
 
 	class ipcServer {
 	public:
+		std::string parse_request();
 		ipcServer(std::string path);
 		~ipcServer();
 		int get_sockfd() { return this->sockfd; }
@@ -32,6 +35,7 @@ namespace libjob {
 
 	class ipcClient {
 	public:
+		std::string request(std::string buf);
 		int get_sockfd() { return this->sockfd; }
 		ipcClient(std::string path);
 		~ipcClient();
