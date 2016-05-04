@@ -19,37 +19,42 @@
 #include <string>
 #include <nlohmann/json.hpp>
 
-#include "jsonRPC.hpp"
-
 namespace libjob {
 
 	using json = nlohmann::json;
 
-	class ipcServer {
+	class jsonRpcRequest {
 	public:
-		std::string parse_request();
-		ipcServer(std::string path);
-		~ipcServer();
-		int get_sockfd() { return this->sockfd; }
+		jsonRpcRequest(std::string buf) {
+			this->request = buf;
+		}
+
+		jsonRpcRequest(unsigned int id, std::string method) {
+			request["jsonrpc"] = "2.0",
+			request["id"] = id;
+			request["method"] = method;
+			request["params"] = json::array();
+		}
+
+		void addParam(std::string value) {
+			request["params"].push_back(value);
+		}
+
+		unsigned int id() { return this->request["id"]; }
+
+		std::string dump() { return this->request.dump(); }
 
 	private:
-		void create_socket();
-		std::string socket_path = "";
-		int sockfd = -1;
+		json request;
 	};
 
-	class ipcClient {
+	class jsonRpcResponse {
 	public:
-		std::string request(std::string buf);
-		json request(json buf);
-		jsonRpcResponse request(jsonRpcRequest request);
-		int get_sockfd() { return this->sockfd; }
-		ipcClient(std::string path);
-		~ipcClient();
+		jsonRpcResponse(std::string buf) {
+			response = buf;
+		}
 
 	private:
-		void create_socket();
-		std::string socket_path = "";
-		int sockfd = -1;
+		json response;
 	};
 }

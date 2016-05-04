@@ -16,6 +16,7 @@
 
 #include <iostream>
 #include <system_error>
+#include <nlohmann/json.hpp>
 
 extern "C" {
 	#include <sys/types.h>
@@ -103,6 +104,18 @@ std::string ipcClient::request(std::string buf) {
 	return std::string(response);
 }
 
+libjob::jsonRpcResponse ipcClient::request(libjob::jsonRpcRequest buf) {
+	char response[4096];
+	std::string bufstr = buf.dump();
+	std::cout << bufstr << '\n';
+	if (send(this->sockfd, bufstr.c_str(), bufstr.length(), 0) < 0)
+		throw std::system_error(errno, std::system_category());
+
+	ssize_t bytes = recv(this->sockfd, &response, sizeof(response), 0);
+	if (bytes < 0)
+		throw std::system_error(errno, std::system_category());
+	return std::string(response);
+}
 
 
 } // namespace

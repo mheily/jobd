@@ -83,7 +83,9 @@ main(int argc, char *argv[])
 		for (int i = 0; i < argc; i++) {
 			std::string arg = std::string(argv[i]);
 			if (arg == "load") {
-				ipc_client->request("load " + std::string(argv[i+1]));
+				libjob::jsonRpcRequest request(1, "load");
+				request.addParam(std::string(argv[i+1]));
+				ipc_client->request(request);
 				i++;
 			} else {
 				puts(arg.c_str());

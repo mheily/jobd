@@ -21,6 +21,8 @@
 #include "../libjob/ipc.h"
 #include "../libjob/job.h"
 
+using namespace libjob;
+
 static int main_kqfd;
 static libjob::ipcServer* ipc_server;
 extern libjob::jobdConfig* jobd_config;
@@ -47,7 +49,7 @@ void ipc_shutdown() {
 }
 
 void ipc_request_handler(void) {
-	std::string request = ipc_server->parse_request();
-	log_debug("got IPC request: %s", request.c_str());
+	jsonRpcRequest req(ipc_server->parse_request());
+	log_debug("got IPC request: %s", req.dump().c_str());
 	return;
 }
