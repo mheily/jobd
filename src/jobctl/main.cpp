@@ -79,13 +79,14 @@ main(int argc, char *argv[])
 
 	try {
 		std::unique_ptr<libjob::ipcClient> ipc_client(new libjob::ipcClient(jobd_config->socketPath));
+		libjob::jsonRpcResponse response;
 
 		for (int i = 0; i < argc; i++) {
 			std::string arg = std::string(argv[i]);
 			if (arg == "load") {
 				libjob::jsonRpcRequest request(1, "load");
 				request.addParam(std::string(argv[i+1]));
-				ipc_client->request(request);
+				ipc_client->dispatch(request, response);
 				i++;
 			} else {
 				puts(arg.c_str());

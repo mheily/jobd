@@ -139,11 +139,11 @@ main(int argc, char *argv[])
 	}
 	catch (std::exception& e) {
 		std::cout << "Caught fatal exception: " << e.what() << std::endl;
-		exit(EXIT_FAILURE);
+		abort();
 	}
 	catch (...) {
 		std::cout << "Caught unknown exception; exiting" << std::endl;
-		exit(EXIT_FAILURE);
+		abort();
 	}
 
 	/* NOTREACHED */

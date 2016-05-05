@@ -19,15 +19,35 @@
 #include <string>
 #include <nlohmann/json.hpp>
 
+extern "C" {
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+}
+
 #include "jsonRPC.hpp"
 
 namespace libjob {
 
 	using json = nlohmann::json;
 
+	class ipcSession {
+	public:
+		std::string parseRequest();
+		void sendResponse(jsonRpcResponse response);
+		void close();
+		ipcSession(int server_fd);
+		~ipcSession();
+
+	private:
+	        struct sockaddr_storage sa;
+	        socklen_t sa_len;
+		int sockfd = -1;
+	};
+
 	class ipcServer {
 	public:
-		std::string parse_request();
+		ipcSession acceptConnection();
 		ipcServer(std::string path);
 		~ipcServer();
 		int get_sockfd() { return this->sockfd; }
@@ -40,9 +60,7 @@ namespace libjob {
 
 	class ipcClient {
 	public:
-		std::string request(std::string buf);
-		json request(json buf);
-		jsonRpcResponse request(jsonRpcRequest request);
+		void dispatch(jsonRpcRequest request, jsonRpcResponse& response);
 		int get_sockfd() { return this->sockfd; }
 		ipcClient(std::string path);
 		~ipcClient();

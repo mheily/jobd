@@ -16,17 +16,19 @@
 
 #pragma once
 
-#include <string>
-#include <nlohmann/json.hpp>
 
 namespace libjob {
+
+#include <string>
+#include <vector>
+#include <nlohmann/json.hpp>
 
 	using json = nlohmann::json;
 
 	class jsonRpcRequest {
 	public:
 		jsonRpcRequest(std::string buf) {
-			this->request = buf;
+			this->request = json::parse(buf);
 		}
 
 		jsonRpcRequest(unsigned int id, std::string method) {
@@ -40,7 +42,10 @@ namespace libjob {
 			request["params"].push_back(value);
 		}
 
+		std::string getParam(unsigned int where) { return this->request["params"][where]; }
+
 		unsigned int id() { return this->request["id"]; }
+		std::string method() { return this->request["method"]; }
 
 		std::string dump() { return this->request.dump(); }
 
@@ -50,9 +55,18 @@ namespace libjob {
 
 	class jsonRpcResponse {
 	public:
-		jsonRpcResponse(std::string buf) {
-			response = buf;
+		jsonRpcResponse() {
+			this->response["jsonrpc"] = "2.0";
 		}
+
+		jsonRpcResponse(unsigned int id) {
+			this->response["jsonrpc"] = "2.0",
+			this->response["id"] = id;
+		}
+
+		void setResult(std::string str) { this->response["result"] = str; }
+		std::string getResult() { return this->response["result"]; }
+		std::string dump() { return this->response.dump(); }
 
 	private:
 		json response;

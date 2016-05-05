@@ -28,6 +28,7 @@ extern "C" {
 }
 
 #include "ipc.h"
+#include "../jobd/log.h"
 
 namespace libjob {
 
@@ -47,7 +48,7 @@ ipcClient::~ipcClient() {
 }
 
 ipcServer::~ipcServer() {
-	std::cout << "ipc server shutdown:" << this->sockfd << '\n';
+	log_debug("shutting down IPC server");
 	if (this->sockfd >= 0)
 		(void) close(this->sockfd);
 	if (this->socket_path != "")
@@ -83,39 +84,69 @@ void ipcServer::create_socket()
         	throw std::system_error(errno, std::system_category());
 }
 
-std::string ipcServer::parse_request() {
+std::string ipcSession::parseRequest() {
 	char request[4096];
 
-	ssize_t bytes = recv(this->sockfd, &request, sizeof(request), 0);
+	ssize_t bytes = recvfrom(this->sockfd, &request, sizeof(request), 0, (struct sockaddr *)&this->sa, &this->sa_len);
 	if (bytes < 0)
 		throw std::system_error(errno, std::system_category());
 	return std::string(request);
 }
 
-std::string ipcClient::request(std::string buf) {
-	char response[4096];
-
-	if (send(this->sockfd, buf.c_str(), buf.length(), 0) < 0)
-		throw std::system_error(errno, std::system_category());
-
-	ssize_t bytes = recv(this->sockfd, &response, sizeof(response), 0);
-	if (bytes < 0)
-		throw std::system_error(errno, std::system_category());
-	return std::string(response);
+ipcSession ipcServer::acceptConnection() {
+	return ipcSession(this->sockfd);
 }
 
-libjob::jsonRpcResponse ipcClient::request(libjob::jsonRpcRequest buf) {
-	char response[4096];
-	std::string bufstr = buf.dump();
-	std::cout << bufstr << '\n';
+void ipcSession::sendResponse(jsonRpcResponse response) {
+	auto buf = response.dump();
+
+	if (sendto(this->sockfd, buf.c_str(), buf.length(), 0, (struct sockaddr *)&this->sa, this->sa_len) < 0)
+		throw std::system_error(errno, std::system_category());
+}
+
+void ipcSession::close() {
+// only for stream sockets
+#if 0
+	(void) ::close(this->sockfd);
+	this->sockfd = -1;
+#endif
+}
+
+void ipcClient::dispatch(jsonRpcRequest request, jsonRpcResponse& response) {
+
+	std::string bufstr = request.dump();
 	if (send(this->sockfd, bufstr.c_str(), bufstr.length(), 0) < 0)
 		throw std::system_error(errno, std::system_category());
 
-	ssize_t bytes = recv(this->sockfd, &response, sizeof(response), 0);
+	char cbuf[9999]; // XXX-HORRIBLE HARDCODED BUFFER SIZE
+	ssize_t bytes = recv(this->sockfd, &cbuf, sizeof(cbuf), 0);
 	if (bytes < 0)
 		throw std::system_error(errno, std::system_category());
-	return std::string(response);
 }
 
+ipcSession::ipcSession(int server_fd) {
+        log_debug("incoming connection on fd %d", server_fd);
+
+        this->sockfd = server_fd;
+
+        // DEADWOOD -- if stream sockets are used:
+#if 0
+        this->sockfd = accept(server_fd, &sa, &sa_len);
+        if (this->sockfd < 0) {
+
+                //throw std::system_error(errno, std::system_category());
+        }
+
+#endif
+}
+
+ipcSession::~ipcSession() {
+	log_debug("closing session");
+#if 0
+	// only for stream sockets
+	if (this->sockfd >= 0)
+		(void) ::close(this->sockfd);
+#endif
+}
 
 } // namespace

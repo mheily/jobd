@@ -49,7 +49,33 @@ void ipc_shutdown() {
 }
 
 void ipc_request_handler(void) {
-	jsonRpcRequest req(ipc_server->parse_request());
-	log_debug("got IPC request: %s", req.dump().c_str());
+	try {
+		log_debug("accepting connection");
+		ipcSession session = ipc_server->acceptConnection();
+
+		log_debug("parsing request");
+
+		jsonRpcRequest request(session.parseRequest());
+		jsonRpcResponse response;
+
+		auto method = request.method();
+		if (method == "load") {
+			auto path = request.getParam(0);
+			log_debug("got IPC request: %s %s", method.c_str(), path.c_str());
+			response.setResult("OK");
+		} else {
+			log_error("bad method");
+			// TODO: response.setError();
+		}
+
+		log_debug("sending response: %s", response.getResult().c_str());
+		session.sendResponse(response);
+		//session.close();
+		log_debug("handler complete");
+	} catch(const std::system_error& e) {
+		log_error("caught exception: %s", e.what());
+	} catch(...) {
+		log_error("caught unknown exception");
+	}
 	return;
 }
