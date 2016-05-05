@@ -61,7 +61,7 @@ void ipcClient::create_socket() {
         sock.sun_family = AF_LOCAL;
         strncpy(sock.sun_path, this->socket_path.c_str(), sizeof(sock.sun_path));
 
-        this->sockfd = socket(AF_LOCAL, SOCK_DGRAM, 0);
+        this->sockfd = socket(AF_LOCAL, SOCK_STREAM, 0);
         if (this->sockfd < 0)
         	throw std::system_error(errno, std::system_category());
 
@@ -81,14 +81,18 @@ void ipcServer::create_socket()
         this->sa.sun_family = AF_LOCAL;
         strncpy(this->sa.sun_path, this->socket_path.c_str(), sizeof(this->sa.sun_path));
 
-        this->sockfd = socket(AF_LOCAL, SOCK_DGRAM, 0);
+        this->sockfd = socket(AF_LOCAL, SOCK_STREAM, 0);
         if (this->sockfd < 0) {
         	log_errno("socket(2)");
         	throw std::system_error(errno, std::system_category());
         }
         (void) unlink(this->socket_path.c_str());
         if (bind(this->sockfd, (struct sockaddr *) &this->sa, SUN_LEN(&this->sa)) < 0) {
-        	log_errno("socket(2)");
+        	log_errno("bind(2)");
+        	throw std::system_error(errno, std::system_category());
+        }
+        if (listen(this->sockfd, 1024) < 0) {
+        	log_errno("listen(2)");
         	throw std::system_error(errno, std::system_category());
         }
 }
@@ -98,7 +102,7 @@ void ipcSession::readRequest() {
 	ssize_t bytes = read(this->sockfd, &this->buf, sizeof(this->buf));
 	if (bytes < 0) {
 		this->bufsz = 0;
-		log_errno("recvfrom(2)");
+		log_errno("read(2)");
 		throw std::system_error(errno, std::system_category());
 	}
 	this->bufsz = bytes;
@@ -126,11 +130,13 @@ void ipcSession::sendResponse(jsonRpcResponse response) {
 }
 
 void ipcSession::close() {
-// only for stream sockets
-#if 0
-	(void) ::close(this->sockfd);
-	this->sockfd = -1;
-#endif
+	if (this->sockfd >= 0) {
+		log_debug("closing socket %d", this->sockfd);
+		(void) ::close(this->sockfd);
+		this->sockfd = -1;
+	} else {
+		log_warning("unnecessary call - socket is already closed");
+	}
 }
 
 void ipcClient::dispatch(jsonRpcRequest request, jsonRpcResponse& response) {
@@ -146,29 +152,20 @@ void ipcClient::dispatch(jsonRpcRequest request, jsonRpcResponse& response) {
 }
 
 ipcSession::ipcSession(int server_fd, struct sockaddr_un sa) {
-        log_debug("incoming connection on fd %d", server_fd);
-
-        this->sockfd = server_fd;
         this->server_sa = sa;
-
-        // DEADWOOD -- if stream sockets are used:
-#if 0
-        this->sockfd = accept(server_fd, &sa, &sa_len);
+        this->sockfd = accept(server_fd, (struct sockaddr *)&this->client_sa, &sa_len);
         if (this->sockfd < 0) {
-
-                //throw std::system_error(errno, std::system_category());
+        	log_errno("accept(2)");
+                throw std::system_error(errno, std::system_category());
         }
-
-#endif
+        log_debug("accepted incoming connection on server fd %d, client fd %d",
+        	server_fd, this->sockfd);
 }
 
 ipcSession::~ipcSession() {
 	log_debug("closing session");
-#if 0
-	// only for stream sockets
 	if (this->sockfd >= 0)
 		(void) ::close(this->sockfd);
-#endif
 }
 
 } // namespace
