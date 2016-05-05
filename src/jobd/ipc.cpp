@@ -54,9 +54,10 @@ void ipc_request_handler(void) {
 		ipcSession session = ipc_server->acceptConnection();
 
 		log_debug("parsing request");
+		session.readRequest();
 
-		jsonRpcRequest request(session.parseRequest());
-		jsonRpcResponse response;
+		jsonRpcRequest request = session.getRequest();
+		jsonRpcResponse response = session.getResponse();
 
 		auto method = request.method();
 		if (method == "load") {

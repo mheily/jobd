@@ -33,14 +33,20 @@ namespace libjob {
 
 	class ipcSession {
 	public:
-		std::string parseRequest();
+		void readRequest();
 		void sendResponse(jsonRpcResponse response);
 		void close();
-		ipcSession(int server_fd);
+		jsonRpcRequest getRequest() { return this->request; }
+		jsonRpcResponse getResponse() { return this->response; }
+		ipcSession(int server_fd, struct sockaddr_un sa);
 		~ipcSession();
 
 	private:
-	        struct sockaddr_storage sa;
+		char buf[9999]; // FIXME: hardcoded
+		size_t bufsz = 0;
+		jsonRpcRequest request;
+		jsonRpcResponse response;
+	        struct sockaddr_un server_sa, client_sa;
 	        socklen_t sa_len;
 		int sockfd = -1;
 	};
@@ -55,6 +61,7 @@ namespace libjob {
 	private:
 		void create_socket();
 		std::string socket_path = "";
+	        struct sockaddr_un sa;
 		int sockfd = -1;
 	};
 

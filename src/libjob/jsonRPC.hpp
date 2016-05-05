@@ -27,8 +27,9 @@ namespace libjob {
 
 	class jsonRpcRequest {
 	public:
+		jsonRpcRequest() {}
 		jsonRpcRequest(std::string buf) {
-			this->request = json::parse(buf);
+			this->parse(buf);
 		}
 
 		jsonRpcRequest(unsigned int id, std::string method) {
@@ -42,6 +43,7 @@ namespace libjob {
 			request["params"].push_back(value);
 		}
 
+		void parse(std::string buf) { this->request = json::parse(buf); }
 		std::string getParam(unsigned int where) { return this->request["params"][where]; }
 
 		unsigned int id() { return this->request["id"]; }

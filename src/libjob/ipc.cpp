@@ -65,43 +65,64 @@ void ipcClient::create_socket() {
         if (this->sockfd < 0)
         	throw std::system_error(errno, std::system_category());
 
+        //todo for linux
+#if 0
+        int on = 1;
+        setsockopt(this->sockfd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on));
+#endif
+
         if (connect(this->sockfd, (struct sockaddr *) &sock, SUN_LEN(&sock)) < 0)
         	throw std::system_error(errno, std::system_category());
 }
 
 void ipcServer::create_socket()
 {
-        struct sockaddr_un name;
-
-        name.sun_family = AF_LOCAL;
-        strncpy(name.sun_path, this->socket_path.c_str(), sizeof(name.sun_path));
+	memset(&this->sa, 0, sizeof(this->sa));
+        this->sa.sun_family = AF_LOCAL;
+        strncpy(this->sa.sun_path, this->socket_path.c_str(), sizeof(this->sa.sun_path));
 
         this->sockfd = socket(AF_LOCAL, SOCK_DGRAM, 0);
-        if (this->sockfd < 0)
+        if (this->sockfd < 0) {
+        	log_errno("socket(2)");
         	throw std::system_error(errno, std::system_category());
-
-        if (bind(this->sockfd, (struct sockaddr *) &name, SUN_LEN(&name)) < 0)
+        }
+        (void) unlink(this->socket_path.c_str());
+        if (bind(this->sockfd, (struct sockaddr *) &this->sa, SUN_LEN(&this->sa)) < 0) {
+        	log_errno("socket(2)");
         	throw std::system_error(errno, std::system_category());
+        }
 }
 
-std::string ipcSession::parseRequest() {
-	char request[4096];
-
-	ssize_t bytes = recvfrom(this->sockfd, &request, sizeof(request), 0, (struct sockaddr *)&this->sa, &this->sa_len);
-	if (bytes < 0)
+void ipcSession::readRequest() {
+	this->sa_len = sizeof(this->server_sa);
+	ssize_t bytes = read(this->sockfd, &this->buf, sizeof(this->buf));
+	if (bytes < 0) {
+		this->bufsz = 0;
+		log_errno("recvfrom(2)");
 		throw std::system_error(errno, std::system_category());
-	return std::string(request);
+	}
+	this->bufsz = bytes;
+	try {
+		this->request.parse(std::string(buf));
+	} catch (...) {
+		log_error("request parsing failed");
+		throw;
+	}
+	log_debug("client path: %s", this->client_sa.sun_path);
 }
 
 ipcSession ipcServer::acceptConnection() {
-	return ipcSession(this->sockfd);
+	return ipcSession(this->sockfd, this->sa);
 }
 
 void ipcSession::sendResponse(jsonRpcResponse response) {
 	auto buf = response.dump();
 
-	if (sendto(this->sockfd, buf.c_str(), buf.length(), 0, (struct sockaddr *)&this->sa, this->sa_len) < 0)
+	log_debug("sending `%s' to %d", buf.c_str(), this->sockfd);
+	if (write(this->sockfd, buf.c_str(), buf.length()) < 0) {
+		log_errno("sendto(2)");
 		throw std::system_error(errno, std::system_category());
+	}
 }
 
 void ipcSession::close() {
@@ -115,19 +136,20 @@ void ipcSession::close() {
 void ipcClient::dispatch(jsonRpcRequest request, jsonRpcResponse& response) {
 
 	std::string bufstr = request.dump();
-	if (send(this->sockfd, bufstr.c_str(), bufstr.length(), 0) < 0)
+	if (write(this->sockfd, bufstr.c_str(), bufstr.length()) < 0)
 		throw std::system_error(errno, std::system_category());
 
 	char cbuf[9999]; // XXX-HORRIBLE HARDCODED BUFFER SIZE
-	ssize_t bytes = recv(this->sockfd, &cbuf, sizeof(cbuf), 0);
+	ssize_t bytes = read(this->sockfd, &cbuf, sizeof(cbuf));
 	if (bytes < 0)
 		throw std::system_error(errno, std::system_category());
 }
 
-ipcSession::ipcSession(int server_fd) {
+ipcSession::ipcSession(int server_fd, struct sockaddr_un sa) {
         log_debug("incoming connection on fd %d", server_fd);
 
         this->sockfd = server_fd;
+        this->server_sa = sa;
 
         // DEADWOOD -- if stream sockets are used:
 #if 0
