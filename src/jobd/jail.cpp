@@ -22,8 +22,10 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 
+#ifdef __FreeBSD
 #include <sys/jail.h>
 #include "/usr/include/jail.h"
+#endif
 
 #include "config.h"
 #include "log.h"
