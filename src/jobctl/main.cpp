@@ -94,7 +94,6 @@ main(int argc, char *argv[])
 			i++;
 
 			request.setMethod(command);
-			std::cout << label << command << '\n';
 			if (command == "load") {
 				char *resolved_path = realpath(label.c_str(), NULL);
 				std::string path(resolved_path);
@@ -106,7 +105,6 @@ main(int argc, char *argv[])
 				puts(command.c_str());
 				throw "unexpected argument";
 			}
-			puts(request.dump().c_str());
 			ipc_client->dispatch(request, response);
 			//TODO: handle response
 			break;

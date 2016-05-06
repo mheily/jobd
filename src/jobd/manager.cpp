@@ -273,12 +273,14 @@ int manager_write_status_file()
 }
 
 void manager_free_job(job_t job) {
+	// todo: remove from job database once this is a thing
+#if 0
 	char path[PATH_MAX];
-
 	path_sprintf(&path, "%s/%s.json", options.activedir, job->jm->label);
 	if (unlink(path) < 0) {
 		log_errno("unlink(2) of %s", path);
 	}
+#endif
 	LIST_REMOVE(job, joblist_entry);
 	job_free(job);
 }

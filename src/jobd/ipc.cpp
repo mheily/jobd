@@ -64,9 +64,19 @@ void ipc_request_handler(void) {
 		if (method == "load") {
 			try {
 				auto path = request.getParam(0);
-				log_debug("got IPC request: %s %s", method.c_str(), path.c_str());
 				manager_load_job(path);
 				response.setResult("OK");
+			} catch (...) {
+				response.setResult("ERROR");
+			}
+		} else if (method == "unload") {
+			try {
+				auto label = request.getParam(0);
+				if (manager_unload_job(label.c_str()) == 0) {
+					response.setResult("OK");
+				} else {
+					throw "failed to unload job";
+				}
 			} catch (...) {
 				response.setResult("ERROR");
 			}
