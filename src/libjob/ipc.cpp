@@ -109,10 +109,9 @@ void ipcSession::readRequest() {
 	try {
 		this->request.parse(std::string(buf));
 	} catch (...) {
-		log_error("request parsing failed");
+		log_error("request parsing failed; buf=%s", buf);
 		throw;
 	}
-	log_debug("client path: %s", this->client_sa.sun_path);
 }
 
 ipcSession ipcServer::acceptConnection() {
@@ -140,15 +139,16 @@ void ipcSession::close() {
 }
 
 void ipcClient::dispatch(jsonRpcRequest request, jsonRpcResponse& response) {
-
+	request.validate();
 	std::string bufstr = request.dump();
-	if (write(this->sockfd, bufstr.c_str(), bufstr.length()) < 0)
+	if (write(this->sockfd, bufstr.c_str(), bufstr.length() + 1) < 0)
 		throw std::system_error(errno, std::system_category());
 
 	char cbuf[9999]; // XXX-HORRIBLE HARDCODED BUFFER SIZE
 	ssize_t bytes = read(this->sockfd, &cbuf, sizeof(cbuf));
 	if (bytes < 0)
 		throw std::system_error(errno, std::system_category());
+	//TODO: set response
 }
 
 ipcSession::ipcSession(int server_fd, struct sockaddr_un sa) {

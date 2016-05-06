@@ -27,29 +27,49 @@ namespace libjob {
 
 	class jsonRpcRequest {
 	public:
-		jsonRpcRequest() {}
+		jsonRpcRequest() {
+			this->request["jsonrpc"] = "2.0";
+			this->request["params"] = json::array();
+		}
+
+#if 0
 		jsonRpcRequest(std::string buf) {
 			this->parse(buf);
 		}
 
+
 		jsonRpcRequest(unsigned int id, std::string method) {
-			request["jsonrpc"] = "2.0",
+			request["jsonrpc"] = "2.0";
 			request["id"] = id;
 			request["method"] = method;
 			request["params"] = json::array();
+		}
+#endif
+
+		void parse(std::string buf) {
+			this->request = json::parse(buf);
 		}
 
 		void addParam(std::string value) {
 			request["params"].push_back(value);
 		}
 
-		void parse(std::string buf) { this->request = json::parse(buf); }
-		std::string getParam(unsigned int where) { return this->request["params"][where]; }
+		std::string getParam(unsigned int where) {
+			return this->request["params"][where];
+		}
 
 		unsigned int id() { return this->request["id"]; }
 		std::string method() { return this->request["method"]; }
 
 		std::string dump() { return this->request.dump(); }
+
+		void setId(unsigned int id) { this->request["id"] = id; }
+		void setMethod(std::string name) { this->request["method"] = name; }
+
+		void validate() {
+			//std::cout << this->request << std::endl;
+			// todo: ensure method and id are present
+		}
 
 	private:
 		json request;

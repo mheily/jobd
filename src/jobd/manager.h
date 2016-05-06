@@ -17,6 +17,8 @@
 #ifndef MANAGER_H_
 #define MANAGER_H_
 
+#include <string>
+
 #include "job.h"
 #include "pidfile.h"
 
@@ -51,6 +53,11 @@ void manager_free_job(job_t job);
  * Wake up a job that has been waiting for an external event.
  */
 int manager_wake_job(job_t job);
+
+/**
+ * Load a job from a file
+ */
+void manager_load_job(std::string path);
 
 void manager_init(struct pidfh *);
 void manager_update_jobs();

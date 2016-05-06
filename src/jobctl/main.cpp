@@ -80,17 +80,36 @@ main(int argc, char *argv[])
 	try {
 		std::unique_ptr<libjob::ipcClient> ipc_client(new libjob::ipcClient(jobd_config->socketPath));
 		libjob::jsonRpcResponse response;
+		libjob::jsonRpcRequest request;
+
+		request.setId(1); // Not used
+
+		if (argc < 1)
+			throw "insufficient arguments";
 
 		for (int i = 0; i < argc; i++) {
-			std::string arg = std::string(argv[i]);
-			if (arg == "load") {
-				libjob::jsonRpcRequest request(1, "load");
-				request.addParam(std::string(argv[i+1]));
-				ipc_client->dispatch(request, response);
-				i++;
+			std::string label = std::string(argv[i]);
+			i++;
+			std::string command = std::string(argv[i]);
+			i++;
+
+			request.setMethod(command);
+			std::cout << label << command << '\n';
+			if (command == "load") {
+				char *resolved_path = realpath(label.c_str(), NULL);
+				std::string path(resolved_path);
+				free(resolved_path);
+				request.addParam(path);
+			} else if (command == "unload") {
+				request.addParam(label);
 			} else {
-				puts(arg.c_str());
+				puts(command.c_str());
+				throw "unexpected argument";
 			}
+			puts(request.dump().c_str());
+			ipc_client->dispatch(request, response);
+			//TODO: handle response
+			break;
 		}
 
 

@@ -51,7 +51,9 @@ const int launchd_signals[5] = {
 static void setup_job_dirs();
 static void setup_signal_handlers();
 static void setup_logging();
+void update_jobs(void);
 static void do_shutdown();
+static job_manifest_t read_job(std::string path);
 
 struct pidfh *pidfile_handle;
 launchd_options_t options;
@@ -65,9 +67,8 @@ libjob::jobdConfig* jobd_config;
 static int main_kqfd = -1;
 
 static job_manifest_t
-read_job(const char *filename)
+read_job(std::string path)
 {
-	char path[PATH_MAX], rename_to[PATH_MAX];
 	job_manifest_t jm = NULL;
 
 	jm = job_manifest_new();
@@ -76,17 +77,9 @@ read_job(const char *filename)
 		return NULL;
 	}
 
-	path_sprintf(&rename_to, "%s/%s", options.activedir, filename);
-
-	log_debug("loading %s", path);
-	if (job_manifest_read(jm, path) < 0) {
+	log_debug("loading %s", path.c_str());
+	if (job_manifest_read(jm, path.c_str()) < 0) {
 		log_error("parse error");
-		job_manifest_free(jm);
-		return NULL;
-	}
-
-	if (rename(path, rename_to) != 0) {
-		log_errno("rename(2) of %s to %s", path, rename_to);
 		job_manifest_free(jm);
 		return NULL;
 	}
@@ -96,12 +89,21 @@ read_job(const char *filename)
 	return jm;
 }
 
+void manager_load_job(std::string path) {
+	job_manifest_t jm = read_job(path);
+	if (jm) {
+		LIST_INSERT_HEAD(&pending, jm, jm_le);
+		update_jobs();
+	} else {
+		throw "Unable to read job";
+	}
+}
+
+//FIXME: doesnt do anything anymore
 static ssize_t poll_watchdir()
 {
 	DIR	*dirp;
 	struct dirent entry, *result;
-	job_manifest_t jm;
-	ssize_t found_jobs = 0;
 	char *ext;
 
 	if ((dirp = opendir(jobd_config->jobdir.c_str())) == NULL)
@@ -119,14 +121,7 @@ static ssize_t poll_watchdir()
 			log_error("skipping %s: no file extension", entry.d_name);
 			continue;
 		}
-		if (strcmp(ext, ".load") == 0) {
-			jm = read_job(entry.d_name);
-			if (jm) {
-				LIST_INSERT_HEAD(&pending, jm, jm_le);
-				found_jobs++;
-			} else {
-				// note the failure?
-			}
+
 #if 0
 		} else if (strcmp(ext, ".unload") == 0) {
 			char *path;
@@ -149,12 +144,10 @@ static ssize_t poll_watchdir()
 			}
 		} else {
 #endif
-			log_error("skipping %s: unsupported file extension", entry.d_name);
-		}
 	}
 	if (closedir(dirp) < 0)
 		err(1, "closedir(3)");
-	return (found_jobs);
+	return (0);
 }
 
 void update_jobs(void)

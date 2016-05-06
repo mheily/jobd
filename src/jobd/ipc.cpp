@@ -17,6 +17,7 @@
 #include <sys/types.h>
 #include <sys/event.h>
 
+#include "manager.h"
 #include "ipc.h"
 #include "../libjob/ipc.h"
 #include "../libjob/job.h"
@@ -61,9 +62,14 @@ void ipc_request_handler(void) {
 
 		auto method = request.method();
 		if (method == "load") {
-			auto path = request.getParam(0);
-			log_debug("got IPC request: %s %s", method.c_str(), path.c_str());
-			response.setResult("OK");
+			try {
+				auto path = request.getParam(0);
+				log_debug("got IPC request: %s %s", method.c_str(), path.c_str());
+				manager_load_job(path);
+				response.setResult("OK");
+			} catch (...) {
+				response.setResult("ERROR");
+			}
 		} else {
 			log_error("bad method");
 			// TODO: response.setError();
