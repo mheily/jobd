@@ -14,8 +14,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef JOB_H_
-#define JOB_H_
+#pragma once
+
+#include <string>
+#include <nlohmann/json.hpp>
 
 #include <grp.h>
 #include <pwd.h>
@@ -24,6 +26,45 @@
 #include <unistd.h>
 
 #include "manifest.h"
+#include "../libjob/namespaceImport.hpp"
+#include "../libjob/manifest.hpp"
+
+class Job {
+public:
+	Job() {}
+
+	Job(const string label)
+	{
+		this->setLabel(label);
+	}
+
+	~Job() {}
+
+	bool operator<(const Job& j) const
+	{
+		return j.label < this->label;
+	}
+
+	string getLabel() const
+	{
+		return label;
+	}
+
+	void setLabel(string label)
+	{
+		this->label = label;
+	}
+
+	void parseManifest(const string path)
+	{
+		this->manifest.readFile(path);
+		this->setLabel(this->manifest.getLabel());
+	}
+
+private:
+	string label = "__invalid_label__";
+	libjob::Manifest manifest;
+};
 
 extern const int launchd_signals[];
 
@@ -47,7 +88,16 @@ struct job {
 	LIST_ENTRY(job)	joblist_entry;
 	SLIST_ENTRY(job) start_interval_sle;
 	SLIST_ENTRY(job) watchdog_sle;
+
+	//DEADWOOD
 	job_manifest_t jm;
+
+	/** Full path to the JSON file containing the manifest */
+	std::string jobdir_path;
+
+	/** A parsed JSON manifest */
+	libjob::Manifest manifest;
+
 	job_state_t state;
 	pid_t pid;
 	int last_exit_status, term_signal;
@@ -67,5 +117,3 @@ job_is_runnable(job_t job)
 {
 	return (job->state == JOB_STATE_LOADED && job->jm->run_at_load);
 }
-
-#endif /* JOB_H_ */

@@ -22,7 +22,7 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 
-#ifdef __FreeBSD
+#ifdef __FreeBSD__
 #include <sys/jail.h>
 #include "/usr/include/jail.h"
 #endif

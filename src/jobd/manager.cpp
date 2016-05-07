@@ -42,6 +42,7 @@ extern "C" {
 #include "util.h"
 
 #include "../libjob/job.h"
+#include "../libjob/namespaceImport.hpp"
 
 /* A list of signals that are meaningful to launchd(8) itself. */
 const int launchd_signals[5] = {
@@ -51,14 +52,14 @@ const int launchd_signals[5] = {
 static void setup_job_dirs();
 static void setup_signal_handlers();
 static void setup_logging();
-void update_jobs(void);
+void run_pending_jobs(void);
 static void do_shutdown();
-static job_manifest_t read_job(std::string path);
 
 struct pidfh *pidfile_handle;
 launchd_options_t options;
 
-static LIST_HEAD(,job_manifest) pending; /* Jobs that have been submitted but not loaded */
+static map<string,unique_ptr<Job>> all_jobs;
+
 static LIST_HEAD(,job) jobs;			/* All active jobs */
 
 libjob::jobdConfig* jobd_config;
@@ -66,47 +67,43 @@ libjob::jobdConfig* jobd_config;
 /* The kqueue descriptor used by main_loop() */
 static int main_kqfd = -1;
 
-static job_manifest_t
-read_job(std::string path)
+void manager_init(struct pidfh *pfh)
 {
-	job_manifest_t jm = NULL;
+	pidfile_handle = pfh;
+	LIST_INIT(&jobs);
 
-	jm = job_manifest_new();
-	if (!jm) {
-		log_error("job_manifest_new()");
-		return NULL;
+	try {
+		 jobd_config = new libjob::jobdConfig();
 	}
-
-	log_debug("loading %s", path.c_str());
-	if (job_manifest_read(jm, path.c_str()) < 0) {
-		log_error("parse error");
-		job_manifest_free(jm);
-		return NULL;
+	catch (...) {
+		errx(1, "libjob failed to init");
 	}
-
-	log_debug("defined job: %s", jm->label);
-
-	return jm;
+	if ((main_kqfd = kqueue()) < 0)
+		err(1, "kqueue(2)");
+	setup_logging();
+	setup_signal_handlers();
+	setup_socket_activation(main_kqfd);
+	setup_job_dirs();
+	if (keepalive_init(main_kqfd) < 0)
+		errx(1, "keepalive_init()");
+	if (setup_timers(main_kqfd) < 0)
+		errx(1, "setup_timers()");
+	if (calendar_init(main_kqfd) < 0)
+		errx(1, "calendar_init()");
+	if (ipc_init(main_kqfd) < 0)
+		errx(1, "ipc_init()");
 }
 
-void manager_load_job(std::string path) {
-	job_manifest_t jm = read_job(path);
-	if (jm) {
-		LIST_INSERT_HEAD(&pending, jm, jm_le);
-		update_jobs();
-	} else {
-		throw "Unable to read job";
-	}
-}
-
-//FIXME: doesnt do anything anymore
 static ssize_t poll_watchdir()
 {
 	DIR	*dirp;
 	struct dirent entry, *result;
-	char *ext;
+	size_t job_count = 0;
+	size_t pending_jobs = 0;
+	const char *jobdir = jobd_config->jobdir.c_str();
 
-	if ((dirp = opendir(jobd_config->jobdir.c_str())) == NULL)
+	log_debug("scanning %s for jobs", jobdir);
+	if ((dirp = opendir(jobdir)) == NULL)
 		err(1, "opendir(3)");
 
 	while (dirp) {
@@ -116,42 +113,40 @@ static ssize_t poll_watchdir()
 		if (strcmp(entry.d_name, ".") == 0 || strcmp(entry.d_name, "..") == 0) {
 			continue;
 		}
-		ext = strrchr(entry.d_name, '.');
-		if (!ext) {
-			log_error("skipping %s: no file extension", entry.d_name);
-			continue;
-		}
 
-#if 0
-		} else if (strcmp(ext, ".unload") == 0) {
-			char *path;
-			if (asprintf(&path, "%s/%s", options.watchdir, entry.d_name) < 0) {
-				log_errno("asprintf");
+		std::string path = jobd_config->jobdir + "/"
+				+ std::string(entry.d_name);
+		try {
+			log_debug("parsing %s", path.c_str());
+			unique_ptr<Job> job(new Job);
+			job->parseManifest(path);
+			if (!all_jobs.insert(std::make_pair(job->getLabel(), std::move(job))).second) {
+				log_error("Duplicate label detected");
 				continue;
+			} else {
+				pending_jobs++;
 			}
-			if (unlink(path) < 0) {
-				log_errno("unlink(2) of %s", path);
-				free(path);
-				continue;
-			}
-			free(path);
-			char *dot = strrchr(entry.d_name, '.');
-			if (dot) {
-				*dot = '\0';
-			}
-			if (manager_unload_job(entry.d_name) < 0) {
-				log_error("unable to unload job: %s", entry.d_name);
-			}
-		} else {
-#endif
+		} catch (std::exception& e) {
+			log_error("error parsing %s: %s", path.c_str(), e.what());
+		}
+		job_count++;
 	}
 	if (closedir(dirp) < 0)
 		err(1, "closedir(3)");
+
+	log_debug("finished scanning jobs: total=%zu new=%zu", job_count, pending_jobs);
+
+	if (pending_jobs > 0) {
+		run_pending_jobs();
+	}
+
 	return (0);
 }
 
-void update_jobs(void)
+void run_pending_jobs(void)
 {
+//fixme
+#if 0
 	job_manifest_t jm, jm_tmp;
 	job_t job, job_tmp;
 	LIST_HEAD(,job) joblist;
@@ -190,6 +185,7 @@ void update_jobs(void)
 		LIST_REMOVE(job, joblist_entry);
 		LIST_INSERT_HEAD(&jobs, job, joblist_entry);
 	}
+#endif
 }
 
 int manager_wake_job(job_t job)
@@ -338,37 +334,12 @@ manager_unload_all_jobs()
 	}
 }
 
-void manager_init(struct pidfh *pfh)
-{
-	pidfile_handle = pfh;
-	LIST_INIT(&jobs);
 
-	try {
-		 jobd_config = new libjob::jobdConfig();
-	}
-	catch (...) {
-		errx(1, "libjob failed to init");
-	}
-	if ((main_kqfd = kqueue()) < 0)
-		err(1, "kqueue(2)");
-	setup_logging();
-	setup_signal_handlers();
-	setup_socket_activation(main_kqfd);
-	setup_job_dirs();
-	if (keepalive_init(main_kqfd) < 0)
-		errx(1, "keepalive_init()");
-	if (setup_timers(main_kqfd) < 0)
-		errx(1, "setup_timers()");
-	if (calendar_init(main_kqfd) < 0)
-		errx(1, "calendar_init()");
-	if (ipc_init(main_kqfd) < 0)
-		errx(1, "ipc_init()");
-}
 
 void manager_update_jobs()
 {
 	if (poll_watchdir() > 0) {
-		update_jobs();
+		run_pending_jobs();
 	}
 }
 

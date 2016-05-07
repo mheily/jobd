@@ -16,7 +16,13 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
+#include <nlohmann/json.hpp>
+#include <string>
+#include <streambuf>
+
+using json = nlohmann::json;
 
 extern "C" {
 	#include <getopt.h>
@@ -25,6 +31,16 @@ extern "C" {
 #include "../libjob/job.h"
 
 static std::unique_ptr<libjob::jobdConfig> jobd_config(new libjob::jobdConfig);
+
+static void read_manifest(const std::string path) {
+	try {
+		std::cout << path << '\n';
+		std::ifstream ifs(path);
+		std::stringstream buf;
+		buf << ifs.rdbuf();
+	} catch (const std::invalid_argument& ia) {
+	}
+}
 
 void usage() {
 	std::cout <<
@@ -95,10 +111,12 @@ main(int argc, char *argv[])
 
 			request.setMethod(command);
 			if (command == "load") {
-				char *resolved_path = realpath(label.c_str(), NULL);
-				std::string path(resolved_path);
-				free(resolved_path);
-				request.addParam(path);
+				//char *resolved_path = realpath(label.c_str(), NULL);
+				//std::string path(resolved_path);
+				//free(resolved_path);
+				//request.addParam(path);
+				read_manifest(label);
+				throw "XXX-TESTING";
 			} else if (command == "unload") {
 				request.addParam(label);
 			} else {

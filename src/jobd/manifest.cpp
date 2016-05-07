@@ -14,6 +14,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+
+#include <string>
+
 #include <grp.h>
 #include <pwd.h>
 #include <string.h>
@@ -648,8 +651,15 @@ int job_manifest_read(job_manifest_t job_manifest, const char *filename)
 	if (!rc)
 		rc = job_manifest_parse(job_manifest, buf, buf_size);
 
+	std::string buf_s = std::string((const char *)buf);
 	free(buf);
-
+	try {
+		printf("%s\n", buf_s.c_str());
+		job_manifest->json = json::parse(buf_s);
+	} catch(...) {
+		log_error("json::parse failed");
+		throw;
+	}
 	return rc;
 }
 

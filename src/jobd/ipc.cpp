@@ -62,13 +62,10 @@ void ipc_request_handler(void) {
 
 		auto method = request.method();
 		if (method == "load") {
-			try {
-				auto path = request.getParam(0);
-				manager_load_job(path);
-				response.setResult("OK");
-			} catch (...) {
+//deadwood
+				log_error("manager_load_job() failed");
 				response.setResult("ERROR");
-			}
+#if 0
 		} else if (method == "unload") {
 			try {
 				auto label = request.getParam(0);
@@ -80,6 +77,7 @@ void ipc_request_handler(void) {
 			} catch (...) {
 				response.setResult("ERROR");
 			}
+#endif
 		} else {
 			log_error("bad method");
 			// TODO: response.setError();
