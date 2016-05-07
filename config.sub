@@ -559,12 +559,13 @@ emit_distclean() {
 emit_subdir_rules() {
 	if [ -z "$SUBDIRS" ] ; then return ; fi
 
-	_mf_default_target="$_mf_default_target
-	for dir in $SUBDIRS ; do cd \$\$dir && \$(MAKE) all && cd .. ; done
-"
+	_mf_default_target="${_mf_default_target}${lf}"
+	_mf_install_rules="${_mf_install_rules}${lf}" 
 
-	_mf_install_rules="$_mf_install_rules
-	for dir in $SUBDIRS ; do cd \$\$dir && \$(MAKE) install && cd .. ; done"
+	for _es_dir in $SUBDIRS ; do
+		_mf_default_target="${_mf_default_target}	\$(MAKE) -C $_es_dir all${lf}" 
+		_mf_install_rules="${_mf_install_rules}	\$(MAKE) -C $_es_dir install${lf}" 
+	done
 }
 
 emit_platform_tweaks() {
