@@ -44,25 +44,35 @@ void Manifest::readFile(const string path)
 }
 
 void Manifest::normalize() {
-	// TODO: would be nice, but running into some datatype conversion issues
-
 	auto default_json = R"(
 	  {
+            "EnableGlobbing": false,
+            "EnvironmentVariables": [],
+	    "KeepAlive": false,               
+	    "InitGroups": true,
+	    "RootDirectory": "/",
 	    "RunAtLoad": false,
-            "EnableGlobbing": false
+	    "Sockets": {},
+            "StandardErrorPath": "/dev/null",
+            "StandardInPath": "/dev/null",
+            "StandardOutPath": "/dev/null",
+            "StartInterval": 0,
+            "ThrottleInterval": 10,
+            "Umask": "022",
+            "WorkingDirectory": "/"
 	  }
 	)"_json;
 
-	log_debug("BUF===%s", this->json.dump().c_str());
+/* TODO:
+ * groupname, username
+ */
+
+	// Add default values for missing keys
 	for (json::iterator it = default_json.begin(); it != default_json.end(); ++it) {
 		if (this->json.count(it.key()) == 0) {
-			log_debug("setting default value for %s", it.key().c_str());
-			//raises error: type must be string, but is boolean
 			this->json[it.key()] = it.value();
 		}
 	}
-
-	//if (this->json.count())
 }
 
 }
