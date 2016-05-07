@@ -28,7 +28,7 @@ extern "C" {
 }
 
 #include "ipc.h"
-#include "../jobd/log.h"
+#include "logger.h"
 
 namespace libjob {
 

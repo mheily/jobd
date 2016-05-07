@@ -20,8 +20,9 @@
 #include <vector>
 #include <ucl.h>
 
-#include "log.h"
+#include <libjob/logger.h>
 #include "chroot.h"
+
 #include "util.h"
 
 class ChrootJail {

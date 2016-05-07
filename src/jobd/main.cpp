@@ -35,7 +35,7 @@
 
 #include "config.h"
 #include "calendar.h"
-#include "log.h"
+#include <libjob/logger.h>
 #include "manager.h"
 #include "manifest.h"
 #include "options.h"

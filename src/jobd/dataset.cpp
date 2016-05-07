@@ -20,7 +20,7 @@
 #include <vector>
 #include <ucl.h>
 
-#include "log.h"
+#include <libjob/logger.h>
 #include "dataset.h"
 #include "util.h"
 

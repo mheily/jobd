@@ -28,7 +28,7 @@
 #endif
 
 #include "config.h"
-#include "log.h"
+#include <libjob/logger.h>
 #include "jail.h"
 
 /* Global options for jails */

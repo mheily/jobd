@@ -26,7 +26,7 @@
 #include <time.h>
 
 #include "clock.h"
-#include "log.h"
+#include <libjob/logger.h>
 #include "manager.h"
 #include "calendar.h"
 #include "job.h"

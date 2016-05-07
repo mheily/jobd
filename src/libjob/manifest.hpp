@@ -24,11 +24,16 @@ namespace libjob
 class Manifest
 {
 public:
+	json json;
+
 	Manifest()
 	{
 	}
 
 	void readFile(const string path);
+
+	/** Convert datatypes and provide default values for missing keys. */
+	void normalize();
 
 	Manifest(const string label)
 	{
@@ -57,6 +62,5 @@ public:
 private:
 	string label = "__invalid_label__";
 	string path;
-	json json;
 };
 }

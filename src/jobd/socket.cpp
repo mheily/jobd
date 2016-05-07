@@ -21,7 +21,7 @@
 #include <sys/types.h>
 #include <sys/event.h>
 
-#include "log.h"
+#include <libjob/logger.h>
 #include "job.h"
 #include "manager.h"
 #include "socket.h"

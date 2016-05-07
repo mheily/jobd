@@ -33,7 +33,7 @@ extern "C" {
 #include "calendar.h"
 #include "dataset.h"
 #include "job.h"
-#include "log.h"
+#include <libjob/logger.h>
 #include "manager.h"
 #include "socket.h"
 #include "timer.h"
@@ -479,6 +479,14 @@ void job_free(job_t job)
 	free(job);
 }
 
+void Job::load() {
+	//TODO: sockets
+	//TODO: schedule and timer
+	this->setState(JOB_STATE_LOADED);
+	log_debug("loaded %s", this->getLabel().c_str());
+}
+
+// FIXME: port to new job_load
 int job_load(job_t job)
 {
 	struct job_manifest_socket *jms;
@@ -539,6 +547,10 @@ int job_unload(job_t job)
 		chroot_jail_unload_handler(job->jm->chroot_jail);
 
 	return 0;
+}
+
+void Job::run() {
+	log_error("STUB");
 }
 
 int job_run(job_t job)

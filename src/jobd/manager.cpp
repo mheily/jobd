@@ -31,7 +31,7 @@ extern "C" {
 
 #include "calendar.h"
 #include "ipc.h"
-#include "log.h"
+#include <libjob/logger.h>
 #include "job.h"
 #include "keepalive.h"
 #include "manager.h"
@@ -145,6 +145,28 @@ static ssize_t poll_watchdir()
 
 void run_pending_jobs(void)
 {
+	/* Pass #1: load all jobs */
+	for (auto& it : all_jobs) {
+		const string &label = it.first;
+		unique_ptr<Job>& job = it.second;
+
+		if (job->getState() == JOB_STATE_DEFINED) {
+			log_debug("loading job: %s", label.c_str());
+			job->load();
+		}
+	}
+
+	/* Pass #2: run all loaded jobs that are runnable */
+	for (auto& it : all_jobs) {
+		const string &label = it.first;
+		unique_ptr<Job>& job = it.second;
+
+		if (job->getState() == JOB_STATE_LOADED && job->isRunnable()) {
+			log_debug("running job: %s", label.c_str());
+			job->run();
+		}
+	}
+
 //fixme
 #if 0
 	job_manifest_t jm, jm_tmp;

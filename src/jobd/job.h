@@ -28,10 +28,29 @@
 #include "manifest.h"
 #include "../libjob/namespaceImport.hpp"
 #include "../libjob/manifest.hpp"
+#include "../libjob/logger.h"
+
+typedef enum e_job_state {
+	/** The job is invalid in some way; e.g. a syntax error in the manifest */
+	JOB_STATE_INVALID,
+
+	/** The job has been parsed, but nothing more. */
+	JOB_STATE_DEFINED,
+
+	/** The load() method has been invoked. */
+	JOB_STATE_LOADED,
+
+	JOB_STATE_WAITING,
+	JOB_STATE_RUNNING,
+	JOB_STATE_KILLED,
+	JOB_STATE_EXITED,
+} job_state_t;
 
 class Job {
 public:
-	Job() {}
+	Job() {
+		this->setState(JOB_STATE_INVALID);
+	}
 
 	Job(const string label)
 	{
@@ -57,13 +76,43 @@ public:
 
 	void parseManifest(const string path)
 	{
-		this->manifest.readFile(path);
-		this->setLabel(this->manifest.getLabel());
+		try {
+			this->manifest.readFile(path);
+			this->setLabel(this->manifest.getLabel());
+			this->setState(JOB_STATE_DEFINED);
+		} catch (...) {
+			log_error("readFile() failed");
+			this->setState(JOB_STATE_INVALID);
+		}
 	}
+
+	enum e_job_state getState() const
+	{
+		return state;
+	}
+
+	void setState(enum e_job_state state)
+	{
+		this->state = state;
+	}
+
+	bool isRunnable() const
+	{
+		if (this->state == JOB_STATE_LOADED) {
+			bool runAtLoad = this->manifest.json["RunAtLoad"];
+			return runAtLoad;
+		} else {
+			return false;
+		}
+	}
+
+	void load();
+	void run();
 
 private:
 	string label = "__invalid_label__";
 	libjob::Manifest manifest;
+	enum e_job_state state;
 };
 
 extern const int launchd_signals[];
@@ -75,14 +124,6 @@ typedef enum {
 	JOB_SCHEDULE_KEEPALIVE
 } job_schedule_t;
 
-typedef enum e_job_state {
-	JOB_STATE_DEFINED,
-	JOB_STATE_LOADED,
-	JOB_STATE_WAITING,
-	JOB_STATE_RUNNING,
-	JOB_STATE_KILLED,
-	JOB_STATE_EXITED,
-} job_state_t;
 
 struct job {
 	LIST_ENTRY(job)	joblist_entry;
@@ -111,9 +152,3 @@ void	job_free(job_t job);
 int	job_load(job_t job);
 int	job_unload(job_t job);
 int	job_run(job_t job);
-
-static inline int
-job_is_runnable(job_t job)
-{
-	return (job->state == JOB_STATE_LOADED && job->jm->run_at_load);
-}

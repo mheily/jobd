@@ -34,7 +34,35 @@ void Manifest::readFile(const string path)
 		log_error("error parsing %s: %s", path.c_str(), e.what());
 		throw;
 	}
-	this->label = json["Label"];
+	try {
+		this->normalize();
+	} catch (std::exception& e) {
+		log_error("normalization failed: %s", e.what());
+		throw;
+	}
+	this->label = this->json["Label"];
+}
+
+void Manifest::normalize() {
+	// TODO: would be nice, but running into some datatype conversion issues
+
+	auto default_json = R"(
+	  {
+	    "RunAtLoad": false,
+            "EnableGlobbing": false
+	  }
+	)"_json;
+
+	log_debug("BUF===%s", this->json.dump().c_str());
+	for (json::iterator it = default_json.begin(); it != default_json.end(); ++it) {
+		if (this->json.count(it.key()) == 0) {
+			log_debug("setting default value for %s", it.key().c_str());
+			//raises error: type must be string, but is boolean
+			this->json[it.key()] = it.value();
+		}
+	}
+
+	//if (this->json.count())
 }
 
 }

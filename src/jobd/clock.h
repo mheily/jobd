@@ -21,7 +21,7 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include "log.h"
+#include <libjob/logger.h>
 
 #if defined(__MACH__)
 #include "../vendor/PosixMachTiming/src/timing_mach.h"

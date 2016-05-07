@@ -25,7 +25,7 @@
 #include <unistd.h>
 
 #include "cvec.h"
-#include "log.h"
+#include <libjob/logger.h>
 #include "manifest.h"
 #include "chroot.h"
 #include "dataset.h"

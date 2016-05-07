@@ -21,7 +21,7 @@
 #include <unistd.h>
 
 #include "clock.h"
-#include "log.h"
+#include <libjob/logger.h>
 #include "keepalive.h"
 #include "job.h"
 

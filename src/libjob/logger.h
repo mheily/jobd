@@ -37,13 +37,14 @@ extern "C" {
 /* Logging */
 extern FILE *logfile;
 
+
 #define _log_all(level, format,...) do {				\
 	if (logfile != NULL) {						\
-		fprintf(stdout, "%s(%s:%d): " format "\n",		\
-			__func__, __FILE__, __LINE__, ## __VA_ARGS__);	\
+		fprintf(stdout, "%s: " format "\n",		\
+				 __PRETTY_FUNCTION__, ## __VA_ARGS__);	\
 	} else {							\
-		syslog(level, "%s(%s:%d): " format "\n",			\
-			__func__, __FILE__, __LINE__, ## __VA_ARGS__);	\
+		syslog(level, "%s: " format "\n",			\
+				 __PRETTY_FUNCTION__, ## __VA_ARGS__);	\
 	}								\
 } while (0)
 

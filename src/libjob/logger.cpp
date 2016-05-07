@@ -19,3 +19,10 @@
 
 FILE *logfile;
 
+void
+log_freopen(FILE *new_logfile)
+{
+        if (logfile)
+                fclose(logfile);
+        logfile = new_logfile;
+}
