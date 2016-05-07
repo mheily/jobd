@@ -40,6 +40,7 @@ extern "C" {
 #include "util.h"
 
 
+static int start_child_process(const Job& job);
 static int job_acquire_resources(job_t job);
 extern void keepalive_remove_job(struct job *job);
 
@@ -49,45 +50,47 @@ static void job_dump(job_t job) {
 	log_debug("job dump: label=%s state=%d", job->jm->label, job->state);
 }
 
-static int apply_resource_limits(const job_t job) {
+void Job::apply_resource_limits() {
 	//TODO - SoftResourceLimits, HardResourceLimits
 	//TODO - LowPriorityIO
 
-	if (job->jm->nice != 0) {
-		if (setpriority(PRIO_PROCESS, 0, job->jm->nice) < 0) {
-			log_errno("setpriority(2) to nice=%d", job->jm->nice);
-			return (-1);
+	int nice = this->manifest.json["Nice"];
+	if (nice != 0) {
+		log_debug("calling setpriority(2) to set nice value = %d", nice);
+		if (setpriority(PRIO_PROCESS, 0, nice) < 0) {
+			log_errno("setpriority(2)");
+			throw std::system_error(errno, std::system_category());
 		}
 	}
-
-	return (0);
 }
 
-static inline int modify_credentials(job_t const job, const struct passwd *pwent, const struct group *grent)
-{
-	if (getuid() != 0) return (0);
+void Job::modify_credentials() {
+	if (getuid() != 0)
+		return;
 
-	log_debug("setting credentials: uid=%d gid=%d", pwent->pw_uid, grent->gr_gid);
+	const char* user_name = this->manifest.json["UserName"].get<string>().c_str();
 
-	if (initgroups(job->jm->user_name, grent->gr_gid) < 0) {
-		log_errno("initgroups");
-		return (-1);
+	log_debug("setting credentials: username=%s uid=%d gid=%d",
+			user_name, this->uid, this->gid);
+
+	if (initgroups(user_name, this->gid) < 0) {
+		log_errno("initgroups(3)");
+		throw std::system_error(errno, std::system_category());
 	}
-	if (setgid(grent->gr_gid) < 0) {
-		log_errno("setgid");
-		return (-1);
+	if (setgid(this->gid) < 0) {
+		log_errno("setgid(2)");
+		throw std::system_error(errno, std::system_category());
 	}
 #ifndef __GLIBC__
-	if (setlogin(job->jm->user_name) < 0) {
-		log_errno("setlogin");
-		return (-1);
+	if (setlogin(user_name) < 0) {
+		log_errno("setlogin(2)");
+		throw std::system_error(errno, std::system_category());
 	}
 #endif
-	if (setuid(pwent->pw_uid) < 0) {
+	if (setuid(this->uid) < 0) {
 		log_errno("setuid");
-		return (-1);
+		throw std::system_error(errno, std::system_category());
 	}
-	return (0);
 }
 
 
@@ -314,49 +317,61 @@ err_out:
 	return -1;
 }
 
-static inline int
-redirect_stdio(job_t job)
-{
+void Job::redirect_stdio() {
 	int fd;
 
-	if (job->jm->stdin_path) {
-		log_debug("setting stdin path to %s", job->jm->stdin_path);
-		fd = open(job->jm->stdin_path, O_RDONLY);
-		if (fd < 0) goto err_out;
-		if (dup2(fd, STDIN_FILENO) < 0) {
-			log_errno("dup2(2)");
-			(void) close(fd);
-			goto err_out;
-		}
-		if (close(fd) < 0) goto err_out;
+	// TODO: simplify this by using .get<string>().c_str
+	const char *stdin_path = this->manifest.json["StandardInPath"].get<string>().c_str();
+	const char *stdout_path = this->manifest.json["StandardOutPath"].get<string>().c_str();
+	const char *stderr_path = this->manifest.json["StandardErrorPath"].get<string>().c_str();
+
+	log_debug("setting stdin path to %s", stdin_path);
+	fd = open(stdin_path, O_RDONLY);
+	if (fd < 0) {
+		log_errno("open(2) of %s", stdin_path);
+		throw std::system_error(errno, std::system_category());
 	}
-	if (job->jm->stdout_path) {
-		log_debug("setting stdout path to %s", job->jm->stdout_path);
-		fd = open(job->jm->stdout_path, O_CREAT | O_WRONLY, 0600);
-		if (fd < 0) goto err_out;
-		if (dup2(fd, STDOUT_FILENO) < 0) {
-			log_errno("dup2(2)");
-			(void) close(fd);
-			goto err_out;
-		}
-		if (close(fd) < 0) goto err_out;
+	if (dup2(fd, STDIN_FILENO) < 0) {
+		log_errno("dup2(2) of stdin");
+		int saved_errno = errno;
+		(void) close(fd);
+		throw std::system_error(saved_errno, std::system_category());
 	}
-	if (job->jm->stderr_path) {
-		log_debug("setting stderr path to %s", job->jm->stderr_path);
-		fd = open(job->jm->stderr_path, O_CREAT | O_WRONLY, 0600);
-		if (fd < 0) goto err_out;
-		if (dup2(fd, STDERR_FILENO) < 0) {
-			log_errno("dup2(2)");
-			(void) close(fd);
-			goto err_out;
-		}
-		if (close(fd) < 0) goto err_out;
+	if (close(fd) < 0) {
+		throw std::system_error(errno, std::system_category());
 	}
 
-	return 0;
+	log_debug("setting stdout path to %s", stdout_path);
+	fd = open(stdout_path, O_CREAT | O_WRONLY, 0600);
+	if (fd < 0) {
+		log_errno("open(2) of %s", stdout_path);
+		throw std::system_error(errno, std::system_category());
+	}
+	if (dup2(fd, STDOUT_FILENO) < 0) {
+		log_errno("dup2(2) of stdout");
+		int saved_errno = errno;
+		(void) close(fd);
+		throw std::system_error(saved_errno, std::system_category());
+	}
+	if (close(fd) < 0) {
+		throw std::system_error(errno, std::system_category());
+	}
 
-err_out:
-	return -1;
+	log_debug("setting stderr path to %s", stderr_path);
+	fd = open(stderr_path, O_CREAT | O_WRONLY, 0600);
+	if (fd < 0) {
+		log_errno("open(2) of %s", stderr_path);
+		throw std::system_error(errno, std::system_category());
+	}
+	if (dup2(fd, STDERR_FILENO) < 0) {
+		log_errno("dup2(2) of stderr");
+		int saved_errno = errno;
+		(void) close(fd);
+		throw std::system_error(saved_errno, std::system_category());
+	}
+	if (close(fd) < 0) {
+		throw std::system_error(errno, std::system_category());
+	}
 }
 
 int
@@ -384,10 +399,11 @@ reset_signal_handlers()
 	return 0;
 }
 
-static int
-start_child_process(const job_t job, const struct passwd *pwent, const struct group *grent)
+void Job::start_child_process()
 {
 #ifdef __FreeBSD__
+	// TODO: reenable this
+#if 0
 	if (job->jm->jail_name) {
 		log_debug("entering jail %s", job->jm->jail_name);
 		/* XXX-FIXME: hardcoded to JID #1, should lookup the JID from name */
@@ -396,6 +412,7 @@ start_child_process(const job_t job, const struct passwd *pwent, const struct gr
 			return -1;
 		}
 	}
+#endif
 #endif
 
 #ifndef NOFORK
@@ -408,38 +425,40 @@ start_child_process(const job_t job, const struct passwd *pwent, const struct gr
 		log_error("unable to reset signal handlers");
 		goto err_out;
 	}
-	if (apply_resource_limits(job) < 0) {
-		log_error("unable to apply resource limits");
+
+	this->apply_resource_limits();
+
+	const char *cwd = this->manifest.json["WorkingDirectory"].get<string>().c_str();
+	if (chdir(cwd) < 0) {
+		log_error("unable to chdir to %s", cwd);
 		goto err_out;
 	}
-	if (job->jm->working_directory) {
-		if (chdir(job->jm->working_directory) < 0) {
-			log_error("unable to chdir to %s", job->jm->working_directory);
-			goto err_out;
-		}
-	}
+
 	/* TODO: deprecate the root_directory logic in favor of chroot_jail */
-	if (job->jm->root_directory && getuid() == 0) {
-		if (chroot(job->jm->root_directory) < 0) {
-			log_error("unable to chroot to %s", job->jm->root_directory);
+	const char *rootdir = this->manifest.json["RootDirectory"].get<string>().c_str();
+	if (rootdir != nullptr && getuid() == 0) {
+		if (chroot(rootdir) < 0) {
+			log_error("unable to chroot to %s", rootdir);
 			goto err_out;
 		}
 	}
+
+#if 0
+	//TODO
 	if (job->jm->chroot_jail && getuid() == 0) {
 		if (chroot_jail_context_handler(job->jm->chroot_jail) < 0) {
 			log_error("unable to chroot to %s", job->jm->root_directory);
 			goto err_out;
 		}
 	}
-	if (modify_credentials(job, pwent, grent) < 0) {
-		log_error("unable to modify credentials");
-		goto err_out;
-	}
-	(void) umask(job->jm->umask);
-	if (redirect_stdio(job) < 0) {
-		log_error("unable to redirect stdio");
-		goto err_out;
-	}
+#endif
+
+	this->modify_credentials();
+
+	//FIXME: convert string to to mode_t
+	//(void) umask(job->jm->umask);
+
+	this->redirect_stdio();
 
 	if (exec_job(job, pwent) < 0) {
 		log_error("exec_job() failed");
@@ -549,70 +568,65 @@ int job_unload(job_t job)
 	return 0;
 }
 
-void Job::run() {
-	log_error("STUB");
+void Job::acquire_resources() {
+	log_debug("TODO");
+#if 0
+	static int job_acquire_resources(job_t job)
+	{
+		if (job->jm->datasets && dataset_list_load_handler(job->jm->datasets) < 0) {
+			log_error("unable to create datasets");
+			return -1;
+		}
+		if (job->jm->chroot_jail && chroot_jail_load_handler(job->jm->chroot_jail) < 0) {
+			log_error("unable to create chroot(2) jail");
+			return -1;
+		}
+		return 0;
+	}
+#endif
 }
 
-int job_run(job_t job)
-{
-	struct job_manifest_socket *jms;
+void Job::lookup_credentials() {
 	struct passwd *pwent;
 	struct group *grent;
-	pid_t pid;
 
-	if (job_acquire_resources(job) < 0) {
-		log_error("unable to acquire resources for job");
-		return -1;
-
-	}
-	if ((pwent = getpwnam(job->jm->user_name)) == NULL) {
+	string user = this->manifest.json["UserName"];
+	if ((pwent = getpwnam(user.c_str())) == NULL) {
 		log_errno("getpwnam");
-		return (-1);
+		throw std::system_error(errno, std::system_category());
 	}
+	this->uid = pwent->pw_uid;
 
-	if ((grent = getgrnam(job->jm->group_name)) == NULL) {
+	string group = this->manifest.json["GroupName"];
+	if ((grent = getgrnam(group.c_str())) == NULL) {
 		log_errno("getgrnam");
-		return (-1);
+		throw std::system_error(errno, std::system_category());
 	}
+	this->gid = grent->gr_gid;
+}
 
-	// temporary for debugging
-#ifdef NOFORK
-	/* These are unused */
-	(void) pid;
-	(void) jms;
+void Job::run() {
+	this->acquire_resources();
+	this->lookup_credentials();
 
-	(void) start_child_process(job, pwent, grent);
-#else
-	pid = fork();
-	if (pid < 0) {
-		return (-1);
-	} else if (pid == 0) {
-		if (start_child_process(job, pwent, grent) < 0) {
+	this->pid = fork();
+	if (this->pid < 0) {
+		log_errno("fork(2)");
+		throw std::system_error(errno, std::system_category());
+	} else if (this->pid == 0) {
+		if (start_child_process(this) < 0) {
 			//TODO: report failures to the parent
 			exit(124);
 		}
 	} else {
-		manager_pid_event_add(pid);
-		log_debug("job %s started with pid %d", job->jm->label, pid);
-		job->pid = pid;
-		job->state = JOB_STATE_RUNNING;
+		manager_pid_event_add(this->pid);
+		log_debug("job %s started with pid %d", this->label.c_str(), this->pid);
+		this->setState(JOB_STATE_RUNNING);
+		// FIXME: close descriptors that the master process no longer needs
+#if 0
 		SLIST_FOREACH(jms, &job->jm->sockets, entry) {
 			job_manifest_socket_close(jms);
 		}
-	}
 #endif
-	return (0);
-}
-
-static int job_acquire_resources(job_t job)
-{
-	if (job->jm->datasets && dataset_list_load_handler(job->jm->datasets) < 0) {
-		log_error("unable to create datasets");
-		return -1;
 	}
-	if (job->jm->chroot_jail && chroot_jail_load_handler(job->jm->chroot_jail) < 0) {
-		log_error("unable to create chroot(2) jail");
-		return -1;
-	}
-	return 0;
 }

@@ -17,6 +17,10 @@
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <unistd.h>
+
+#include <grp.h>
+#include <pwd.h>
 
 #include "logger.h"
 #include "manifest.hpp"
@@ -46,9 +50,11 @@ void Manifest::readFile(const string path)
 void Manifest::normalize() {
 	auto default_json = R"(
 	  {
+            "ChrootDirectory": null,
             "EnableGlobbing": false,
             "EnvironmentVariables": [],
-	    "KeepAlive": false,               
+	    "KeepAlive": false,
+	    "Nice": 0,            
 	    "InitGroups": true,
 	    "RootDirectory": "/",
 	    "RunAtLoad": false,
@@ -63,7 +69,17 @@ void Manifest::normalize() {
 	  }
 	)"_json;
 
-/* TODO:
+	if (this->json.count("UserName") == 0) {
+		struct passwd *pwd = getpwuid(getuid());
+		this->json["UserName"] = string(pwd->pw_name);
+	}
+
+	if (this->json.count("GroupName") == 0) {
+		struct group *grp = getgrgid(getgid());
+		this->json["GroupName"] = string(grp->gr_name);
+	}
+
+	/* TODO:
  * groupname, username
  */
 

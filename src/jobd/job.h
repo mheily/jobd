@@ -113,6 +113,16 @@ private:
 	string label = "__invalid_label__";
 	libjob::Manifest manifest;
 	enum e_job_state state;
+	uid_t uid;
+	gid_t gid;
+	pid_t pid;
+
+	void acquire_resources();
+	void apply_resource_limits();
+	void lookup_credentials();
+	void modify_credentials();
+	void start_child_process();
+	void redirect_stdio();
 };
 
 extern const int launchd_signals[];
@@ -151,4 +161,3 @@ job_t	job_new(job_manifest_t jm);
 void	job_free(job_t job);
 int	job_load(job_t job);
 int	job_unload(job_t job);
-int	job_run(job_t job);
