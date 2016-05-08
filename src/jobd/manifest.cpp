@@ -31,7 +31,6 @@
 #include "dataset.h"
 
 static const uint32_t DEFAULT_EXIT_TIMEOUT = 20;
-static const uint32_t DEFAULT_THROTTLE_INTERVAL = 10;
 
 typedef struct job_manifest_socket_parser {
 	const char *key;

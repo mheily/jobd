@@ -45,6 +45,8 @@
 #include "timer.h"
 #include "util.h"
 
+JobManager manager;
+
 extern launchd_options_t options;
 
 static struct {
@@ -133,9 +135,8 @@ main(int argc, char *argv[])
 	pidfile_write(state.pfh);
 
 	try {
-		manager_init(state.pfh);
-		manager_update_jobs();
-		manager_main_loop();
+		manager.setup(state.pfh);
+		manager.mainLoop();
 	}
 	catch (std::exception& e) {
 		std::cout << "Caught fatal exception: " << e.what() << std::endl;

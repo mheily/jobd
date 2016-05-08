@@ -25,15 +25,16 @@
 using namespace libjob;
 
 static int main_kqfd;
+extern JobManager manager;
 static libjob::ipcServer* ipc_server;
-extern libjob::jobdConfig* jobd_config;
 
 int ipc_init(int kqfd) {
 	struct kevent kev;
 
 	main_kqfd = kqfd;
-	log_debug("initializing IPC socket at %s", jobd_config->socketPath.c_str());
-	ipc_server = new libjob::ipcServer(jobd_config->socketPath);
+	const char *socketpath = manager.jobd_config.socketPath.c_str();
+	log_debug("initializing IPC socket at %s", socketpath);
+	ipc_server = new libjob::ipcServer(socketpath);
 
 	log_debug("listening for connections on fd %d", ipc_server->get_sockfd());
 	EV_SET(&kev, ipc_server->get_sockfd(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, (void *)&ipc_request_handler);

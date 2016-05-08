@@ -111,7 +111,10 @@ int timer_handler()
 		if (now >= job->next_scheduled_start) {
 			log_debug("job %s starting due to timer interval", job->jm->label);
 			update_job_interval(job);
+//FIXME: need to refactor for C++
+#if 0
 			(void) manager_wake_job(job); //FIXME: error handling
+#endif
 		}
 	}
 	return 0;

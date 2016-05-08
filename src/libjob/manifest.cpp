@@ -70,6 +70,10 @@ void Manifest::normalize() {
 	  }
 	)"_json;
 
+	if (this->json.count("Program") == 1) {
+		cout << this->json["Program"].type() << endl;
+		abort();
+	}
 	if (this->json.count("UserName") == 0) {
 		struct passwd *pwd = getpwuid(getuid());
 		this->json["UserName"] = string(pwd->pw_name);
@@ -80,9 +84,6 @@ void Manifest::normalize() {
 		this->json["GroupName"] = string(grp->gr_name);
 	}
 
-	/* TODO:
- * groupname, username
- */
 
 	// Add default values for missing keys
 	for (json::iterator it = default_json.begin(); it != default_json.end(); ++it) {

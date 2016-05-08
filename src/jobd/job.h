@@ -30,6 +30,13 @@
 #include "../libjob/manifest.hpp"
 #include "../libjob/logger.h"
 
+typedef enum {
+	JOB_SCHEDULE_NONE = 0,
+	JOB_SCHEDULE_PERIODIC,
+	JOB_SCHEDULE_CALENDAR,
+	JOB_SCHEDULE_KEEPALIVE
+} job_schedule_t;
+
 typedef enum e_job_state {
 	/** The job is invalid in some way; e.g. a syntax error in the manifest */
 	JOB_STATE_INVALID,
@@ -46,7 +53,32 @@ typedef enum e_job_state {
 	JOB_STATE_EXITED,
 } job_state_t;
 
+
+struct job {
+	LIST_ENTRY(job)	joblist_entry;
+	SLIST_ENTRY(job) start_interval_sle;
+	SLIST_ENTRY(job) watchdog_sle;
+
+	//DEADWOOD
+	job_manifest_t jm;
+
+	/** Full path to the JSON file containing the manifest */
+	std::string jobdir_path;
+
+	/** A parsed JSON manifest */
+	libjob::Manifest manifest;
+
+	job_state_t state;
+	pid_t pid;
+
+	time_t  next_scheduled_start;
+	job_schedule_t schedule;
+};
+typedef struct job *job_t;
+
 class Job {
+	friend class JobManager;
+
 public:
 	Job() {
 		this->setState(JOB_STATE_INVALID);
@@ -72,6 +104,11 @@ public:
 	void setLabel(string label)
 	{
 		this->label = label;
+	}
+
+	pid_t getPid() const
+	{
+	return pid;
 	}
 
 	void parseManifest(const string path)
@@ -108,8 +145,14 @@ public:
 
 	void load();
 	void run();
+	void unload();
 
 private:
+	struct job jm; // XXX-FIXME for build testing
+	char	*program;
+	cvec_t 	 program_arguments;
+///^^^kill the above
+
 	string label = "__invalid_label__";
 	libjob::Manifest manifest;
 	enum e_job_state state;
@@ -120,6 +163,11 @@ private:
 	gid_t gid;
 	std::string home_directory;
 	std::string shell;
+
+	/** KeepAlive=true ? After this walltime, the job should be restarted */
+	time_t restart_after = 0;
+
+	int last_exit_status, term_signal;
 
 	void acquire_resources();
 	void apply_resource_limits();
@@ -133,35 +181,6 @@ private:
 
 extern const int launchd_signals[];
 
-typedef enum {
-	JOB_SCHEDULE_NONE = 0,
-	JOB_SCHEDULE_PERIODIC,
-	JOB_SCHEDULE_CALENDAR,
-	JOB_SCHEDULE_KEEPALIVE
-} job_schedule_t;
-
-
-struct job {
-	LIST_ENTRY(job)	joblist_entry;
-	SLIST_ENTRY(job) start_interval_sle;
-	SLIST_ENTRY(job) watchdog_sle;
-
-	//DEADWOOD
-	job_manifest_t jm;
-
-	/** Full path to the JSON file containing the manifest */
-	std::string jobdir_path;
-
-	/** A parsed JSON manifest */
-	libjob::Manifest manifest;
-
-	job_state_t state;
-	pid_t pid;
-	int last_exit_status, term_signal;
-	time_t  next_scheduled_start;
-	job_schedule_t schedule;
-};
-typedef struct job *job_t;
 
 job_t	job_new(job_manifest_t jm);
 void	job_free(job_t job);

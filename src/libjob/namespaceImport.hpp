@@ -17,6 +17,8 @@
 #pragma once
 
 // Import various things into the global namespace
+using std::cout;
+using std::endl;
 using std::string;
 using std::map;
 using std::vector;

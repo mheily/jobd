@@ -22,44 +22,43 @@
 #include "job.h"
 #include "pidfile.h"
 
-/** Given a pending connection on a socket descriptor, activate the associated job */
-int manager_activate_job_by_fd(int fd);
+#include "../libjob/job.h"
 
-/**
- * Given a process ID, find the associated job
- *
- * @return the job, or NULL if there are no matching jobs
- */
-job_t manager_get_job_by_pid(pid_t pid);
+class JobManager {
+public:
+	void setup(struct pidfh *pfh);
+	void mainLoop();
+	void unloadJob(const string& label);
+	void unloadAllJobs();
+	JobManager() {}
+	~JobManager();
 
-/**
- * Given a label, find the associated job
- *
- * @return the job, or NULL if there are no matching jobs
- */
-job_t manager_get_job_by_label(const char *label);
+	libjob::jobdConfig jobd_config;
 
-/**
- * Unload a job with a given <label>
- */
-int manager_unload_job(const char *label);
+private:
+	/** kqueue(2) descriptor for the main event loop */
+	int kqfd;
 
-/**
- * Remove the job from the joblist and free it.
- */
-void manager_free_job(job_t job);
+	struct pidfh *pidfile_handle;
 
-/**
- * Wake up a job that has been waiting for an external event.
- */
-int manager_wake_job(job_t job);
+	map<string,unique_ptr<Job>> jobs;
 
-void manager_init(struct pidfh *);
-void manager_update_jobs();
-void manager_reap_child(pid_t pid, int status);
-void manager_pid_event_add(int pid);
-void manager_pid_event_delete(int pid);
-void manager_main_loop();
-void manager_unload_all_jobs();
+	/** The walltime when we should wake up and scan for KeepAlive=true jobs to restart */
+	time_t next_keepalive_wakeup = 0;
+
+	void scanJobDirectory();
+	void reapChildProcess(pid_t pid, int status);
+	void createProcessEventWatch(pid_t pid);
+	void deleteProcessEventWatch(pid_t pid);
+	unique_ptr<Job>& getJobByPid(pid_t pid);
+	void removeJob(Job& job);
+	void rescheduleJob(unique_ptr<Job>& job);
+	void runPendingJobs();
+	void updateKeepaliveWakeInterval();
+	void handleKeepaliveWakeup();
+	void wakeJob(const string& label);
+	void setupSignalHandlers();
+	void setupDataDirectory();
+};
 
 #endif /* MANAGER_H_ */

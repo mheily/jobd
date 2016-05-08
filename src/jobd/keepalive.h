@@ -14,27 +14,3 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef RELAUNCHD_KEEPALIVE_H_
-#define RELAUNCHD_KEEPALIVE_H_
-
-struct job;
-
-/**
- * Logic around automatically restarting jobs.
- */
-
-#define KEEPALIVEDIR "/var/db/launchd/cfg"
-
-/** One-time initialization at program startup */
-int keepalive_init(int kqfd);
-
-/** Check if a job should be restarted after it exists. */
-int keepalive_add_job(struct job *job);
-
-/** Remove any watchdogs associated with a job  */
-void keepalive_remove_job(struct job *job);
-
-/** Handle the wakeup event, possibly restarting jobs */
-void keepalive_wake_handler(void);
-
-#endif /* RELAUNCHD_KEEPALIVE_H_ */

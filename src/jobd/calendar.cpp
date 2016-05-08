@@ -31,6 +31,8 @@
 #include "calendar.h"
 #include "job.h"
 
+// XXX-FIXME this entire file is disabled until after the major C++ refactor is complete
+#if 0
 /* The main kqueue descriptor used by launchd */
 static int parent_kqfd;
 
@@ -151,3 +153,4 @@ int calendar_handler()
 	}
 	return 0;
 }
+#endif //XXX

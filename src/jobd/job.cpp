@@ -40,14 +40,7 @@ extern "C" {
 #include "timer.h"
 #include "util.h"
 
-
-extern void keepalive_remove_job(struct job *job);
-
 int reset_signal_handlers();
-
-static void job_dump(job_t job) {
-	log_debug("job dump: label=%s state=%d", job->jm->label, job->state);
-}
 
 void Job::apply_resource_limits() {
 	//TODO - SoftResourceLimits, HardResourceLimits
@@ -286,9 +279,9 @@ void Job::exec()
 	}
 	envp = cvec_to_array(final_env);
 
-	argv = cvec_to_array(job->jm->program_arguments);
-	if (job->jm->program) {
-		path = job->jm->program;
+	argv = cvec_to_array(this->program_arguments);
+	if (this->program) {
+		path = this->program;
 	} else {
 		path = argv[0];
 	}
@@ -497,6 +490,7 @@ void Job::load() {
 	log_debug("loaded %s", this->getLabel().c_str());
 }
 
+#if 0
 // FIXME: port to new job_load
 int job_load(job_t job)
 {
@@ -535,29 +529,30 @@ int job_load(job_t job)
 	job_dump(job);
 	return (0);
 }
+#endif
 
-int job_unload(job_t job)
+void Job::unload()
 {
-	if (job->state == JOB_STATE_RUNNING) {
-		log_debug("sending SIGTERM to process group %d", job->pid);
-		if (kill(-1 * job->pid, SIGTERM) < 0) {
-			log_errno("killpg(2) of pid %d", job->pid);
+	if (this->state == JOB_STATE_RUNNING) {
+		log_debug("sending SIGTERM to process group %d", this->pid);
+		if (kill(-1 * this->pid, SIGTERM) < 0) {
+			log_errno("killpg(2) of pid %d", this->pid);
 			/* not sure how to handle the error, we still want to clean up */
 		}
-		job->state = JOB_STATE_KILLED;
+		this->setState(JOB_STATE_KILLED);
 		//TODO: start a timer to send a SIGKILL if it doesn't die gracefully
 	} else {
 		//TODO: update the timer interval in timer.c?
-		job->state = JOB_STATE_DEFINED;
+		this->setState(JOB_STATE_DEFINED);
 	}
 
+#if 0
 	keepalive_remove_job(job);
 	if (job->jm->datasets)
 		dataset_list_unload_handler(job->jm->datasets);
 	if (job->jm->chroot_jail)
 		chroot_jail_unload_handler(job->jm->chroot_jail);
-
-	return 0;
+#endif
 }
 
 void Job::acquire_resources() {
@@ -615,9 +610,9 @@ void Job::run() {
 			exit(124);
 		}
 	} else {
-		manager_pid_event_add(this->pid);
 		log_debug("job %s started with pid %d", this->label.c_str(), this->pid);
 		this->setState(JOB_STATE_RUNNING);
+		this->restart_after = 0;
 		// FIXME: close descriptors that the master process no longer needs
 #if 0
 		SLIST_FOREACH(jms, &job->jm->sockets, entry) {

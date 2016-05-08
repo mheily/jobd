@@ -14,6 +14,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#if 0
+
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/event.h>
@@ -40,40 +42,25 @@ static SLIST_HEAD(, watchdog) watchdog_list;
 static struct watchdog *watchdog_new(job_t job);
 static void update_wake_interval();
 
+//DEADWOOD
 int keepalive_init(int kqfd)
 {
 	parent_kqfd = kqfd;
-	SLIST_INIT(&watchdog_list);
 	return 0;
 }
 
-int keepalive_add_job(struct job *job)
+int keepalive_add_job(Job& job)
 {
-	if (job->jm->keep_alive.always) {
-		watchdog_t w = watchdog_new(job);
-		if (!w) return -1;
-		SLIST_INSERT_HEAD(&watchdog_list, w, watchdog_sle);
-		log_debug("job `%s' will be automatically restarted in %d seconds",
-				job->jm->label, job->jm->throttle_interval);
+	if (job.manifest.json["KeepAlive"].get<bool>() == true) {
+//		log_debug("job `%s' will be automatically restarted in %d seconds",
+//				job.getLabel(), job.);
 		update_wake_interval();
 	}
 	return 0;
 }
 
-void keepalive_remove_job(struct job *job) {
-	watchdog_t cur;
-
-	SLIST_FOREACH(cur, &watchdog_list, watchdog_sle) {
-		if (cur->job == job) {
-			goto found;
-		}
-	}
-
-	return;
-
-found:
-	SLIST_REMOVE(&watchdog_list, cur, watchdog, watchdog_sle);
-	free(cur);
+void keepalive_remove_job(Job& job) {
+	job.setRestartAfter(0);
 	update_wake_interval();
 }
 
@@ -97,49 +84,4 @@ void keepalive_wake_handler(void)
 	}
 }
 
-static struct watchdog *
-watchdog_new(job_t job)
-{
-	watchdog_t w = (watchdog_t) malloc(sizeof(*w));
-	if (w) {
-		w->job = job;
-		w->restart_after = current_time() + job->jm->throttle_interval;
-	}
-	return w;
-}
-
-static void update_wake_interval()
-{
-	watchdog_t w;
-	struct kevent kev;
-	int next_wake_time;
-	static int interval = 0;
-
-	if (SLIST_EMPTY(&watchdog_list)) {
-		EV_SET(&kev, JOB_SCHEDULE_KEEPALIVE, EVFILT_TIMER, EV_ADD | EV_DISABLE, 0, 0, (void *)&keepalive_wake_handler);
-		if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
-			err(1, "kevent(2)");
-		}
-		log_debug("disabling keepalive polling; no more watchdogs");
-	} else {
-		next_wake_time = INT_MAX;
-		SLIST_FOREACH(w, &watchdog_list, watchdog_sle) {
-			if (!w) break;
-			if (w->restart_after < next_wake_time)
-				next_wake_time = w->restart_after;
-		}
-		int time_delta = (next_wake_time - current_time()) * 1000;
-		if (time_delta <= 0)
-			time_delta = 10000;
-		if (interval != time_delta) {
-			EV_SET(&kev, JOB_SCHEDULE_KEEPALIVE, EVFILT_TIMER,
-						EV_ADD | EV_ENABLE, 0, time_delta, (void *)&keepalive_wake_handler);
-			if (kevent(parent_kqfd, &kev, 1, NULL, 0, NULL) < 0) {
-					err(1, "kevent(2)");
-			}
-
-			log_debug("scheduled next wakeup event in %d ms", time_delta);
-			interval = time_delta;
-		}
-	}
-}
+#endif

@@ -33,6 +33,9 @@ using json = nlohmann::json;
 struct dataset_list;
 struct chroot_jail;
 
+/** The default throttle interval, in seconds */
+const uint32_t DEFAULT_THROTTLE_INTERVAL = 10;
+
 /** A wildcard value in a crontab(5) specification */
 #define CRON_SPEC_WILDCARD UINT32_MAX
 

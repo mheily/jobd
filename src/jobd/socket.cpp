@@ -220,5 +220,9 @@ int socket_activation_handler()
 	job = (job_t) (kev.udata);
 	log_debug("job %s starting due to socket activation", job->jm->label);
 
+	//FIXME: need to refactor to fit with C++
+#if 0
 	return (manager_wake_job(job));
+#endif
+	return 0;
 }
