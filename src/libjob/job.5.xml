@@ -22,6 +22,9 @@
 	The following configuration options are available:
 	</para>
 
+	
+<variablelist>
+
 	<varlistentry>
 	<term>Description</term>
 	<listitem>
@@ -29,20 +32,18 @@
 	</para>
 	</listitem>
 	</varlistentry>
-		
-	<variablelist>
-	<!-- 
-		<varlistentry>
-		<term>EnableGlobbing</term>
-		<listitem>
-		<para>If true, the program arguments will be passed to 
-		<citerefentry><refentrytitle>glob</refentrytitle><manvolnum>3</manvolnum></citerefentry>
-		for possible expansion.
-		</para>
-		<para>Not currently implemented.</para>
-		</listitem>
-		</varlistentry>
-	-->
+
+	<varlistentry>
+	<term>EnableGlobbing</term>
+	<listitem>
+	<para>If true, the program arguments will be passed to 
+	<citerefentry><refentrytitle>glob</refentrytitle><manvolnum>3</manvolnum></citerefentry>
+	for possible expansion.
+	</para>
+	<para>Not currently implemented.</para>
+	</listitem>
+	</varlistentry>
+
 		<varlistentry>
 		<term>EnvironmentVariables</term>
 		<listitem>
