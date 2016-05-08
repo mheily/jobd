@@ -113,9 +113,13 @@ private:
 	string label = "__invalid_label__";
 	libjob::Manifest manifest;
 	enum e_job_state state;
+	pid_t pid;
+
+	/* Credentials and /etc/passwd info */
 	uid_t uid;
 	gid_t gid;
-	pid_t pid;
+	std::string home_directory;
+	std::string shell;
 
 	void acquire_resources();
 	void apply_resource_limits();
@@ -123,6 +127,8 @@ private:
 	void modify_credentials();
 	void start_child_process();
 	void redirect_stdio();
+	cvec_t setup_environment_variables();
+	void exec();
 };
 
 extern const int launchd_signals[];

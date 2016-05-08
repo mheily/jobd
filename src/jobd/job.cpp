@@ -34,14 +34,13 @@ extern "C" {
 #include "dataset.h"
 #include "job.h"
 #include <libjob/logger.h>
+#include <libjob/namespaceImport.hpp>
 #include "manager.h"
 #include "socket.h"
 #include "timer.h"
 #include "util.h"
 
 
-static int start_child_process(const Job& job);
-static int job_acquire_resources(job_t job);
 extern void keepalive_remove_job(struct job *job);
 
 int reset_signal_handlers();
@@ -127,31 +126,35 @@ err_out:
 	return -1;
 }
 
-static inline cvec_t setup_environment_variables(const job_t job, const struct passwd *pwent)
+cvec_t Job::setup_environment_variables()
 {
-	struct job_manifest_socket *jms;
 	cvec_t env = NULL;
-	char *curp, *buf = NULL;
+	const char *curp;
+	char *buf = NULL;
 	char *logname_var = NULL, *user_var = NULL;
 	unsigned int i, uid;
 	bool found[] = { false, false, false, false, false, false, false };
-	size_t offset = 0;
 
 	env = cvec_new();
-	if (!env) goto err_out;
+	if (!env)
+		throw "malloc error";
 
-	if (asprintf(&logname_var, "LOGNAME=%s", job->jm->user_name) < 0) goto err_out;
-	if (asprintf(&user_var, "USER=%s", job->jm->user_name) < 0) goto err_out;
 
-	if (!job->jm->environment_variables)
+	const char *user_name = this->manifest.json["UserName"].get<string>().c_str();
+	const vector<string>& env_vars = this->manifest.json["EnvironmentVariables"].get<vector<string>>();
+
+
+	if (asprintf(&logname_var, "LOGNAME=%s", user_name) < 0) goto err_out;
+	if (asprintf(&user_var, "USER=%s", user_name) < 0) goto err_out;
+	if (env_vars.size() == 0)
 		goto job_has_no_environment;
 
 	/* Convert the flat array into an array of key=value pairs */
 	/* Follow the crontab(5) convention of overriding LOGNAME and USER
 	 * and providing a default value for HOME, PATH, and SHELL */
-	log_debug("job %s has %zu env vars\n", job->jm->label, cvec_length(job->jm->environment_variables));
-	for (i = 0; i < cvec_length(job->jm->environment_variables); i += 2) {
-		curp = cvec_get(job->jm->environment_variables, i);
+	//log_debug("job %s has %zu env vars\n", job->label, cvec_length(job->jm->environment_variables));
+	for (i = 0; i < env_vars.size(); i += 2) {
+		curp = env_vars[i].c_str();
 		log_debug("evaluating %s", curp);
 		if (strcmp(curp, "LOGNAME") == 0) {
 			found[0] = true;
@@ -171,8 +174,8 @@ static inline cvec_t setup_environment_variables(const job_t job, const struct p
 			found[6] = true;
 		} else {
 			char *keypair;
-			char *value;
-			value = cvec_get(job->jm->environment_variables, i + 1);
+			const char *value;
+			value = env_vars[i + 1].c_str();
 			if (!value)
 				goto err_out;
 			if (asprintf(&keypair, "%s=%s", curp, value) < 0)
@@ -207,7 +210,7 @@ job_has_no_environment:
 		if (uid == 0) {
 			if (cvec_push(env, "HOME=/") < 0) goto err_out;
 		} else {
-			if (asprintf(&buf, "HOME=%s", pwent->pw_dir) < 0) goto err_out;
+			if (asprintf(&buf, "HOME=%s", this->home_directory.c_str()) < 0) goto err_out;
 			if (cvec_push(env, buf) < 0) goto err_out;
 			free(buf);
 			buf = NULL;
@@ -224,7 +227,7 @@ job_has_no_environment:
 		if (cvec_push(env, path) < 0) goto err_out;
 	}
 	if (uid && !found[4]) {
-		if (asprintf(&buf, "SHELL=%s", pwent->pw_shell) < 0) goto err_out;
+		if (asprintf(&buf, "SHELL=%s", this->shell.c_str()) < 0) goto err_out;
 		if (cvec_push(env, buf) < 0) goto err_out;
 		free(buf);
 		buf = NULL;
@@ -238,6 +241,11 @@ job_has_no_environment:
 
 	if (add_standard_environment_variables(env) < 0)
 		goto err_out;
+
+	//FIXME: port the socket code
+#if 0
+	struct job_manifest_socket *jms;
+	size_t offset = 0;
 
 	SLIST_FOREACH(jms, &job->jm->sockets, entry) {
 		job_manifest_socket_export(jms, env, offset++);
@@ -253,6 +261,7 @@ job_has_no_environment:
 		free(buf);
 		buf = NULL;
 	}
+#endif
 
 	return (env);
 
@@ -264,18 +273,16 @@ err_out:
 	return NULL;
 }
 
-static inline int
-exec_job(const job_t job, const struct passwd *pwent) 
+void Job::exec()
 {
-	int rv;
 	char *path;
 	char **argv, **envp;
 	cvec_t final_env;
 
-	final_env = setup_environment_variables(job, pwent);
+	final_env = this->setup_environment_variables();
 	if (final_env == NULL) {
 		log_error("unable to set environment vars");
-		return (-1);
+		throw std::logic_error("unable to set environment vars");
 	}
 	envp = cvec_to_array(final_env);
 
@@ -285,7 +292,8 @@ exec_job(const job_t job, const struct passwd *pwent)
 	} else {
 		path = argv[0];
 	}
-	if (job->jm->enable_globbing) {
+	if (this->manifest.json["EnableGlobbing"].get<bool>()) {
+		log_warning("Globbing is not implemented yet");
 		//TODO: globbing
 	}
 	log_debug("exec: %s", path);
@@ -302,19 +310,13 @@ exec_job(const job_t job, const struct passwd *pwent)
 
 	closelog();
 
-	rv = execve(path, argv, envp);
+	int rv = execve(path, argv, envp);
 	if (rv < 0) {
-		log_errno("execve(2)");
-		goto err_out;
+		log_errno("execve(2) of %s", path);
+		throw std::system_error(errno, std::system_category());
     	}
-	log_notice("executed job");
 
 	cvec_free(final_env);
-	return (0);
-
-err_out:
-	cvec_free(final_env);
-	return -1;
 }
 
 void Job::redirect_stdio() {
@@ -418,20 +420,20 @@ void Job::start_child_process()
 #ifndef NOFORK
 	if (setsid() < 0) {
 		log_errno("setsid");
-		goto err_out;
+		throw std::system_error(errno, std::system_category());
 	}
 #endif
 	if (reset_signal_handlers() < 0) {
 		log_error("unable to reset signal handlers");
-		goto err_out;
+		throw std::system_error(errno, std::system_category());
 	}
 
 	this->apply_resource_limits();
 
 	const char *cwd = this->manifest.json["WorkingDirectory"].get<string>().c_str();
 	if (chdir(cwd) < 0) {
-		log_error("unable to chdir to %s", cwd);
-		goto err_out;
+		log_error("chdir(2) to %s", cwd);
+		throw std::system_error(errno, std::system_category());
 	}
 
 	/* TODO: deprecate the root_directory logic in favor of chroot_jail */
@@ -439,7 +441,7 @@ void Job::start_child_process()
 	if (rootdir != nullptr && getuid() == 0) {
 		if (chroot(rootdir) < 0) {
 			log_error("unable to chroot to %s", rootdir);
-			goto err_out;
+			throw std::system_error(errno, std::system_category());
 		}
 	}
 
@@ -459,17 +461,7 @@ void Job::start_child_process()
 	//(void) umask(job->jm->umask);
 
 	this->redirect_stdio();
-
-	if (exec_job(job, pwent) < 0) {
-		log_error("exec_job() failed");
-		goto err_out;
-	}
-
-	return (0);
-
-err_out:
-	log_error("job %s failed to start; see previous log message for details", job->jm->label);
-	return (-1);
+	this->exec();
 }
 
 job_t job_new(job_manifest_t jm)
@@ -596,6 +588,8 @@ void Job::lookup_credentials() {
 		throw std::system_error(errno, std::system_category());
 	}
 	this->uid = pwent->pw_uid;
+	this->home_directory = std::string(pwent->pw_dir);
+	this->shell = std::string(pwent->pw_shell);
 
 	string group = this->manifest.json["GroupName"];
 	if ((grent = getgrnam(group.c_str())) == NULL) {
@@ -614,7 +608,9 @@ void Job::run() {
 		log_errno("fork(2)");
 		throw std::system_error(errno, std::system_category());
 	} else if (this->pid == 0) {
-		if (start_child_process(this) < 0) {
+		try {
+			this->start_child_process();
+		} catch (...) {
 			//TODO: report failures to the parent
 			exit(124);
 		}
