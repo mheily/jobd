@@ -21,6 +21,15 @@
 	<para>
 	The following configuration options are available:
 	</para>
+
+	<varlistentry>
+	<term>Description</term>
+	<listitem>
+	<para>A short, one-line description of what the job does.
+	</para>
+	</listitem>
+	</varlistentry>
+		
 	<variablelist>
 	<!-- 
 		<varlistentry>

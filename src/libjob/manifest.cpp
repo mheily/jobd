@@ -51,6 +51,7 @@ void Manifest::normalize() {
 	auto default_json = R"(
 	  {
             "ChrootDirectory": null,
+            "Description": "",
             "EnableGlobbing": false,
             "EnvironmentVariables": [],
 	    "KeepAlive": false,
