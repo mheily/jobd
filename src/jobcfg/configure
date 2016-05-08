@@ -31,7 +31,7 @@
 #fi
 
 custom_target 'jobcfg.1' 'jobcfg.1.xml' \
-	'docbook2mdoc jobcfg.1.xml > jobcfg.1 || true'
+	'docbook-to-man jobcfg.1.xml > jobcfg.1 || true'
 
 custom_target 'jobcfg.1.html' 'jobcfg.1.xml' \
 	'docbook2mdoc jobcfg.1.xml | mandoc -mdoc -T html > jobcfg.1.html'

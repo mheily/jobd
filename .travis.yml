@@ -18,6 +18,7 @@ addons:
   apt:
     packages:
     - bc
+    - docbook-to-man
     - libcurl4-openssl-dev
     - libboost-all-dev
   coverity_scan:

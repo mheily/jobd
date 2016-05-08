@@ -10,6 +10,7 @@ COMMENT=	Service management daemon similar to Darwin's launchd(8)
 
 LICENSE=	ISCL
 
+# TODO: add package dependency on docbook2X, remove UCL
 LIB_DEPENDS=	libucl.so:${PORTSDIR}/textproc/libucl
 
 HAS_CONFIGURE=	YES
