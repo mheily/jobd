@@ -17,13 +17,16 @@ compiler:
 #
 sudo: true
 
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y bc docbook-to-man
+
 addons:
-  apt:
-    packages:
-    - bc
-    - docbook-to-man
-    - libcurl4-openssl-dev
-    - libboost-all-dev
+#  apt:
+#    packages:
+#    - bc
+#    - docbook-to-man
+#    - libcurl4-openssl-dev
   coverity_scan:
     project:
       name: "mheily/relaunchd"
