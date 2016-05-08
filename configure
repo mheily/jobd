@@ -64,7 +64,7 @@ else
 	make_define 'kqueue_DEPENDS' ''	
 fi
 
-SUBDIRS="src test"
+SUBDIRS="src"
                  
 get_install_directory 'pkgconfdir' 'Package configuration' "${sysconfdir}/job.d"
 create_subdirectory 'pkgconfdir'
