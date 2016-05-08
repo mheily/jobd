@@ -12,7 +12,10 @@ language: cpp
 compiler:
   - clang
 
-sudo: false
+# TODO: set this to false once docbook-to-man is whitelisted for
+# 	container builds
+#
+sudo: true
 
 addons:
   apt:
