@@ -20,7 +20,7 @@
 
 bin_PROGRAMS=jobctl
 
-jobctl_CXXFLAGS="-include ../../config.h -I../../vendor -std=c++11 -Wall -Werror -I/usr/local/include $kqueue_CFLAGS"
+jobctl_CXXFLAGS="-include ../../config.h -I.. -I../../vendor -std=c++11 -Wall -Werror -I/usr/local/include $kqueue_CFLAGS"
 jobctl_LDFLAGS="$kqueue_LDFLAGS"
 jobctl_LDADD="$kqueue_LDADD ../libjob/libjob.a"
 jobctl_SOURCES=`ls *.cpp | tr '\n' ' '`

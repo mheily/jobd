@@ -18,17 +18,15 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
-#include <nlohmann/json.hpp>
 #include <string>
 #include <streambuf>
-
-using json = nlohmann::json;
 
 extern "C" {
 	#include <getopt.h>
 }
 
 #include "../libjob/job.h"
+#include <libjob/namespaceImport.hpp>
 
 static std::unique_ptr<libjob::jobdConfig> jobd_config(new libjob::jobdConfig);
 
