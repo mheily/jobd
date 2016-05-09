@@ -52,6 +52,7 @@ public:
 
 int DatasetList::parse_manifest(const ucl_object_t *obj)
 {
+#if 0
 	ucl_object_iter_t it;
 	const ucl_object_t *cur;
 	Dataset *ds = new Dataset();
@@ -96,7 +97,7 @@ int DatasetList::parse_manifest(const ucl_object_t *obj)
 	}
 
 	datasets.push_back(ds);
-
+#endif
 	return 0;
 }
 

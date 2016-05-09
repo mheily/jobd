@@ -49,6 +49,7 @@ private:
 /* Parse the ChrootJail key */
 int ChrootJail::parse_manifest(const ucl_object_t *obj)
 {
+#if 0
 	ucl_object_iter_t it;
 	const ucl_object_t *cur;
 
@@ -80,6 +81,7 @@ int ChrootJail::parse_manifest(const ucl_object_t *obj)
 
 	ucl_object_iterate_free(it);
 
+#endif
 	return 0;
 }
 

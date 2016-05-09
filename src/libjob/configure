@@ -25,6 +25,7 @@ libjob_LDFLAGS="-L/usr/local/lib -fPIC"
 libjob_LDADD="$kqueue_LDADD"
 libjob_SOURCES=`ls *.cpp | tr '\n' ' '`
 libjob_SONAME="libjob.so.0"
+libjob_DEPENDS="$kqueue_DEPENDS"
 
 if [ $check_program_docbook_to_man = "1" ] ; then
 	custom_target 'job.5' 'job.5.xml' \
