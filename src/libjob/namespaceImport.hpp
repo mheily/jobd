@@ -17,6 +17,7 @@
 #pragma once
 
 #include <stdexcept>
+#include <system_error>
 
 // Import various things into the global namespace
 using std::cout;

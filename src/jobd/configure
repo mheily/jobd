@@ -20,7 +20,7 @@
 
 sbin_PROGRAMS=jobd
 
-jobd_CXXFLAGS="-I../.. -I.. -I. -include ../../config.h -I../../vendor -std=c++11 -stdlib=libc++ -Wall -Werror -I/usr/local/include $kqueue_CFLAGS"
+jobd_CXXFLAGS="-I../.. -I.. -I. -include ../../config.h -I../../vendor -std=c++11 -Wall -Werror -I/usr/local/include $kqueue_CFLAGS"
 jobd_LDFLAGS="-L/usr/lib -L/usr/local/lib -L../libjob/"
 jobd_LDADD="$kqueue_LDADD ../libjob/libjob.a"
 jobd_SOURCES=`ls *.cpp *.c | tr '\n' ' '`
