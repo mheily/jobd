@@ -88,7 +88,7 @@ void ipc_request_handler(void) {
 		session.sendResponse(response);
 		//session.close();
 		log_debug("handler complete");
-	} catch(const std::system_error& e) {
+	} catch(const std::runtime_error& e) {
 		log_error("caught exception: %s", e.what());
 	} catch(...) {
 		log_error("caught unknown exception");
