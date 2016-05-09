@@ -20,11 +20,11 @@
 
 #bin_PROGRAMS=jobcfg
 
-#jobcfg_CXXFLAGS="-include ../../config.h -std=c++11 -Wall -Werror -I/usr/local/include $libucl_CFLAGS $kqueue_CFLAGS"
-#jobcfg_LDFLAGS="-L ../libjob $libucl_LDFLAGS"
-#jobcfg_LDADD="$libucl_LDADD $kqueue_LDADD -ljob"
+#jobcfg_CXXFLAGS="-include ../../config.h -std=c++11 -Wall -Werror -I/usr/local/include $kqueue_CFLAGS"
+#jobcfg_LDFLAGS="-L ../libjob"
+#jobcfg_LDADD="$kqueue_LDADD -ljob"
 #jobcfg_SOURCES=`ls *.cpp | tr '\n' ' '`
-#jobcfg_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS"
+#jobcfg_DEPENDS="$kqueue_DEPENDS"
 
 #if [ "`uname`" = 'FreeBSD' ] ; then
 #        jobcfg_LDADD="${jobcfg_LDADD} -ljail"
@@ -38,6 +38,5 @@ if [ $check_program_docbook_to_man = "1" ] ; then
 		'docbook2mdoc jobcfg.1.xml | mandoc -mdoc -T html > jobcfg.1.html'
 	manpage 'jobcfg.1'
 fi
-
 
 write_makefile
