@@ -21,7 +21,7 @@
 
 struct chroot_jail;
 
-int chroot_jail_parse_manifest(job_manifest_t manifest, const ucl_object_t *obj);
+//int chroot_jail_parse_manifest(job_manifest_t manifest, const ucl_object_t *obj);
 int chroot_jail_load_handler(struct chroot_jail *jail);
 int chroot_jail_unload_handler(struct chroot_jail *jail);
 int chroot_jail_context_handler(struct chroot_jail *jail);

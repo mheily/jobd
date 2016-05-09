@@ -18,7 +18,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <ucl.h>
 
 #include <libjob/logger.h>
 #include "dataset.h"
@@ -47,12 +46,11 @@ public:
 	int acquire_resources();
 	int release_resources();
 	std::vector<Dataset*> datasets;
-	int parse_manifest(const ucl_object_t *obj);
 };
 
+#if 0
 int DatasetList::parse_manifest(const ucl_object_t *obj)
 {
-#if 0
 	ucl_object_iter_t it;
 	const ucl_object_t *cur;
 	Dataset *ds = new Dataset();
@@ -97,9 +95,9 @@ int DatasetList::parse_manifest(const ucl_object_t *obj)
 	}
 
 	datasets.push_back(ds);
-#endif
 	return 0;
 }
+#endif
 
 int DatasetList::acquire_resources() {
 	for (auto &dataset : this->datasets) {
@@ -173,12 +171,6 @@ int Dataset::release() {
 	return 0;
 }
 
-int dataset_parse_manifest(job_manifest_t manifest, const ucl_object_t *obj) {
-	DatasetList *dsl = new DatasetList();
-	if (dsl->parse_manifest(obj) < 0) return -1;
-	manifest->datasets = reinterpret_cast<struct dataset_list *>(dsl);
-	return 0;
-}
 
 int dataset_list_load_handler(struct dataset_list *dsl) {
 	if (!dsl) return 0;

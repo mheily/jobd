@@ -22,7 +22,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <sys/stat.h>
-#include <ucl.h>
 #include "../../vendor/FreeBSD/sys/queue.h"
 #include <nlohmann/json.hpp>
 #include "cvec.h"

@@ -18,7 +18,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <ucl.h>
 
 #include <libjob/logger.h>
 #include "chroot.h"
@@ -28,7 +27,7 @@
 class ChrootJail {
 public:
 	ChrootJail() {};
-	int parse_manifest(const ucl_object_t *obj);
+	//int parse_manifest(const ucl_object_t *obj);
 	int acquire_resources();
 	int release_resources();
 	int set_execution_context();
@@ -46,10 +45,11 @@ private:
 	bool createChrootJail();
 };
 
+#if 0
+
 /* Parse the ChrootJail key */
 int ChrootJail::parse_manifest(const ucl_object_t *obj)
 {
-#if 0
 	ucl_object_iter_t it;
 	const ucl_object_t *cur;
 
@@ -81,9 +81,9 @@ int ChrootJail::parse_manifest(const ucl_object_t *obj)
 
 	ucl_object_iterate_free(it);
 
-#endif
 	return 0;
 }
+#endif
 
 int ChrootJail::acquire_resources() {
 	if (access(this->rootDirectory.c_str(), R_OK | W_OK | X_OK) < 0) {
@@ -176,16 +176,6 @@ int ChrootJail::set_execution_context() {
 		log_errno("chroot(2) to %s", this->rootDirectory.c_str());
 		return -1;
 	}
-	return 0;
-}
-
-int chroot_jail_parse_manifest(job_manifest_t manifest, const ucl_object_t *obj) {
-	ChrootJail *jail = new ChrootJail();
-	if (jail->parse_manifest(obj) < 0) {
-		delete jail;
-		return -1;
-	}
-	manifest->chroot_jail = reinterpret_cast<struct chroot_jail *>(jail);
 	return 0;
 }
 
