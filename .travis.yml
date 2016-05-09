@@ -40,8 +40,8 @@ addons:
 #    - vendor/libkqueue-2.0.3
 
 script:
-- ./configure
-- make CXX=clang++-3.6
+- ./configure CFLAGS="-I/usr/include/kqueue"
+- make CXX=clang++-3.6 CFLAGS="-I/usr/include/kqueue"
 
 # FIXME: want to add this, once it's fixed up
 # - make check
