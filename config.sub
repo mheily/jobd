@@ -226,6 +226,24 @@ make_define() {
 	eval "$_ident=\"$*\""
 }
 
+check_program() {
+	_progname=$1
+	_progname_ident=`echo $_progname | tr 'a-z' 'A-Z' | sed 's/[.-]/_/g'`
+	_lc_progname=`echo $_progname_ident | tr 'A-Z' 'a-z'`
+	
+	printf "checking for an executable ${_progname}.. "
+	which $_progname >/dev/null 2>&1
+ 	if [ $? -eq 0 ] ; then 
+		echo yes ; val=1 
+	else 
+		echo no ; val=0 
+	fi
+
+	echo "#define HAVE_PROGRAM_${_progname_ident} $val" >> config.h
+	eval "check_program_${_lc_progname}=$val"
+	echo "check_program_${_lc_progname}=$val" >> vars.sh
+}
+	
 check_header() {
 	_header=$1
 	_sym=`echo $_header | tr 'a-z' 'A-Z' | sed 's/[\-\.\/]/_/g'`

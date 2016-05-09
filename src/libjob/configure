@@ -26,12 +26,14 @@ libjob_LDADD="$libucl_LDADD $kqueue_LDADD"
 libjob_SOURCES=`ls *.cpp | tr '\n' ' '`
 libjob_SONAME="libjob.so.0"
 
-custom_target 'job.5' 'job.5.xml' \
-	'docbook-to-man job.5.xml > job.5 || true'
-
-custom_target 'job.5.html' 'job.5.xml' \
-	'docbook2mdoc job.5.xml | mandoc -mdoc -T html > job.5.html'
-
-manpage 'job.5'
+if [ $check_program_docbook_to_man = "1" ] ; then
+	custom_target 'job.5' 'job.5.xml' \
+		'docbook-to-man job.5.xml > job.5 || true'
+	
+	custom_target 'job.5.html' 'job.5.xml' \
+		'docbook2mdoc job.5.xml | mandoc -mdoc -T html > job.5.html'
+	
+	manpage 'job.5'
+fi
 
 write_makefile

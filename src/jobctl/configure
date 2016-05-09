@@ -30,12 +30,14 @@ if [ "`uname`" = 'FreeBSD' ] ; then
         jobctl_LDADD="${jobctl_LDADD} -ljail"
 fi
 
-custom_target 'jobctl.1' 'jobctl.1.xml' \
-	'docbook-to-man jobctl.1.xml > jobctl.1 || true'
-
-custom_target 'jobctl.1.html' 'jobctl.1.xml' \
-	'docbook2mdoc jobctl.1.xml | mandoc -mdoc -T html > jobctl.1.html'
-
-manpage 'jobctl.1'
+if [ $check_program_docbook_to_man = "1" ] ; then
+	custom_target 'jobctl.1' 'jobctl.1.xml' \
+		'docbook-to-man jobctl.1.xml > jobctl.1 || true'
+	
+	custom_target 'jobctl.1.html' 'jobctl.1.xml' \
+		'docbook2mdoc jobctl.1.xml | mandoc -mdoc -T html > jobctl.1.html'
+	
+	manpage 'jobctl.1'
+fi
 
 write_makefile

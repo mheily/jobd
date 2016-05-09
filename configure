@@ -90,4 +90,10 @@ fi
 #	copy_directory 'manifests/pcbsd/daemons' "${install_directory__pkgdatadir}/daemons"
 #fi
 
+check_program 'docbook-to-man'
+if [ "$have_program_docbook_to_man" = "0" ] ; then
+	echo "**WARNING** manpages will not be generated; please install docbook-to-man"
+fi
+
 write_makefile
+

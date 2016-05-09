@@ -33,13 +33,15 @@ if [ "`uname`" = 'FreeBSD' ] ; then
         jobd_LDADD="${jobd_LDADD} -ljail"
 fi
 
-custom_target 'jobd.8' 'jobd.8.xml' \
-        'docbook-to-man jobd.8.xml > jobd.8 || true'
-
-custom_target 'jobd.8.html' 'jobd.8.xml' \
-        'docbook2mdoc jobd.8.xml | mandoc -mdoc -T html > jobd.8.html'
-
-manpage 'jobd.8'
+if [ $check_program_docbook_to_man = "1" ] ; then
+	custom_target 'jobd.8' 'jobd.8.xml' \
+	        'docbook-to-man jobd.8.xml > jobd.8 || true'
+	
+	custom_target 'jobd.8.html' 'jobd.8.xml' \
+	        'docbook2mdoc jobd.8.xml | mandoc -mdoc -T html > jobd.8.html'
+	
+	manpage 'jobd.8'
+fi
 
 # DEADWOOD: no time for this port right now
 ## MacOS needs a POSIX clock_gettime() function
