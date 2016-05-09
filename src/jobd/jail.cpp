@@ -25,7 +25,6 @@
 #ifdef __FreeBSD__
 #include <sys/jail.h>
 #include "/usr/include/jail.h"
-#endif
 
 #include "config.h"
 #include <libjob/logger.h>
@@ -335,3 +334,4 @@ bool jail_is_running(jail_config_t jc)
 {
 	return (jail_getid(jc->name) >= 0);
 }
+#endif
