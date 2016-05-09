@@ -21,6 +21,7 @@ addons:
     packages:
     - bc
     - libcurl4-openssl-dev
+    - libkqueue-dev
     - clang-3.6
 
   coverity_scan:
