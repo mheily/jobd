@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <stdexcept>
+
 // Import various things into the global namespace
 using std::cout;
 using std::endl;
