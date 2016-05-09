@@ -21,7 +21,6 @@ addons:
     packages:
     - bc
     - libcurl4-openssl-dev
-    - libkqueue-dev
     - clang-3.6
 
   coverity_scan:
@@ -40,8 +39,8 @@ addons:
 #    - vendor/libkqueue-2.0.3
 
 script:
-- CFLAGS="-I/usr/include/kqueue" ./configure
-- make CXX=clang++-3.6 CFLAGS="-I/usr/include/kqueue"
+- ./configure
+- make CXX=clang++-3.6
 
 # FIXME: want to add this, once it's fixed up
 # - make check
