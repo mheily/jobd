@@ -20,7 +20,7 @@
 
 LIBRARIES=libjob
 
-libjob_CXXFLAGS="-include ../../config.h -I../../vendor -fPIC -std=c++11 -Wall -Werror -isystem /usr/local/include $kqueue_CFLAGS"
+libjob_CXXFLAGS="-include ../../config.h -I../../vendor -fPIC -std=c++11 -stdlib=libc++ -Wall -Werror -isystem /usr/local/include $kqueue_CFLAGS"
 libjob_LDFLAGS="-L/usr/local/lib -fPIC"
 libjob_LDADD="$kqueue_LDADD"
 libjob_SOURCES=`ls *.cpp | tr '\n' ' '`
