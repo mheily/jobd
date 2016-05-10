@@ -26,6 +26,7 @@
 #include <unistd.h>
 
 #include "manifest.h"
+#include <libjob/jobStatus.hpp>
 #include "../libjob/namespaceImport.hpp"
 #include "../libjob/manifest.hpp"
 #include "../libjob/logger.h"
@@ -106,11 +107,6 @@ public:
 		this->label = label;
 	}
 
-	pid_t getPid() const
-	{
-	return pid;
-	}
-
 	void parseManifest(const string path)
 	{
 		try {
@@ -155,8 +151,9 @@ private:
 
 	string label = "__invalid_label__";
 	libjob::Manifest manifest;
+	libjob::JobStatus jobStatus;
 	enum e_job_state state;
-	pid_t pid;
+
 
 	/* Credentials and /etc/passwd info */
 	uid_t uid;
@@ -166,8 +163,6 @@ private:
 
 	/** KeepAlive=true ? After this walltime, the job should be restarted */
 	time_t restart_after = 0;
-
-	int last_exit_status, term_signal;
 
 	void acquire_resources();
 	void apply_resource_limits();

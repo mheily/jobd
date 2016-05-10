@@ -16,8 +16,14 @@
 
 #pragma once
 
+#include <string>
+#include <map>
+#include <vector>
+
 #include <stdexcept>
 #include <system_error>
+
+#include <nlohmann/json.hpp>
 
 // Import various things into the global namespace
 using std::cout;

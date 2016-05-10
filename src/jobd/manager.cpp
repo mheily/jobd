@@ -103,13 +103,14 @@ void JobManager::scanJobDirectory()
 			log_debug("parsing %s", path.c_str());
 			unique_ptr<Job> job(new Job);
 			job->parseManifest(path);
+			job->jobStatus.setLabel(job->getLabel());
 			if (!this->jobs.insert(std::make_pair(job->getLabel(), std::move(job))).second) {
 				log_error("Duplicate label detected");
 				continue;
 			} else {
 				pending_jobs++;
 			}
-		} catch (std::exception& e) {
+		} catch (std::system_error& e) {
 			log_error("error parsing %s: %s", path.c_str(), e.what());
 		}
 		job_count++;
@@ -201,7 +202,7 @@ void JobManager::wakeJob(const string& label)
 		throw std::logic_error("Tried to wake a job that was not asleep");
 	}
 	job->run();
-	this->createProcessEventWatch(job->pid);
+	this->createProcessEventWatch(job->jobStatus.getPid());
 }
 
 void JobManager::removeJob(Job& job) {
@@ -254,7 +255,7 @@ unique_ptr<Job>& JobManager::getJobByPid(pid_t pid)
 {
 	for (auto& it : this->jobs) {
 		unique_ptr<Job>& job = it.second;
-		if (job->getPid() == pid) {
+		if (job->jobStatus.getPid() == pid) {
 			return job;
 		}
 	}
@@ -278,17 +279,24 @@ void JobManager::reapChildProcess(pid_t pid, int status)
 	try {
 		unique_ptr<Job>& job = this->getJobByPid(pid);
 
+		int last_exit_status, term_signal;
 		if (WIFEXITED(status)) {
-			job->last_exit_status = WEXITSTATUS(status);
+			last_exit_status = WEXITSTATUS(status);
+			term_signal = 0;
 		} else if (WIFSIGNALED(status)) {
-			job->last_exit_status = -1;
-			job->term_signal = WTERMSIG(status);
+			last_exit_status = -1;
+			term_signal = WTERMSIG(status);
 		} else {
+			term_signal = -1;
+			last_exit_status = -1;
 			log_error("unhandled exit status");
 		}
-		log_debug("job %d exited with status %d", job->pid,
-				job->last_exit_status);
-		job->pid = 0;
+		log_debug("job %d exited with status=%d term_signal=%d",
+				job->jobStatus.getPid(), last_exit_status, term_signal);
+		job->jobStatus.setLastExitStatus(last_exit_status);
+		job->jobStatus.setTermSignal(term_signal);
+		job->jobStatus.setPid(0);
+		job->jobStatus.sync();
 
 		this->rescheduleJob(job);
 	} catch (std::out_of_range& e) {
@@ -352,6 +360,9 @@ void JobManager::setupDataDirectory()
 
 	log_debug("creating %s", jobdir);
 	mkdir_idempotent(jobdir, 0700);
+
+	std::string jobStatusRuntimeDir = this->jobd_config.runtimeDir + std::string("/status");
+	libjob::JobStatus::setRuntimeDirectory(jobStatusRuntimeDir);
 #if 0
 	char buf[PATH_MAX];
 

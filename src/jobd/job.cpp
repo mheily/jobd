@@ -533,10 +533,12 @@ int job_load(job_t job)
 
 void Job::unload()
 {
+	const pid_t pid = this->jobStatus.getPid();
+
 	if (this->state == JOB_STATE_RUNNING) {
-		log_debug("sending SIGTERM to process group %d", this->pid);
-		if (kill(-1 * this->pid, SIGTERM) < 0) {
-			log_errno("killpg(2) of pid %d", this->pid);
+		log_debug("sending SIGTERM to process group %d", pid);
+		if (kill(-1 * pid, SIGTERM) < 0) {
+			log_errno("killpg(2) of pid %d", pid);
 			/* not sure how to handle the error, we still want to clean up */
 		}
 		this->setState(JOB_STATE_KILLED);
@@ -598,11 +600,11 @@ void Job::run() {
 	this->acquire_resources();
 	this->lookup_credentials();
 
-	this->pid = fork();
-	if (this->pid < 0) {
+	pid_t pid = fork();
+	if (pid < 0) {
 		log_errno("fork(2)");
 		throw std::system_error(errno, std::system_category());
-	} else if (this->pid == 0) {
+	} else if (pid == 0) {
 		try {
 			this->start_child_process();
 		} catch (...) {
@@ -610,9 +612,11 @@ void Job::run() {
 			exit(124);
 		}
 	} else {
-		log_debug("job %s started with pid %d", this->label.c_str(), this->pid);
+		this->jobStatus.setPid(pid);
+		log_debug("job %s started with pid %d", this->label.c_str(), pid);
 		this->setState(JOB_STATE_RUNNING);
 		this->restart_after = 0;
+		this->jobStatus.sync();
 		// FIXME: close descriptors that the master process no longer needs
 #if 0
 		SLIST_FOREACH(jms, &job->jm->sockets, entry) {

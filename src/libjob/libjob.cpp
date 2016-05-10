@@ -25,10 +25,12 @@ extern "C" {
 }
 
 #include "job.h"
+#include "jobStatus.hpp"
 
 static std::string get_runtime_dir() {
 	if (getuid() == 0) {
-		return "/var/run";
+		(void) mkdir("/var/run/jobd", 0755);
+		return "/var/run/jobd";
 	} else {
 		const char *xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
 		const char *home = getenv("HOME");
