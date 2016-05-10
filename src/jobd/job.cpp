@@ -207,7 +207,7 @@ void Job::exec()
 
 	const char* path = json_argv[0].c_str();
 
-#if 1
+#if 0
 	log_debug("path: %s", path);
 	log_debug("argv[]:");
 	for (char **item = argv; *item; item++) {
