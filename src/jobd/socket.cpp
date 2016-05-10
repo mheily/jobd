@@ -166,6 +166,8 @@ int job_manifest_socket_get_port(struct job_manifest_socket *jms)
 	return 0;
 }
 
+//FIXME
+#if 0
 int job_manifest_socket_export(struct job_manifest_socket *jms, cvec_t env, size_t offset)
 {
 	int new_sd = offset + 3;
@@ -185,6 +187,7 @@ int job_manifest_socket_export(struct job_manifest_socket *jms, cvec_t env, size
 
 	return 0;
 }
+#endif
 
 void setup_socket_activation(int kqfd)
 {

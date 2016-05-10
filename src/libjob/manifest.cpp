@@ -71,8 +71,9 @@ void Manifest::normalize() {
 	)"_json;
 
 	if (this->json.count("Program") == 1) {
-		cout << this->json["Program"].type() << endl;
-		abort();
+		//FIXME: convert from string to array,
+		// this->json["Program"].type()
+		//abort();
 	}
 	if (this->json.count("UserName") == 0) {
 		struct passwd *pwd = getpwuid(getuid());

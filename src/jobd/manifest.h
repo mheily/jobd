@@ -24,7 +24,6 @@
 #include <sys/stat.h>
 #include "../../vendor/FreeBSD/sys/queue.h"
 #include <nlohmann/json.hpp>
-#include "cvec.h"
 #include "socket.h"
 
 using json = nlohmann::json;
@@ -57,7 +56,7 @@ typedef struct job_manifest {
 	bool     job_is_agent; /* Temporary hack to detect agents v.s. daemons */
 
 	char	*program;
-	cvec_t 	 program_arguments;
+	//cvec_t 	 program_arguments;
 
 	bool	 enable_globbing;
 	bool     run_at_load;
@@ -65,7 +64,7 @@ typedef struct job_manifest {
 	char 	*root_directory;
 	char    *jail_name;
 
-	cvec_t	 environment_variables;
+	//cvec_t	 environment_variables;
 	struct dataset_list *datasets;
 	struct chroot_jail *chroot_jail;
 	mode_t   umask;
@@ -75,8 +74,8 @@ typedef struct job_manifest {
 	uint32_t throttle_interval;
 	uint32_t nice;
 	bool	 init_groups;
-	cvec_t	 watch_paths;
-	cvec_t	 queue_directories;
+	//cvec_t	 watch_paths;
+	//cvec_t	 queue_directories;
 	bool	 start_on_mount;
 	char	*stdin_path;
 	char	*stdout_path;

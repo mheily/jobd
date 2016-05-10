@@ -146,7 +146,6 @@ public:
 private:
 	struct job jm; // XXX-FIXME for build testing
 	char	*program;
-	cvec_t 	 program_arguments;
 ///^^^kill the above
 
 	string label = "__invalid_label__";
@@ -164,13 +163,16 @@ private:
 	/** KeepAlive=true ? After this walltime, the job should be restarted */
 	time_t restart_after = 0;
 
+	/** Environment variables, in the form of KEY=value */
+	vector<string> environment;
+
 	void acquire_resources();
 	void apply_resource_limits();
 	void lookup_credentials();
 	void modify_credentials();
 	void start_child_process();
 	void redirect_stdio();
-	cvec_t setup_environment_variables();
+	void setup_environment();
 	void exec();
 };
 

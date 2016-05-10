@@ -91,8 +91,8 @@ void Job::modify_credentials() {
  * TODO: should cache these getenv() calls, so we don't do this dance for every
  * job invocation.
  */
-static int
-add_standard_environment_variables(cvec_t env)
+static void
+add_standard_environment_variables(vector<string>& env)
 {
 	static const char *keys[] = { 
 		"DISPLAY",
@@ -103,87 +103,19 @@ add_standard_environment_variables(cvec_t env)
 		"TZ",
 		NULL };
 	const char **key = NULL, *envp = NULL;
-	char *buf = NULL;
 
 	for (key = keys; *key != NULL; key++) {
 		if ((envp = getenv(*key))) {
-			if (asprintf(&buf, "%s=%s", *key, envp) < 0) goto err_out;
-			if (cvec_push(env, buf) < 0) goto err_out;
+			string elem = string(*key) + '=' + envp;
+			env.push_back(elem);
 		}
 	}
-
-	return 0;
-
-err_out:
-	free(buf);
-	return -1;
 }
 
-cvec_t Job::setup_environment_variables()
+void Job::setup_environment()
 {
-	cvec_t env = NULL;
-	const char *curp;
-	char *buf = NULL;
-	char *logname_var = NULL, *user_var = NULL;
-	unsigned int i, uid;
-	bool found[] = { false, false, false, false, false, false, false };
-
-	env = cvec_new();
-	if (!env)
-		throw "malloc error";
-
-
-	const char *user_name = this->manifest.json["UserName"].get<string>().c_str();
-	const vector<string>& env_vars = this->manifest.json["EnvironmentVariables"].get<vector<string>>();
-
-
-	if (asprintf(&logname_var, "LOGNAME=%s", user_name) < 0) goto err_out;
-	if (asprintf(&user_var, "USER=%s", user_name) < 0) goto err_out;
-	if (env_vars.size() == 0)
-		goto job_has_no_environment;
-
-	/* Convert the flat array into an array of key=value pairs */
-	/* Follow the crontab(5) convention of overriding LOGNAME and USER
-	 * and providing a default value for HOME, PATH, and SHELL */
-	//log_debug("job %s has %zu env vars\n", job->label, cvec_length(job->jm->environment_variables));
-	for (i = 0; i < env_vars.size(); i += 2) {
-		curp = env_vars[i].c_str();
-		log_debug("evaluating %s", curp);
-		if (strcmp(curp, "LOGNAME") == 0) {
-			found[0] = true;
-			if (cvec_push(env, logname_var) < 0) goto err_out;
-		} else if (strcmp(curp, "USER") == 0) {
-			found[1] = true;
-			if (cvec_push(env, user_var) < 0) goto err_out;
-		} else if (strcmp(curp, "HOME") == 0) {
-			found[2] = true;
-		} else if (strcmp(curp, "PATH") == 0) {
-			found[3] = true;
-		} else if (strcmp(curp, "SHELL") == 0) {
-			found[4] = true;
-		} else if (strcmp(curp, "TMPDIR") == 0) {
-			found[5] = true;
-		} else if (strcmp(curp, "PWD") == 0) {
-			found[6] = true;
-		} else {
-			char *keypair;
-			const char *value;
-			value = env_vars[i + 1].c_str();
-			if (!value)
-				goto err_out;
-			if (asprintf(&keypair, "%s=%s", curp, value) < 0)
-				goto err_out;
-			if (cvec_push(env, keypair) < 0) {
-				free(keypair);
-				goto err_out;
-			}
-			log_debug("set keypair: %s", keypair);
-			free(keypair);
-		}
-	}
-
-	/* TODO: refactor this to avoid goto and split out root env v.s. non-root env*/
-job_has_no_environment:
+	json env = this->manifest.json["EnvironmentVariables"];
+	map<string,string> default_env;
 
 	/* KLUDGE: when running as root, assume we are a system daemon and avoid adding any
 	 * 	session-related variables.
@@ -191,49 +123,44 @@ job_has_no_environment:
 	 *
 	 * The removal of these variables conforms to daemon(8) behavior on FreeBSD.
 	 */
-	uid = getuid();
+	if (getuid() == 0) {
+		default_env = {
+			{ "HOME", "/" },
+			{ "PATH", "/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin" },
+			{ "PWD", "/" },
+		};
+	} else {
+		default_env = {
+			{ "HOME", this->home_directory },
+			{ "PATH", "/usr/bin:/bin:/usr/local/bin" },
+			{ "PWD", "/" },
+			/* Not present in root environment */
+			{ "LOGNAME", this->manifest.json["UserName"].get<string>() },
+			{ "USER", this->manifest.json["UserName"].get<string>() },
+			{ "SHELL", this->shell },
+			{ "TMPDIR", "/tmp" },
+		};
+	}
 
-	if (uid && !found[0]) {
-		if (cvec_push(env, logname_var) < 0) goto err_out;
-	}
-	if (uid && !found[1]) {
-		if (cvec_push(env, user_var) < 0) goto err_out;
-	}
-	if (!found[2]) {
-		if (uid == 0) {
-			if (cvec_push(env, "HOME=/") < 0) goto err_out;
-		} else {
-			if (asprintf(&buf, "HOME=%s", this->home_directory.c_str()) < 0) goto err_out;
-			if (cvec_push(env, buf) < 0) goto err_out;
-			free(buf);
-			buf = NULL;
+	// FIXME: Does not actually override
+	/* Follow the crontab(5) convention of overriding LOGNAME and USER
+	 * and providing a default value for HOME, PATH, and SHELL */
+	for (auto& iter : default_env) {
+		const string& key = iter.first;
+		const string& val = iter.second;
+
+		if (env.find(key) == env.end()) {
+			log_debug("setting default value for %s", key.c_str());
+			this->environment.push_back(key + '=' + val);
 		}
 	}
-	if (!found[3]) {
-		const char *path;
 
-		if (uid == 0) {
-			path = "PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin";
-		} else {
-			path = "PATH=/usr/bin:/bin:/usr/local/bin";
-		}
-		if (cvec_push(env, path) < 0) goto err_out;
-	}
-	if (uid && !found[4]) {
-		if (asprintf(&buf, "SHELL=%s", this->shell.c_str()) < 0) goto err_out;
-		if (cvec_push(env, buf) < 0) goto err_out;
-		free(buf);
-		buf = NULL;
-	}
-	if (uid && !found[5]) {
-		if (cvec_push(env, "TMPDIR=/tmp") < 0) goto err_out;
-	}
-	if (!found[6]) {
-		if (cvec_push(env, "PWD=/") < 0) goto err_out;
+	for (json::iterator it = env.begin(); it != env.end(); ++it) {
+		string keyval = it.key() + '=' + it.value().get<string>();
+		this->environment.push_back(keyval);
 	}
 
-	if (add_standard_environment_variables(env) < 0)
-		goto err_out;
+	add_standard_environment_variables(this->environment);
 
 	//FIXME: port the socket code
 #if 0
@@ -255,42 +182,33 @@ job_has_no_environment:
 		buf = NULL;
 	}
 #endif
-
-	return (env);
-
-err_out:
-	free(logname_var);
-	free(user_var);
-	free(buf);
-	cvec_free(env);
-	return NULL;
 }
 
 void Job::exec()
 {
-	char *path;
-	char **argv, **envp;
-	cvec_t final_env;
-
-	final_env = this->setup_environment_variables();
-	if (final_env == NULL) {
-		log_error("unable to set environment vars");
-		throw std::logic_error("unable to set environment vars");
+	char* envp[this->environment.size() + 1];
+	for (int i = 0; i < this->environment.size(); i++) {
+		envp[i] = (char*) this->environment[i].c_str();
 	}
-	envp = cvec_to_array(final_env);
+	envp[this->environment.size()] = nullptr;
 
-	argv = cvec_to_array(this->program_arguments);
-	if (this->program) {
-		path = this->program;
-	} else {
-		path = argv[0];
+	vector<string> json_argv = this->manifest.json["Program"].get<vector<string>>();
+
+	char* argv[json_argv.size() + 1];
+	for (int i = 0; i < json_argv.size(); i++) {
+		argv[i] = (char*) json_argv[i].c_str();
 	}
+	argv[json_argv.size()] = nullptr;
+
 	if (this->manifest.json["EnableGlobbing"].get<bool>()) {
 		log_warning("Globbing is not implemented yet");
 		//TODO: globbing
 	}
-	log_debug("exec: %s", path);
-#if DEBUG
+
+	const char* path = json_argv[0].c_str();
+
+#if 1
+	log_debug("path: %s", path);
 	log_debug("argv[]:");
 	for (char **item = argv; *item; item++) {
 		log_debug(" - arg: %s", *item);
@@ -301,15 +219,15 @@ void Job::exec()
 	}
 #endif
 
+	this->redirect_stdio();
 	closelog();
 
 	int rv = execve(path, argv, envp);
 	if (rv < 0) {
-		log_errno("execve(2) of %s", path);
+		//FIXME: will never be seen because logging is turned off
+		log_errno("execve(2) of %s", argv[0]);
 		throw std::system_error(errno, std::system_category());
     	}
-
-	cvec_free(final_env);
 }
 
 void Job::redirect_stdio() {
@@ -453,7 +371,7 @@ void Job::start_child_process()
 	//FIXME: convert string to to mode_t
 	//(void) umask(job->jm->umask);
 
-	this->redirect_stdio();
+	this->setup_environment();
 	this->exec();
 }
 
