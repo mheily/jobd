@@ -600,15 +600,24 @@ void Job::run() {
 	this->acquire_resources();
 	this->lookup_credentials();
 
+	// This is only useful for debugging errors that prevent exec()
+#ifdef NOFORK
+	pid_t pid = 0;
+#else
 	pid_t pid = fork();
+#endif
 	if (pid < 0) {
 		log_errno("fork(2)");
 		throw std::system_error(errno, std::system_category());
 	} else if (pid == 0) {
 		try {
 			this->start_child_process();
-		} catch (...) {
-			//TODO: report failures to the parent
+		} catch(const std::system_error& e) {
+			//FIXME: log_error("child caught exception: errno=%d (%s)", e.code(), e.what());
+			log_error("child caught system_error: errno=%s", e.what());
+			exit(124);
+		} catch (const std::exception& e) {
+			log_error("child caught exception: %s", e.what());
 			exit(124);
 		}
 	} else {
