@@ -33,6 +33,7 @@ extern "C" {
 #include "calendar.h"
 #include "ipc.h"
 #include <libjob/logger.h>
+#include <libjob/jobProperty.hpp>
 #include "job.h"
 #include "keepalive.h"
 #include "manager.h"
@@ -363,6 +364,9 @@ void JobManager::setupDataDirectory()
 
 	std::string jobStatusRuntimeDir = this->jobd_config.runtimeDir + std::string("/status");
 	libjob::JobStatus::setRuntimeDirectory(jobStatusRuntimeDir);
+
+	std::string jobPropertyDataDir = this->jobd_config.dataDir + std::string("/property");
+	libjob::JobProperty::setDataDirectory(jobPropertyDataDir);
 #if 0
 	char buf[PATH_MAX];
 

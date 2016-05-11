@@ -33,8 +33,11 @@ namespace libjob {
 		/** Directory where users submit job configuration files */
 		std::string jobdir;
 
-		/** Directory where runtime files are stored */
+		/** Directory where transient runtime files are stored */
 		std::string runtimeDir;
+
+		/** Directory where persistent data files are stored */
+		std::string dataDir;
 
 		/** The path to the IPC socket */
 		std::string socketPath;

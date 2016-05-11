@@ -27,6 +27,30 @@ extern "C" {
 #include "job.h"
 #include "jobStatus.hpp"
 
+static std::string get_data_dir() {
+	if (getuid() == 0) {
+		(void) mkdir("/var/db/jobd", 0755);
+		return "/var/db/jobd";
+	} else {
+		const char *xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
+		const char *home = getenv("HOME");
+
+		/* TODO: Per the XDG Base Directory Specification,
+		 * we should validate the ownership and permissions of this directory. */
+		if (xdg_runtime_dir != NULL) {
+			return xdg_runtime_dir;
+		} else if (home != NULL) {
+			std::string dir = std::string(home) + "/.jobd";
+			(void) mkdir(dir.c_str(), 0700);
+			dir += "/db";
+			(void) mkdir(dir.c_str(), 0700);
+			return dir;
+		} else {
+			throw "unable to locate data dir: HOME or XDG_RUNTIME_DIR must be set";
+		}
+	}
+}
+
 static std::string get_runtime_dir() {
 	if (getuid() == 0) {
 		(void) mkdir("/var/run/jobd", 0755);
@@ -80,6 +104,7 @@ static std::string get_jobdir() {
 
 libjob::jobdConfig::jobdConfig() {
 	this->runtimeDir = get_runtime_dir();
+	this->dataDir = get_data_dir();
 	this->jobdir = get_jobdir();
 	this->socketPath = get_socketpath();
 }
