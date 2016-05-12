@@ -59,6 +59,25 @@ public:
 		this->path = JobProperty::dataDir + "/" + label + ".json";
 	}
 
+	bool isEnabled() const
+	{
+		return this->json["Enabled"];
+	}
+
+	void setEnabled(bool enabled = false)
+	{
+		this->json["Enabled"] = enabled;
+	}
+
+	bool isFaulted() const
+	{
+		return this->json["Faulted"];
+	}
+
+	void setFaulted(bool faulted = false)
+	{
+		this->json["Faulted"] = faulted;
+	}
 
 private:
 	static std::string dataDir;

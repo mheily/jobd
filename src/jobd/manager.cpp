@@ -105,6 +105,7 @@ void JobManager::scanJobDirectory()
 			unique_ptr<Job> job(new Job);
 			job->parseManifest(path);
 			job->jobStatus.setLabel(job->getLabel());
+			job->jobProperty.setLabel(job->getLabel());
 			if (!this->jobs.insert(std::make_pair(job->getLabel(), std::move(job))).second) {
 				log_error("Duplicate label detected");
 				continue;

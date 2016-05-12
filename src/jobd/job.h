@@ -26,6 +26,7 @@
 #include <unistd.h>
 
 #include "manifest.h"
+#include <libjob/jobProperty.hpp>
 #include <libjob/jobStatus.hpp>
 #include "../libjob/namespaceImport.hpp"
 #include "../libjob/manifest.hpp"
@@ -151,6 +152,7 @@ private:
 	string label = "__invalid_label__";
 	libjob::Manifest manifest;
 	libjob::JobStatus jobStatus;
+	libjob::JobProperty jobProperty;
 	enum e_job_state state;
 
 
