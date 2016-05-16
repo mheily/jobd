@@ -125,6 +125,20 @@ public:
 		return state;
 	}
 
+	const std::string getStateString() const
+	{
+		switch (state) {
+		case JOB_STATE_INVALID: return "invalid";
+		case JOB_STATE_DEFINED: return "defined";
+		case JOB_STATE_LOADED: return "loaded";
+		case JOB_STATE_WAITING: return "waiting";
+		case JOB_STATE_RUNNING: return "running";
+		case JOB_STATE_KILLED: return "killed";
+		case JOB_STATE_EXITED: return "exited";
+		}
+		return "corrupt"; // as in, memory corruption
+	}
+
 	void setState(enum e_job_state state)
 	{
 		this->state = state;
@@ -139,6 +153,8 @@ public:
 			return false;
 		}
 	}
+
+	pid_t getPid() const { return this->jobStatus.getPid(); }
 
 	void load();
 	void run();

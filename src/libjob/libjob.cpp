@@ -101,7 +101,6 @@ static std::string get_jobdir() {
 	//log_info("jobdir=" + this->jobdir);
 };
 
-
 libjob::jobdConfig::jobdConfig() {
 	this->runtimeDir = get_runtime_dir();
 	this->dataDir = get_data_dir();

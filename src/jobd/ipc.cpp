@@ -66,6 +66,10 @@ void ipc_request_handler(void) {
 //deadwood
 				log_error("manager_load_job() failed");
 				response.setResult("ERROR");
+		} else if (method == "list") {
+			json result;
+			manager.listAllJobs(result);
+			response.setResult(result);
 #if 0
 		} else if (method == "unload") {
 			try {
@@ -84,7 +88,7 @@ void ipc_request_handler(void) {
 			// TODO: response.setError();
 		}
 
-		log_debug("sending response: %s", response.getResult().c_str());
+		log_debug("sending response: %s", response.getResult().dump().c_str());
 		session.sendResponse(response);
 		//session.close();
 		log_debug("handler complete");

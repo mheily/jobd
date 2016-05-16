@@ -459,6 +459,21 @@ void JobManager::updateKeepaliveWakeInterval()
 	}
 }
 
+void JobManager::listAllJobs(json& result)
+{
+	result = json::object();
+
+	for (auto& it : this->jobs) {
+		const string &label = it.first;
+		unique_ptr<Job>& job = it.second;
+
+		result[label] = {
+			{ "Pid", job->getPid() },
+			{ "State", job->getStateString() },
+		};
+	}
+}
+
 void JobManager::mainLoop()
 {
 	struct kevent kev;

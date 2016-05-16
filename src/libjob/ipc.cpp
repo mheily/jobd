@@ -16,7 +16,6 @@
 
 #include <iostream>
 #include <system_error>
-#include <nlohmann/json.hpp>
 
 extern "C" {
 	#include <sys/types.h>
@@ -27,6 +26,7 @@ extern "C" {
 #include <unistd.h>
 }
 
+#include "namespaceImport.hpp"
 #include "ipc.h"
 #include "logger.h"
 
@@ -148,7 +148,9 @@ void ipcClient::dispatch(jsonRpcRequest request, jsonRpcResponse& response) {
 	ssize_t bytes = read(this->sockfd, &cbuf, sizeof(cbuf));
 	if (bytes < 0)
 		throw std::system_error(errno, std::system_category());
-	//TODO: set response
+	json j = json::parse(string(cbuf));
+	//TODO: look at the validity of the response
+	response.setResult(j["result"]);
 }
 
 ipcSession::ipcSession(int server_fd, struct sockaddr_un sa) {

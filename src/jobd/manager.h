@@ -30,6 +30,8 @@ public:
 	void mainLoop();
 	void unloadJob(const string& label);
 	void unloadAllJobs();
+	void listAllJobs(json& result);
+
 	JobManager() {}
 	~JobManager();
 

@@ -28,6 +28,9 @@ extern "C" {
 #include "../libjob/job.h"
 #include <libjob/namespaceImport.hpp>
 
+using std::cout;
+using std::endl;
+
 static std::unique_ptr<libjob::jobdConfig> jobd_config(new libjob::jobdConfig);
 
 static void read_manifest(const std::string path) {
@@ -57,6 +60,22 @@ void usage() {
 
 void show_version() {
 	std::cout << "job version " + jobd_config->version << std::endl;
+}
+
+void list_response_handler(libjob::jsonRpcResponse& response)
+{
+	try {
+		const char* format = "%-24s %s\n";
+		json o = response.getResult();
+		printf(format, "Label", "Status");
+		printf("%s\n", string(72, '-').c_str());
+		for (json::iterator it = o.begin(); it != o.end(); ++it) {
+			printf(format, it.key().c_str(), it.value().dump().c_str());
+		}
+	} catch(const std::exception& e) {
+		std::cout << "ERROR: Unhandled exception: " << e.what() << '\n';
+		throw;
+	}
 }
 
 int
@@ -101,35 +120,45 @@ main(int argc, char *argv[])
 		if (argc < 1)
 			throw "insufficient arguments";
 
-		for (int i = 0; i < argc; i++) {
-			std::string label = std::string(argv[i]);
-			i++;
-			std::string command = std::string(argv[i]);
-			i++;
+		std::string command_or_label = std::string(argv[0]);
 
-			request.setMethod(command);
-			if (command == "load") {
-				//char *resolved_path = realpath(label.c_str(), NULL);
-				//std::string path(resolved_path);
-				//free(resolved_path);
-				//request.addParam(path);
-				read_manifest(label);
-				throw "XXX-TESTING";
-			} else if (command == "unload") {
-				request.addParam(label);
-			} else {
-				puts(command.c_str());
-				throw "unexpected argument";
-			}
+		if (command_or_label == "list") {
+			request.setMethod("list");
 			ipc_client->dispatch(request, response);
-			//TODO: handle response
-			break;
-		}
+			list_response_handler(response);
+		} else {
+			for (int i = 0; i < argc; i++) {
+				std::string label = std::string(argv[i]);
+				i++;
+				std::string command = std::string(argv[i]);
+				i++;
 
+				request.setMethod(command);
+				if (command == "load") {
+					//char *resolved_path = realpath(label.c_str(), NULL);
+					//std::string path(resolved_path);
+					//free(resolved_path);
+					//request.addParam(path);
+					read_manifest(label);
+					throw "XXX-TESTING";
+				} else if (command == "unload") {
+					request.addParam(label);
+				} else {
+					puts(command.c_str());
+					throw "unexpected argument";
+				}
+				ipc_client->dispatch(request, response);
+				//TODO: handle response
+				break;
+			}
+		}
 
 	} catch(const std::system_error& e) {
 		std::cout << "Caught system_error with code " << e.code()
 	                  << " meaning " << e.what() << '\n';
+		exit(1);
+	} catch(const std::exception& e) {
+		std::cout << "ERROR: Unhandled exception: " << e.what() << '\n';
 		exit(1);
 	} catch(...) {
 		std::cout << "Unhandled exception\n";

@@ -86,8 +86,8 @@ namespace libjob {
 			this->response["id"] = id;
 		}
 
-		void setResult(std::string str) { this->response["result"] = str; }
-		std::string getResult() { return this->response["result"]; }
+		void setResult(json j) { this->response["result"] = j; }
+		json getResult() { return this->response["result"]; }
 		std::string dump() { return this->response.dump(); }
 
 	private:
