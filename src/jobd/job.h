@@ -156,7 +156,18 @@ public:
 
 	pid_t getPid() const { return this->jobStatus.getPid(); }
 
-	bool isEnabled() const { return this->jobProperty.isEnabled(); }
+	bool isEnabled() const
+	{
+		return this->jobProperty.isEnabled(); }
+	}
+
+	void setEnabled(bool enabled)
+	{
+		this->jobProperty.setEnabled(true);
+		if (this->isRunnable()) {
+			this->run();
+		}
+	}
 
 	void load();
 	void run();
