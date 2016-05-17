@@ -146,7 +146,7 @@ public:
 
 	bool isRunnable() const
 	{
-		if (this->state == JOB_STATE_LOADED) {
+		if (this->isEnabled() && this->state == JOB_STATE_LOADED) {
 			bool runAtLoad = this->manifest.json["RunAtLoad"];
 			return runAtLoad;
 		} else {
@@ -155,6 +155,8 @@ public:
 	}
 
 	pid_t getPid() const { return this->jobStatus.getPid(); }
+
+	bool isEnabled() const { return this->jobProperty.isEnabled(); }
 
 	void load();
 	void run();

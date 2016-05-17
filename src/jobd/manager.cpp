@@ -470,6 +470,7 @@ void JobManager::listAllJobs(json& result)
 		result[label] = {
 			{ "Pid", job->getPid() },
 			{ "State", job->getStateString() },
+			{ "Enabled", job->isEnabled() },
 		};
 	}
 }
