@@ -218,6 +218,7 @@ void JobManager::enableJob(const string& label) {
 	} else {
 		job->setEnabled(true);
 		log_debug("job %s enabled", label.c_str());
+		this->createProcessEventWatch(job->getPid());
 	}
 }
 
@@ -259,6 +260,7 @@ void JobManager::createProcessEventWatch(pid_t pid)
 		//TODO: probably want to crash, or kill the job, or do something
 		// more useful here.
 	}
+	log_debug("will be notified if process %d exits", pid);
 }
 
 void JobManager::deleteProcessEventWatch(pid_t pid)
