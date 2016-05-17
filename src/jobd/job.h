@@ -158,7 +158,7 @@ public:
 
 	bool isEnabled() const
 	{
-		return this->jobProperty.isEnabled(); }
+		return this->jobProperty.isEnabled();
 	}
 
 	void setEnabled(bool enabled)

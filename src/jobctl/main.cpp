@@ -127,30 +127,28 @@ main(int argc, char *argv[])
 			ipc_client->dispatch(request, response);
 			list_response_handler(response);
 		} else {
-			for (int i = 0; i < argc; i++) {
-				std::string label = std::string(argv[i]);
-				i++;
-				std::string command = std::string(argv[i]);
-				i++;
-
-				request.setMethod(command);
-				if (command == "load") {
-					//char *resolved_path = realpath(label.c_str(), NULL);
-					//std::string path(resolved_path);
-					//free(resolved_path);
-					//request.addParam(path);
-					read_manifest(label);
-					throw "XXX-TESTING";
-				} else if (command == "unload") {
-					request.addParam(label);
-				} else {
-					puts(command.c_str());
-					throw "unexpected argument";
-				}
-				ipc_client->dispatch(request, response);
-				//TODO: handle response
-				break;
+			if (argc < 2)
+				throw "insufficient arguments";
+			std::string label = command_or_label;
+			std::string command = std::string(argv[1]);
+			request.setMethod(command);
+			if (command == "load") {
+				//char *resolved_path = realpath(label.c_str(), NULL);
+				//std::string path(resolved_path);
+				//free(resolved_path);
+				//request.addParam(path);
+				read_manifest(label);
+				throw "XXX-TESTING";
+			} else if (command == "unload") {
+				request.addParam(label);
+			} else if (command == "enable") {
+				request.addParam(label);
+			} else {
+				puts(command.c_str());
+				throw "unexpected argument";
 			}
+			ipc_client->dispatch(request, response);
+			//TODO: handle response
 		}
 
 	} catch(const std::system_error& e) {

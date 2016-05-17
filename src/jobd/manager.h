@@ -28,6 +28,7 @@ class JobManager {
 public:
 	void setup(struct pidfh *pfh);
 	void mainLoop();
+	void enableJob(const string& label);
 	void unloadJob(const string& label);
 	void unloadAllJobs();
 	void listAllJobs(json& result);

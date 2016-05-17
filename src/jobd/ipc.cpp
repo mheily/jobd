@@ -70,6 +70,11 @@ void ipc_request_handler(void) {
 			json result;
 			manager.listAllJobs(result);
 			response.setResult(result);
+		} else if (method == "enable") {
+			json result;
+			manager.enableJob(request.getParam(0));
+			result["FIXME"] = "TODO";
+			response.setResult(result);
 #if 0
 		} else if (method == "unload") {
 			try {
