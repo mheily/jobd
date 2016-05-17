@@ -65,6 +65,10 @@ void ipcClient::create_socket() {
         if (this->sockfd < 0)
         	throw std::system_error(errno, std::system_category());
 
+        // Prevent SIGPIPE from being generated
+        int optval = 1;
+        setsockopt(this->sockfd, SOL_SOCKET, SO_NOSIGPIPE, (void *)&optval, sizeof(optval));
+
         //todo for linux
 #if 0
         int on = 1;
@@ -160,6 +164,11 @@ ipcSession::ipcSession(int server_fd, struct sockaddr_un sa) {
         	log_errno("accept(2)");
                 throw std::system_error(errno, std::system_category());
         }
+
+        // Prevent SIGPIPE from being generated
+        int optval = 1;
+        setsockopt(this->sockfd, SOL_SOCKET, SO_NOSIGPIPE, (void *)&optval, sizeof(optval));
+
         log_debug("accepted incoming connection on server fd %d, client fd %d",
         	server_fd, this->sockfd);
 }

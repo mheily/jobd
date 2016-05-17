@@ -221,6 +221,16 @@ void JobManager::enableJob(const string& label) {
 	}
 }
 
+void JobManager::disableJob(const string& label) {
+	unique_ptr<Job>& job = this->jobs.find(label)->second;
+	if (job->isEnabled()) {
+		job->setEnabled(false);
+		log_debug("job %s disabled", label.c_str());
+	} else {
+		log_warning("tried to disable a job that was already disabled");
+	}
+}
+
 void JobManager::unloadJob(const string& label) {
 	unique_ptr<Job>& job = this->jobs.find(label)->second;
 	job->unload();

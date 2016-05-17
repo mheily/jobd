@@ -163,9 +163,11 @@ public:
 
 	void setEnabled(bool enabled)
 	{
-		this->jobProperty.setEnabled(true);
-		if (this->isRunnable()) {
+		this->jobProperty.setEnabled(enabled);
+		if (enabled && this->isRunnable()) {
 			this->run();
+		} else if (!enabled && this->getState() == JOB_STATE_RUNNING) {
+			this->unload();
 		}
 	}
 

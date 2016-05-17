@@ -141,7 +141,7 @@ main(int argc, char *argv[])
 				throw "XXX-TESTING";
 			} else if (command == "unload") {
 				request.addParam(label);
-			} else if (command == "enable") {
+			} else if (command == "enable" || command == "disable") {
 				request.addParam(label);
 			} else {
 				puts(command.c_str());
