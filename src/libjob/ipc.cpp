@@ -65,10 +65,6 @@ void ipcClient::create_socket() {
         if (this->sockfd < 0)
         	throw std::system_error(errno, std::system_category());
 
-        // Prevent SIGPIPE from being generated
-        int optval = 1;
-        setsockopt(this->sockfd, SOL_SOCKET, SO_NOSIGPIPE, (void *)&optval, sizeof(optval));
-
         //todo for linux
 #if 0
         int on = 1;
@@ -126,7 +122,7 @@ void ipcSession::sendResponse(jsonRpcResponse response) {
 	auto buf = response.dump();
 
 	log_debug("sending `%s' to %d", buf.c_str(), this->sockfd);
-	if (write(this->sockfd, buf.c_str(), buf.length()) < 0) {
+	if (send(this->sockfd, buf.c_str(), buf.length(), MSG_NOSIGNAL) < 0) {
 		log_errno("sendto(2)");
 		throw std::system_error(errno, std::system_category());
 	}
@@ -145,7 +141,7 @@ void ipcSession::close() {
 void ipcClient::dispatch(jsonRpcRequest request, jsonRpcResponse& response) {
 	request.validate();
 	std::string bufstr = request.dump();
-	if (write(this->sockfd, bufstr.c_str(), bufstr.length() + 1) < 0)
+	if (send(this->sockfd, bufstr.c_str(), bufstr.length() + 1, MSG_NOSIGNAL) < 0)
 		throw std::system_error(errno, std::system_category());
 
 	char cbuf[9999]; // XXX-HORRIBLE HARDCODED BUFFER SIZE
@@ -164,10 +160,6 @@ ipcSession::ipcSession(int server_fd, struct sockaddr_un sa) {
         	log_errno("accept(2)");
                 throw std::system_error(errno, std::system_category());
         }
-
-        // Prevent SIGPIPE from being generated
-        int optval = 1;
-        setsockopt(this->sockfd, SOL_SOCKET, SO_NOSIGPIPE, (void *)&optval, sizeof(optval));
 
         log_debug("accepted incoming connection on server fd %d, client fd %d",
         	server_fd, this->sockfd);
