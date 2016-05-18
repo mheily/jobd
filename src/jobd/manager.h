@@ -31,6 +31,7 @@ public:
 	void disableJob(const string& label);
 	void enableJob(const string& label);
 	void unloadJob(const string& label);
+	void clearJob(const string& label);
 	void unloadAllJobs();
 	void listAllJobs(json& result);
 
@@ -38,6 +39,8 @@ public:
 	~JobManager();
 
 	libjob::jobdConfig jobd_config;
+
+	void createProcessEventWatch(pid_t pid);
 
 private:
 	/** kqueue(2) descriptor for the main event loop */
@@ -52,7 +55,6 @@ private:
 
 	void scanJobDirectory();
 	void reapChildProcess(pid_t pid, int status);
-	void createProcessEventWatch(pid_t pid);
 	void deleteProcessEventWatch(pid_t pid);
 	unique_ptr<Job>& getJobByPid(pid_t pid);
 	void removeJob(Job& job);

@@ -32,6 +32,8 @@
 #include "../libjob/manifest.hpp"
 #include "../libjob/logger.h"
 
+class JobManager;
+
 typedef enum {
 	JOB_SCHEDULE_NONE = 0,
 	JOB_SCHEDULE_PERIODIC,
@@ -139,6 +141,11 @@ public:
 		return "corrupt"; // as in, memory corruption
 	}
 
+	const std::string getFaultStateString() const
+	{
+		return this->jobProperty.getFaultStateString();
+	}
+
 	void setState(enum e_job_state state)
 	{
 		this->state = state;
@@ -146,10 +153,12 @@ public:
 
 	bool isRunnable() const
 	{
-		if (this->isEnabled() && this->state == JOB_STATE_LOADED) {
+		if (this->isEnabled() && !this->isFaulted() && this->state == JOB_STATE_LOADED) {
 			bool runAtLoad = this->manifest.json["RunAtLoad"];
 			return runAtLoad;
 		} else {
+			log_debug("not runnable: enabled=%d faulted=%d",
+					this->isEnabled(), this->isFaulted());
 			return false;
 		}
 	}
@@ -159,6 +168,11 @@ public:
 	bool isEnabled() const
 	{
 		return this->jobProperty.isEnabled();
+	}
+
+	bool isFaulted() const
+	{
+		return this->jobProperty.isFaulted();
 	}
 
 	void setEnabled(bool enabled)
@@ -171,11 +185,18 @@ public:
 		}
 	}
 
+	void setManager(JobManager* manager)
+	{
+		this->manager = manager;
+	}
+
+	void clearFault();
 	void load();
 	void run();
 	void unload();
 
 private:
+	JobManager* manager;
 	struct job jm; // XXX-FIXME for build testing
 	char	*program;
 ///^^^kill the above

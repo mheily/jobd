@@ -41,8 +41,6 @@ public:
 	}
 
 	~JobStatus() {}
-	void readFile(const std::string& path);
-	void sync();
 
 	pid_t getPid() const { return this->json["Pid"].get<unsigned int>(); }
 	void setPid(pid_t pid) { this->json["Pid"] = pid; }
@@ -50,6 +48,8 @@ public:
 	void setLabel(const std::string& label) {
 		this->json["Label"] = label;
 		this->path = JobStatus::runtimeDir + "/" + label + ".json";
+		//FIXME: definitely not accurate yet: this->readFile();
+		//TODO: verify the status is still accurate, the process might not exist anymore
 	}
 
 	int getLastExitStatus() const
@@ -60,6 +60,7 @@ public:
 	void setLastExitStatus(int lastExitStatus)
 	{
 		this->json["LastExitStatus"] = lastExitStatus;
+		this->sync();
 	}
 
 	int getTermSignal() const
@@ -70,11 +71,14 @@ public:
 	void setTermSignal(int termSignal)
 	{
 		this->json["TermSignal"] = termSignal;
+		this->sync();
 	}
 
 private:
 	static std::string runtimeDir;
 	std::string path;
 	nlohmann::json json;
+	void readFile();
+	void sync();
 };
 }

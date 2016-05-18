@@ -28,6 +28,13 @@ namespace libjob
 class JobProperty
 {
 public:
+
+	typedef enum e_fault_state {
+		JOB_FAULT_STATE_NONE,	// The job is not in a faulted state
+		JOB_FAULT_STATE_DEGRADED,	// The job is running, but not healthy
+		JOB_FAULT_STATE_OFFLINE,	// The job failed and the process is dead
+	} job_fault_state_t;
+
 	JobProperty() {
 		/*
 		 * faultstatus: can be none, degraded, offline, outdated
@@ -39,9 +46,8 @@ public:
                           "JobPropertyAPI": 0,
                           "Label": "",
                           "Enabled": false,
-                          "Faulted": false,
-                          "FaultStatus": "none",
-                          "FaultDetail": "",
+                          "FaultState": 0,
+                          "FaultMessage": "",
                           "CustomProperties": {}
                           }
                 )"_json;
@@ -50,13 +56,13 @@ public:
 	}
 
 	~JobProperty() {}
-	void readFile(const std::string& path);
-	void sync();
 
 	static void setDataDirectory(std::string& path);
+
 	void setLabel(const std::string& label) {
 		this->json["Label"] = label;
 		this->path = JobProperty::dataDir + "/" + label + ".json";
+		this->readFile();
 	}
 
 	bool isEnabled() const
@@ -67,21 +73,37 @@ public:
 	void setEnabled(bool enabled = false)
 	{
 		this->json["Enabled"] = enabled;
+		this->sync();
 	}
 
 	bool isFaulted() const
 	{
-		return this->json["Faulted"];
+		return (this->json["FaultState"].get<int>() != 0);
 	}
 
-	void setFaulted(bool faulted = false)
+	void setFaulted(e_fault_state state, std::string message = "")
 	{
-		this->json["Faulted"] = faulted;
+		this->json["FaultState"] = state;
+		this->json["FaultMessage"] = message;
+		this->sync();
+	}
+
+	const std::string getFaultStateString() const
+	{
+		static const std::string fault_state_as_string[3] = {
+				"online",
+				"degraded",
+				"offline",
+		};
+		return fault_state_as_string[this->json["FaultState"].get<int>()];
 	}
 
 private:
 	static std::string dataDir;
 	std::string path;
 	nlohmann::json json;
+
+	void sync();
+	void readFile();
 };
 }

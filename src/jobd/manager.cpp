@@ -103,6 +103,7 @@ void JobManager::scanJobDirectory()
 		try {
 			log_debug("parsing %s", path.c_str());
 			unique_ptr<Job> job(new Job);
+			job->setManager(this);
 			job->parseManifest(path);
 			job->jobStatus.setLabel(job->getLabel());
 			job->jobProperty.setLabel(job->getLabel());
@@ -148,6 +149,10 @@ void JobManager::runPendingJobs()
 		if (job->getState() == JOB_STATE_LOADED && job->isRunnable()) {
 			log_debug("running job: %s", label.c_str());
 			job->run();
+		} else {
+			log_debug("not running job %s; state=%s is_runnable=%d",
+					label.c_str(), job->getStateString().c_str(), job->isRunnable());
+
 		}
 	}
 
@@ -204,11 +209,15 @@ void JobManager::wakeJob(const string& label)
 		throw std::logic_error("Tried to wake a job that was not asleep");
 	}
 	job->run();
-	this->createProcessEventWatch(job->jobStatus.getPid());
 }
 
 void JobManager::removeJob(Job& job) {
 	this->jobs.erase(job.getLabel());
+}
+
+void JobManager::clearJob(const string& label) {
+	unique_ptr<Job>& job = this->jobs.find(label)->second;
+	job->clearFault();
 }
 
 void JobManager::enableJob(const string& label) {
@@ -218,7 +227,6 @@ void JobManager::enableJob(const string& label) {
 	} else {
 		job->setEnabled(true);
 		log_debug("job %s enabled", label.c_str());
-		this->createProcessEventWatch(job->getPid());
 	}
 }
 
@@ -317,10 +325,12 @@ void JobManager::reapChildProcess(pid_t pid, int status)
 		}
 		log_debug("job %d exited with status=%d term_signal=%d",
 				job->jobStatus.getPid(), last_exit_status, term_signal);
+
+		//TODO: these three calls cause sync() to run three times.
+		// would like one function that sets all three.
 		job->jobStatus.setLastExitStatus(last_exit_status);
 		job->jobStatus.setTermSignal(term_signal);
 		job->jobStatus.setPid(0);
-		job->jobStatus.sync();
 
 		this->rescheduleJob(job);
 	} catch (std::out_of_range& e) {
@@ -345,6 +355,11 @@ void JobManager::rescheduleJob(unique_ptr<Job>& job) {
 	if (job->manifest.json["KeepAlive"].get<bool>()) {
 		job->restart_after = current_time() +
 			job->manifest.json["ThrottleInterval"].get<unsigned int>();
+	} else {
+		// Assume that non-KeepAlive jobs are supposed to run forever
+		// FIXME: For on-demand jobs, this should not be a fault.
+		job->jobProperty.setFaulted(libjob::JobProperty::JOB_FAULT_STATE_OFFLINE,
+				"The process exited unexpectedly");
 	}
 
 	return;
@@ -493,6 +508,7 @@ void JobManager::listAllJobs(json& result)
 			{ "Pid", job->getPid() },
 			{ "State", job->getStateString() },
 			{ "Enabled", job->isEnabled() },
+			{ "FaultState", job->getFaultStateString(), },
 		};
 	}
 }

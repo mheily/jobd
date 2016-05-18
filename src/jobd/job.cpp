@@ -543,12 +543,26 @@ void Job::run() {
 		log_debug("job %s started with pid %d", this->label.c_str(), pid);
 		this->setState(JOB_STATE_RUNNING);
 		this->restart_after = 0;
-		this->jobStatus.sync();
+		manager->createProcessEventWatch(pid);
 		// FIXME: close descriptors that the master process no longer needs
 #if 0
 		SLIST_FOREACH(jms, &job->jm->sockets, entry) {
 			job_manifest_socket_close(jms);
 		}
 #endif
+	}
+}
+
+void Job::clearFault()
+{
+	if (this->isFaulted()) {
+		log_info("cleared faulted job: %s", this->getLabel().c_str());
+		this->jobProperty.setFaulted(libjob::JobProperty::JOB_FAULT_STATE_NONE, "");
+		this->setState(JOB_STATE_LOADED);
+		if (this->isRunnable()) {
+			this->run();
+		}
+	} else {
+		log_debug("tried to clear a job that was not in a faulted state");
 	}
 }

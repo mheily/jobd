@@ -29,16 +29,16 @@ namespace libjob
 
 std::string JobProperty::dataDir = "";
 
-void JobProperty::readFile(const string& path)
+void JobProperty::readFile()
 {
-	this->path = path;
 	try {
-		std::ifstream ifs(path, std::ifstream::in);
+		std::ifstream ifs(this->path, std::ifstream::in);
 		ifs >> this->json;
 	} catch (std::exception& e) {
-		log_error("error parsing %s: %s", path.c_str(), e.what());
+		log_error("error parsing %s: %s", this->path.c_str(), e.what());
 		throw;
 	}
+	log_debug("loaded properties from %s", this->path.c_str());
 }
 
 void JobProperty::sync()
