@@ -20,6 +20,7 @@
 #include <iostream>
 #include <string>
 #include <streambuf>
+#include <unordered_set>
 
 extern "C" {
 	#include <getopt.h>
@@ -32,6 +33,13 @@ using std::cout;
 using std::endl;
 
 static std::unique_ptr<libjob::jobdConfig> jobd_config(new libjob::jobdConfig);
+
+// All commands that this utility accepts
+const std::unordered_set<string> commands = {
+	"disable", "enable", "list",
+	"refresh", "restart",
+	"mark", "clear",
+};
 
 void usage() {
 	std::cout <<
@@ -65,6 +73,23 @@ void list_response_handler(libjob::jsonRpcResponse& response)
 	} catch(const std::exception& e) {
 		std::cout << "ERROR: Unhandled exception: " << e.what() << '\n';
 		throw;
+	}
+}
+
+void transpose_helper(string& param0, string& param1) {
+	if (commands.find(param1) == commands.end() && commands.find(param0) != commands.end()) {
+		std::cout << "jobctl: syntax error -- did you mean to say 'jobctl " +
+				param1 + " " + param0 + "' (Y/n)? ";
+		string response;
+		std::getline (std::cin, response);
+		if (response == "" || response == "y" || response == "Y") {
+			string tmp = param0;
+			param0 = param1;
+			param1 = tmp;
+		} else {
+			std::cout << "Fatal error: invalid syntax\n";
+			exit(1);
+		}
 	}
 }
 
@@ -121,6 +146,7 @@ main(int argc, char *argv[])
 				throw "insufficient arguments";
 			std::string label = command_or_label;
 			std::string command = std::string(argv[1]);
+			transpose_helper(label, command);
 			request.setMethod(command);
 			if (command == "load" || command == "restart" ||
 					command == "mark" || command == "unload") {
