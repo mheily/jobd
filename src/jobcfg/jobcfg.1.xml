@@ -217,5 +217,12 @@ be overridden by using the <replaceable>--delimiter</replaceable> option.
 	</para>
 </refsect1>
 
+<refsect1>
+	<title>BUGS</title>
+	<para>
+	This command is not implemented yet.
+	</para>
+</refsect1>
+
 
 </refentry>

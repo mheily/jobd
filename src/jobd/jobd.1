@@ -1,0 +1,52 @@
+JOBD(8)                 FreeBSD System Manager's Manual                JOBD(8)
+
+NNAAMMEE
+     jjoobbdd – job management daemon
+
+SSYYNNOOPPSSIISS
+     jjoobbdd [_-_f] [_-_v]
+
+DDEESSCCRRIIPPTTIIOONN
+     jjoobbdd manages jobs that are defined in configuration files located under
+     _/_u_s_r_/_l_o_c_a_l_/_e_t_c_/_j_o_b_._d.  The format of job configuration files is described
+     in job(5).
+
+     When a new job configuration file is created, jjoobbdd will automatically
+     detect this and load the job into memory. By default, the job will be
+     disabled. To enable the job, the jjoobbccttll eennaabbllee command should be
+     executed.
+
+     When an existing job configuration file is deleted, jjoobbdd will
+     automatically detect this and remove the job from memory. If the job is
+     currently running, it will be stopped.
+
+     When an existing configuration file is modified, jjoobbdd will automatically
+     detect this and transition the job into the "refresh-needed" state.  This
+     alerts the system administrator that the job is running, but with an
+     outdated configuration. is outdated and needs to be refreshed. To refresh
+     the job, the jjoobbccttll rreeffrreesshh command should be executed.
+
+OOPPTTIIOONNSS
+     The following options are available:
+
+     -f      Do not become a daemon.
+
+     -v      Increase the logging verbosity.
+
+EENNVVIIRROONNMMEENNTT
+     The jjoobbdd command does not rely on any environment variables.
+
+FFIILLEESS
+     Table Row
+     --   /usr/local/etc/job.d
+     --   The directory where job manifests are stored.
+
+EEXXIITT SSTTAATTUUSS
+     The jjoobbdd command exits 0 on success, and >0 if an error occurs
+
+SSEEEE AALLSSOO
+     jobcfg(1) jobctl(1) job(5)
+
+AAUUTTHHOORRSS
+
+FreeBSD 11.0-CURRENTMAR2016     April 28, 2016     FreeBSD 11.0-CURRENTMAR2016

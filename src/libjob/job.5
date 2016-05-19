@@ -1,0 +1,141 @@
+.TH "JOB" "5" "May 18, 2016" "FreeBSD 11.0-CURRENTMAR2016" "FreeBSD File Formats Manual"
+.nh
+.if n .ad l
+.SH "NAME"
+\fBjob\fR
+\- configuration format for jobd
+.SH "DESCRIPTION"
+Jobs are configured using a set of key/value pairs within a JSON configuration file. The only required key is the Label; all other
+keys are optional.
+.PP
+The following configuration options are available:
+.TP 8n
+Description
+A short, one-line description of what the job does.
+.TP 8n
+EnableGlobbing
+If true, the program arguments will be passed to
+glob(3)
+for possible expansion.
+Not currently implemented.
+.TP 8n
+EnvironmentVariables
+A dictionary of environment variables to set in the process.
+All jobs will be started with a minimal set of environment variables
+inherited from
+\fBjobd\fR.
+These variables may include
+one or more of the following:
+.PP
+DISPLAY
+.PP
+HOME
+.PP
+i18n variables: NLSPATH, LANG
+.PP
+LOGNAME
+.PP
+PATH
+.PP
+LC_ALL, LC_COLATE, LC_CTYPE, and other POSIX locale variables.
+.PP
+PWD
+.PP
+SHELL
+.PP
+TMPDIR
+.PP
+TZ
+.PP
+USER
+.PD 0
+.PP
+.RS 8n
+Any variables defined in the EnvironmentVariables section will override
+the default values inherited from
+\fBjobd\fR.
+.RE
+.PD
+.TP 8n
+GroupName
+The name of the group that the program will run as.
+.TP 8n
+InitGroups
+If false, the
+initgroups(3)
+function will not be called to setup the supplemental groups.
+.TP 8n
+KeepAlive
+If true, the program will be automatically restarted if it exits.
+.TP 8n
+Label
+A globally unique job identifier. Labels should
+be constructed using reverse domain name notation.
+.TP 8n
+Program
+.br
+If a string is provided, the string will be treated as the full path to the program to be executed. If the program takes any arguments, you must pass an array instead.
+If an array is provided, the array contains arguments that will be passed to
+exec(3)
+to execute the program.
+.TP 8n
+Sockets
+.br
+An array of sockets to be created by
+jobd(8)
+and used to launch the job when a client connects to a socket. (TODO: more documentation on this)
+.TP 8n
+StandardErrorPath
+The path to a file where
+stdio(3)
+standard error should be redirected. By default, errors will be
+redirected to /dev/null.
+.TP 8n
+StandardInPath
+The path to a file where
+stdio(3)
+standard input should be redirected. By default, input will be
+redirected from /dev/null.
+.TP 8n
+StandardOutPath
+The path to a file where
+stdio(3)
+standard output should be redirected. By default, output will be
+redirected to /dev/null.
+.TP 8n
+StartInterval
+If an integer is provided, the job will be started on a regular interval. The interval should be specified in seconds.
+.TP 8n
+Umask
+The value to pass to
+umask(2)
+before executing the program. It should be specified in octal notation using a
+string.
+.TP 8n
+RootDirectory
+An alternate root directory for the process, entered via a call to chroot(2).
+.TP 8n
+ThrottleInterval
+The amount of time to wait before automatically restarting a process if it dies.
+This has no effect unless the KeepAlive key is set to true. The default throttle
+interval is ten seconds.
+.TP 8n
+UserName
+The name of the user that the program will run as.
+.TP 8n
+WorkingDirectory
+A directory to chdir(2) into prior to executing the process.
+.SH "EXAMPLES"
+Example #1:
+.nf
+.sp
+.RS 0n
+TODO: put example here
+.RE
+.fi
+.SH "SEE ALSO"
+jobcfg(1)
+jobd(8)
+job(5)
+.SH "AUTHORS"
+Mark Heily <mark@heily.com>

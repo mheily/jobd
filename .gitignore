@@ -17,6 +17,5 @@ vars.sh
 depends.mk
 
 
-# Manpages
-*.[12345678]
+# Manpage-to-HTML
 *.[12345678].html

@@ -18,26 +18,14 @@
 . ../../config.sub
 . ../../vars.sh
 
-#bin_PROGRAMS=jobcfg
+TESTS="test1"
 
-#jobcfg_CXXFLAGS="-include ../../config.h -std=c++11 -Wall -Werror -I/usr/local/include $kqueue_CFLAGS"
-#jobcfg_LDFLAGS="-L ../libjob"
-#jobcfg_LDADD="$kqueue_LDADD -ljob"
-#jobcfg_SOURCES=`ls *.cpp | tr '\n' ' '`
-#jobcfg_DEPENDS="$kqueue_DEPENDS"
-
-#if [ "`uname`" = 'FreeBSD' ] ; then
-#        jobcfg_LDADD="${jobcfg_LDADD} -ljail"
-#fi
-
-if [ $check_program_docbook2mdoc = "1" ] ; then
-	custom_target 'jobcfg.1' 'jobcfg.1.xml' \
-		'docbook2mdoc jobcfg.1.xml | mandoc -T man > jobcfg.1'
-
-	custom_target 'jobcfg.1.html' 'jobcfg.1.xml' \
-		'docbook2mdoc jobcfg.1.xml | mandoc -mdoc -T html > jobcfg.1.html'
-fi
-
-manpage 'jobcfg.1'
+test1_SOURCES="test.c rfs-stub.c"
+test1_CFLAGS="-include ../config.h -std=c99 -Wall -Werror"
+#launchd_LDADD="$libucl_LDADD $kqueue_LDADD"
+#launchd_SOURCES="job.c log.c launchd.c manager.c manifest.c socket.c 
+#                 calendar.c timer.c pidfile.c flopen.c"
+#launchd_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS"
+#                 
 
 write_makefile

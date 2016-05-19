@@ -1,0 +1,90 @@
+.TH "JOBCFG" "1" "May 18, 2016" "FreeBSD 11.0-CURRENTMAR2016" "FreeBSD General Commands Manual"
+.nh
+.if n .ad l
+.SH "NAME"
+\fBjobcfg\fR
+\- configure jobs
+.SH "SYNOPSIS"
+.HP 7n
+\fBjobcfg\fR
+\fIlabel\fR
+\fIget\fR
+\fIkey\fR
+.PD 0
+.HP 7n
+\fBjobcfg\fR
+\fIlabel\fR
+\fIset\fR
+\fIkey="value"\fR
+.br
+.HP 7n
+\fBjobcfg\fR
+\fIlabel\fR
+\fIgenerate\fR
+.br
+.HP 7n
+\fBjobcfg\fR
+\fIlabel\fR
+\fIlist\fR
+.br
+.HP 7n
+\fBjobcfg\fR
+\fIlabel\fR
+[\fIexport\fR\ |\ \fIimport\fR]
+.br
+.HP 7n
+\fBjobcfg\fR
+\fIlabel\fR
+[\fIsnapshot\fR\ |\ \fIrollback\fR]
+.PD
+.SH "DESCRIPTION"
+\fBjobcfg\fR
+deals with job configuration settings. The following subcommands
+are available:
+.TP 8n
+\fRjobcfg\fR \fIlabel\fR \fRset\fR \fIkey="value"\fR
+Set a job variable.
+.TP 8n
+\fRjobcfg\fR \fIlabel\fR \fRget\fR \fIkey\fR
+Print the value of a job property to standard output.
+.TP 8n
+\fRjobcfg\fR \fIlabel\fR \fRlist\fR
+List all of the job properties, one per line.
+.TP 8n
+\fRjobcfg\fR \fIlabel\fR \fRexport\fR
+Export the job configuration database to a plain-text file. This file can be
+restored using the "import" command.
+.TP 8n
+\fRjobcfg\fR \fIlabel\fR \fRimport\fR
+Replace the job configuration database with values from a plain-text file
+that were previously created via "jobcfg export".
+.TP 8n
+\fRjobcfg\fR \fIlabel\fR \fRsnapshot\fR
+Create a snapshot of the current values in the job configuration database.
+If a snapshot already exists, it will be replaced with a new snapshot.
+.TP 8n
+\fRjobcfg\fR \fIlabel\fR \fRrollback\fR
+Rollback the job configuration database to it's state at the time of the
+last call to "jobcfg snapshot".
+.TP 8n
+\fRjobcfg\fR \fIlabel\fR \fRgenerate\fR \fR--template=\fR \fIinput_path\fR \fR--output=\fR \fIoutput_path\fR \fR--delimiter=\fR \fIdelimiter\fR
+Generate a configuration file for a job based on a template. Values
+in the job configuration database will be substituted where possible.
+By default, the is a sequence of three at-symbols, i.e. "@@@", but this may
+be overridden by using the
+\fI--delimiter\fR
+option.
+.SH "ENVIRONMENT"
+The
+\fBjobcfg\fR
+command does not rely on any environment variables.
+.SH "EXIT STATUS"
+The
+\fBjobcfg\fR
+command exits\[u00A0]0 on success, and\[u00A0]>0 if an error occurs
+.SH "SEE ALSO"
+jobctl(1), jobd(8), job(5)
+.SH "AUTHORS"
+Mark Heily <mark@heily.com>
+.SH "BUGS"
+This command is not implemented yet.
