@@ -31,6 +31,15 @@ std::string JobProperty::dataDir = "";
 
 void JobProperty::readFile()
 {
+	if (access(this->path.c_str(), F_OK) < 0) {
+		if (errno == ENOENT) {
+			return;
+		} else {
+			log_errno("access(2)");
+			throw std::system_error(errno, std::system_category());
+		}
+	}
+
 	try {
 		std::ifstream ifs(this->path, std::ifstream::in);
 		ifs >> this->json;

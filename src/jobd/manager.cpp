@@ -16,6 +16,8 @@
 
 #include "../../vendor/FreeBSD/sys/queue.h"
 
+#include <regex>
+
 extern "C" {
 #include <dirent.h>
 #include <fcntl.h>
@@ -75,6 +77,7 @@ void JobManager::setup(struct pidfh *pfh)
 	if (ipc_init(this->kqfd) < 0)
 		errx(1, "ipc_init()");
 
+	this->monitorJobDirectory();
 	this->scanJobDirectory();
 }
 
@@ -90,6 +93,8 @@ void JobManager::scanJobDirectory()
 	if ((dirp = opendir(jobdir)) == NULL)
 		err(1, "opendir(3)");
 
+	vector<string> labels;
+
 	while (dirp) {
 		if (readdir_r(dirp, &entry, &result) < 0)
 			err(1, "readdir_r(3)");
@@ -98,8 +103,17 @@ void JobManager::scanJobDirectory()
 			continue;
 		}
 
-		std::string path = this->jobd_config.jobdir + "/"
-				+ std::string(entry.d_name);
+		std::string d_name = std::string(entry.d_name);
+		std::string path = this->jobd_config.jobdir + "/" + d_name;
+		std::string label = d_name;
+		label = std::regex_replace(label, std::regex("\\.json$"), "");
+		labels.push_back(label);
+		if (this->jobs.find(label) != this->jobs.end()) {
+			log_debug("skipping existing job");
+			continue;
+		}
+
+		unique_ptr<Job> job(new Job);
 		try {
 			log_debug("parsing %s", path.c_str());
 			unique_ptr<Job> job(new Job);
@@ -123,6 +137,21 @@ void JobManager::scanJobDirectory()
 
 	log_debug("finished scanning jobs: total=%zu new=%zu", job_count, pending_jobs);
 
+	// Unload jobs that have been removed from the job directory
+	vector<string> to_be_removed;
+	for (auto& it : this->jobs) {
+		const string& label = it.first;
+
+		if (!std::any_of(labels.begin(), labels.end(), [label](string s){ return s == label; })) {
+			log_debug("job %s no longer exists; unloading", label.c_str());
+			to_be_removed.push_back(label);
+		}
+	}
+	for (auto& it : to_be_removed) {
+		this->unloadJob(it);
+	}
+
+	// Load and run any newly created files
 	if (pending_jobs > 0) {
 		this->runPendingJobs();
 	}
@@ -231,7 +260,8 @@ void JobManager::enableJob(const string& label) {
 }
 
 void JobManager::disableJob(const string& label) {
-	unique_ptr<Job>& job = this->jobs.find(label)->second;
+	unique_ptr<Job>& job = this->getJobByLabel(label);
+
 	if (job->isEnabled()) {
 		job->setEnabled(false);
 		log_debug("job %s disabled", label.c_str());
@@ -240,14 +270,20 @@ void JobManager::disableJob(const string& label) {
 	}
 }
 
-void JobManager::unloadJob(const string& label) {
-	unique_ptr<Job>& job = this->jobs.find(label)->second;
+void JobManager::unloadJob(unique_ptr<Job>& job) {
+	string label = job->getLabel();
+
 	job->unload();
 	log_debug("job %s unloaded", label.c_str());
 
 	if (job->getState() == JOB_STATE_DEFINED) {
 		this->jobs.erase(label);
 	}
+}
+
+void JobManager::unloadJob(const string& label) {
+	unique_ptr<Job>& job = this->jobs.find(label)->second;
+	this->unloadJob(job);
 }
 
 void JobManager::unloadAllJobs()
@@ -283,6 +319,39 @@ void JobManager::deleteProcessEventWatch(pid_t pid)
 	}
 }
 
+void JobManager::monitorJobDirectory()
+{
+	struct kevent kev;
+	int fd;
+
+	fd = open(this->jobd_config.jobdir.c_str(), O_RDONLY);
+	if (fd < 0) {
+		log_errno("open(2)");
+		throw std::system_error(errno, std::system_category());
+	}
+
+	(void) fcntl(fd, F_SETFD, FD_CLOEXEC);
+
+	EV_SET(&kev, fd, EVFILT_VNODE, EV_ADD | EV_ENABLE | EV_CLEAR,
+			NOTE_EXTEND | NOTE_WRITE | NOTE_ATTRIB, 0, 0);
+	if (kevent(this->kqfd, &kev, 1, NULL, 0, NULL) < 0) {
+		log_errno("kevent(2)");
+		throw std::system_error(errno, std::system_category());
+	}
+}
+
+unique_ptr<Job>& JobManager::getJobByLabel(const string& label)
+{
+	auto it = this->jobs.find(label);
+	if (it == this->jobs.end())
+	{
+		throw std::out_of_range("job not found with label: %s" + label);
+	}
+
+	unique_ptr<Job>& job = it->second;
+	return job;
+}
+
 unique_ptr<Job>& JobManager::getJobByPid(pid_t pid)
 {
 	for (auto& it : this->jobs) {
@@ -293,6 +362,7 @@ unique_ptr<Job>& JobManager::getJobByPid(pid_t pid)
 	}
 	throw std::out_of_range("job not found");
 }
+
 void JobManager::reapChildProcess(pid_t pid, int status)
 {
 // linux will need to do this in a loop after reading a signalfd and getting SIGCHLD
@@ -555,6 +625,8 @@ void JobManager::mainLoop()
 			}
 		} else if (kev.filter == EVFILT_PROC) {
 			this->reapChildProcess(kev.ident, kev.data);
+		} else if (kev.filter == EVFILT_VNODE) {
+			this->scanJobDirectory();
 		} else if ((void *)kev.udata == &setup_socket_activation) {
 			if (socket_activation_handler() < 0)
 				errx(1, "socket_activation_handler()");

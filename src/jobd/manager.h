@@ -57,14 +57,17 @@ private:
 	void reapChildProcess(pid_t pid, int status);
 	void deleteProcessEventWatch(pid_t pid);
 	unique_ptr<Job>& getJobByPid(pid_t pid);
+	unique_ptr<Job>& getJobByLabel(const string& label);
 	void removeJob(Job& job);
 	void rescheduleJob(unique_ptr<Job>& job);
 	void runPendingJobs();
 	void updateKeepaliveWakeInterval();
 	void handleKeepaliveWakeup();
 	void wakeJob(const string& label);
+	void unloadJob(unique_ptr<Job>& job);
 	void setupSignalHandlers();
 	void setupDataDirectory();
+	void monitorJobDirectory();
 };
 
 #endif /* MANAGER_H_ */

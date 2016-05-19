@@ -33,20 +33,10 @@ using std::endl;
 
 static std::unique_ptr<libjob::jobdConfig> jobd_config(new libjob::jobdConfig);
 
-static void read_manifest(const std::string path) {
-	try {
-		std::cout << path << '\n';
-		std::ifstream ifs(path);
-		std::stringstream buf;
-		buf << ifs.rdbuf();
-	} catch (const std::invalid_argument& ia) {
-	}
-}
-
 void usage() {
 	std::cout <<
 		"Usage:\n\n"
-		"  jobctl <label> [enable|disable|clear|status]\n"
+		"  jobctl <label> [enable|disable|clear|refresh|restart|status]\n"
 		"  -or-\n"
 		"  jobctl list\n"
 		"  -or-\n"
@@ -132,13 +122,10 @@ main(int argc, char *argv[])
 			std::string label = command_or_label;
 			std::string command = std::string(argv[1]);
 			request.setMethod(command);
-			if (command == "load") {
-				//char *resolved_path = realpath(label.c_str(), NULL);
-				//std::string path(resolved_path);
-				//free(resolved_path);
-				//request.addParam(path);
-				read_manifest(label);
-				throw "XXX-TESTING";
+			if (command == "load" || command == "restart" ||
+					command == "mark" || command == "unload") {
+				puts("ERROR: Command not implemented yet");
+				exit(1);
 			} else if (command == "unload") {
 				request.addParam(label);
 			} else if (command == "enable" || command == "disable" ||
