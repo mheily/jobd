@@ -17,6 +17,7 @@
 #include "../../vendor/FreeBSD/sys/queue.h"
 
 #include <regex>
+#include <unordered_set>
 
 extern "C" {
 #include <dirent.h>
@@ -93,7 +94,7 @@ void JobManager::scanJobDirectory()
 	if ((dirp = opendir(jobdir)) == NULL)
 		err(1, "opendir(3)");
 
-	vector<string> labels;
+	std::unordered_set<string> labels;
 
 	while (dirp) {
 		if (readdir_r(dirp, &entry, &result) < 0)
@@ -107,7 +108,8 @@ void JobManager::scanJobDirectory()
 		std::string path = this->jobd_config.jobdir + "/" + d_name;
 		std::string label = d_name;
 		label = std::regex_replace(label, std::regex("\\.json$"), "");
-		labels.push_back(label);
+		labels.insert(label);
+		cout << label << '\n';
 		if (this->jobs.find(label) != this->jobs.end()) {
 			log_debug("skipping existing job");
 			continue;
@@ -137,23 +139,23 @@ void JobManager::scanJobDirectory()
 
 	log_debug("finished scanning jobs: total=%zu new=%zu", job_count, pending_jobs);
 
+	// Load and run any newly created files
+	if (pending_jobs > 0) {
+		this->runPendingJobs();
+	}
+
 	// Unload jobs that have been removed from the job directory
 	vector<string> to_be_removed;
 	for (auto& it : this->jobs) {
 		const string& label = it.first;
 
-		if (!std::any_of(labels.begin(), labels.end(), [label](string s){ return s == label; })) {
+		if (labels.find(label) == labels.end()) {
 			log_debug("job %s no longer exists; unloading", label.c_str());
 			to_be_removed.push_back(label);
 		}
 	}
 	for (auto& it : to_be_removed) {
 		this->unloadJob(it);
-	}
-
-	// Load and run any newly created files
-	if (pending_jobs > 0) {
-		this->runPendingJobs();
 	}
 }
 
@@ -167,6 +169,11 @@ void JobManager::runPendingJobs()
 		if (job->getState() == JOB_STATE_DEFINED) {
 			log_debug("loading job: %s", label.c_str());
 			job->load();
+		}
+
+		bool auto_enable = job->manifest.json["Enable"];
+		if (auto_enable) {
+			job->jobProperty.setEnabled(true);
 		}
 	}
 

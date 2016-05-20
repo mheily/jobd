@@ -58,7 +58,7 @@ void Manifest::normalize() {
 	    "Nice": 0,            
 	    "InitGroups": true,
 	    "RootDirectory": "/",
-	    "RunAtLoad": false,
+	    "Enable": false,
 	    "Sockets": {},
             "StandardErrorPath": "/dev/null",
             "StandardInPath": "/dev/null",

@@ -13,6 +13,11 @@ The following configuration options are available:
 Description
 A short, one-line description of what the job does.
 .TP 8n
+Enable
+If true, the job will be automatically enabled. If the job is on-demand, it will be
+started as soon as the on-demand conditions are met. If the job is scheduled, it will be
+started according to the schedule. Otherwise, the job will start immediately.
+.TP 8n
 EnableGlobbing
 If true, the program arguments will be passed to
 glob(3)
@@ -110,7 +115,8 @@ The following example will write the words "Hello world" to a file named
 {
 "Label": "com.example.hello_world",
 "Program": ["/usr/bin/printf", "Hello world\en"],
-"StandardOutPath": "/tmp/hello.log"
+"StandardOutPath": "/tmp/hello.log",
+"Enable": true
 }
 .RE
 .fi

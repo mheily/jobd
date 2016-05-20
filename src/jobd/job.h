@@ -154,8 +154,7 @@ public:
 	bool isRunnable() const
 	{
 		if (this->isEnabled() && !this->isFaulted() && this->state == JOB_STATE_LOADED) {
-			bool runAtLoad = this->manifest.json["RunAtLoad"];
-			return runAtLoad;
+			return true;
 		} else {
 			log_debug("not runnable: enabled=%d faulted=%d",
 					this->isEnabled(), this->isFaulted());
