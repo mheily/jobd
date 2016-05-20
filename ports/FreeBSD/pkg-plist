@@ -1,12 +1,8 @@
-bin/launchctl
-etc/rc.d/launchd
-sbin/launchd
-man/man1/launchctl.1.gz
-man/man5/launchd.plist.5.gz
-man/man8/launchd.8.gz
-@dir etc/launchd/agents
-@dir etc/launchd/daemons
-@dir share/launchd/agents
-@dir share/launchd/daemons
-@dir /var/cache/launchd
-@dir /var/db/launchd
+bin/jobctl
+etc/rc.d/jobd
+sbin/jobd
+man/man1/jobctl.1.gz
+man/man1/jobcfg.1.gz
+man/man5/job.5.gz
+man/man8/jobd.8.gz
+@dir etc/job.d

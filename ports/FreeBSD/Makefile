@@ -1,17 +1,16 @@
 # $FreeBSD: head/sysutils/relaunchd/Makefile 411570 2016-03-21 15:47:03Z kmoore $
 
-PORTNAME=	relaunchd
-PORTVERSION=	0.5.0
+PORTNAME=	jobd
+PORTVERSION=	0.7.0
 DISTVERSIONPREFIX=v
 CATEGORIES=	sysutils
 
 MAINTAINER=	mark@heily.com
-COMMENT=	Service management daemon similar to Darwin's launchd(8)
+COMMENT=	Job management framework
 
 LICENSE=	ISCL
 
-# TODO: add package dependency on docbook2X, remove UCL
-LIB_DEPENDS=	libucl.so:${PORTSDIR}/textproc/libucl
+BUILD_DEPENDS=	docbook2mdoc:${PORTSDIR}/textproc/docbook2mdoc
 
 HAS_CONFIGURE=	YES
 USE_GITHUB=	YES

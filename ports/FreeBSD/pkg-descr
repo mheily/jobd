@@ -1,4 +1,3 @@
-relaunchd is a service management daemon that is similar to 
-the launchd(8) facility found in the Darwin operating environment.
+jobd is a job management framework.
 
-WWW: https://github.com/mheily/relaunchd
+WWW: https://github.com/mheily/jobd
