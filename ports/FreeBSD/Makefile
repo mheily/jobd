@@ -14,6 +14,7 @@ BUILD_DEPENDS=	docbook2mdoc:${PORTSDIR}/textproc/docbook2mdoc
 
 HAS_CONFIGURE=	YES
 USE_GITHUB=	YES
+USE_LDCONFIG=	YES
 GH_ACCOUNT=	mheily
 
 .include <bsd.port.mk>
