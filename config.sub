@@ -407,7 +407,7 @@ emit_shared_library() {
 	install_DIRS="$install_DIRS ${libdir}"
 	_mf_install_rules="$_mf_install_rules
 	\$(INSTALL) -s -m 755 ${_basic_libname} \$\$DESTDIR\$(LIBDIR)/$soname
-	ln -sf \$\$DESTDIR\$(LIBDIR)/$soname \$\$DESTDIR\$(LIBDIR)/${_basic_libname} 
+	ln -sf $soname \$\$DESTDIR\$(LIBDIR)/${_basic_libname} 
 "
 
 	_mf_default_target="$_mf_default_target ${_basic_libname}"
