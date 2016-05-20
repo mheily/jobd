@@ -271,5 +271,22 @@ command directly will implicitly clear the "outdated" fault.
 	</para>
 </refsect1>
 
+<refsect1>
+	<title>BUGS</title>
+	<para>
+	The <replaceable>list</replaceable> subcommand does not work if you provide a label.
+	</para>
+
+	<para>
+	The <replaceable>refresh</replaceable> and <replaceable>restart</replaceable> subcommands
+	are not implemented yet.
+	</para>
+	
+	<para>
+	The <replaceable>clear</replaceable> and <replaceable>mark</replaceable> subcommands
+	are not implemented yet.
+	</para>
+</refsect1>
+
 
 </refentry>

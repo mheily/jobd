@@ -1,4 +1,4 @@
-.TH "JOB" "5" "May 18, 2016" "FreeBSD 11.0-CURRENTMAR2016" "FreeBSD File Formats Manual"
+.TH "JOB" "5" "May 19, 2016" "FreeBSD 11.0-CURRENTMAR2016" "FreeBSD File Formats Manual"
 .nh
 .if n .ad l
 .SH "NAME"
@@ -17,7 +17,6 @@ EnableGlobbing
 If true, the program arguments will be passed to
 glob(3)
 for possible expansion.
-Not currently implemented.
 .TP 8n
 EnvironmentVariables
 A dictionary of environment variables to set in the process.
@@ -26,36 +25,13 @@ inherited from
 \fBjobd\fR.
 These variables may include
 one or more of the following:
-.PP
-DISPLAY
-.PP
-HOME
-.PP
-i18n variables: NLSPATH, LANG
-.PP
-LOGNAME
-.PP
-PATH
-.PP
+DISPLAY, HOME, LOGNAME, PATH,
+NLSPATH, LANG,
+PWD, SHELL, TMPDIR, TZ, USER,
 LC_ALL, LC_COLATE, LC_CTYPE, and other POSIX locale variables.
-.PP
-PWD
-.PP
-SHELL
-.PP
-TMPDIR
-.PP
-TZ
-.PP
-USER
-.PD 0
-.PP
-.RS 8n
 Any variables defined in the EnvironmentVariables section will override
 the default values inherited from
 \fBjobd\fR.
-.RE
-.PD
 .TP 8n
 GroupName
 The name of the group that the program will run as.
@@ -126,11 +102,16 @@ The name of the user that the program will run as.
 WorkingDirectory
 A directory to chdir(2) into prior to executing the process.
 .SH "EXAMPLES"
-Example #1:
+The following example will write the words "Hello world" to a file named
+/tmp/hello.log:
 .nf
 .sp
 .RS 0n
-TODO: put example here
+{
+"Label": "com.example.hello_world",
+"Program": ["/usr/bin/printf", "Hello world\en"],
+"StandardOutPath": "/tmp/hello.log"
+}
 .RE
 .fi
 .SH "SEE ALSO"
@@ -139,3 +120,15 @@ jobd(8)
 job(5)
 .SH "AUTHORS"
 Mark Heily <mark@heily.com>
+.SH "BUGS"
+The
+\fIDescription\fR
+key is not implemented yet.
+.PP
+The
+\fIEnableGlobbing\fR
+key is not implemented yet.
+.PP
+The
+\fISockets\fR
+key is not implemented yet.

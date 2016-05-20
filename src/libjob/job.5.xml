@@ -40,7 +40,6 @@
 	<citerefentry><refentrytitle>glob</refentrytitle><manvolnum>3</manvolnum></citerefentry>
 	for possible expansion.
 	</para>
-	<para>Not currently implemented.</para>
 	</listitem>
 	</varlistentry>
 
@@ -55,19 +54,12 @@
 		inherited from <command>jobd</command>. These variables may include
 		one or more of the following:
 		</para>
-			<itemizedlist>
-			<listitem><para>DISPLAY</para></listitem>
-			<listitem><para>HOME</para></listitem>
-			<listitem><para>i18n variables: NLSPATH, LANG</para></listitem>
-			<listitem><para>LOGNAME</para></listitem>
-			<listitem><para>PATH</para></listitem>
-			<listitem><para>LC_ALL, LC_COLATE, LC_CTYPE, and other POSIX locale variables.</para></listitem>
-			<listitem><para>PWD</para></listitem>
-			<listitem><para>SHELL</para></listitem>
-			<listitem><para>TMPDIR</para></listitem>
-			<listitem><para>TZ</para></listitem>
-			<listitem><para>USER</para></listitem>
-			</itemizedlist>
+
+		<para>DISPLAY, HOME, LOGNAME, PATH,</para>
+		<para>NLSPATH, LANG,</para>
+		<para>PWD, SHELL, TMPDIR, TZ, USER,</para>
+		<para>LC_ALL, LC_COLATE, LC_CTYPE, and other POSIX locale variables.</para>
+		
 		<para>
 	Any variables defined in the EnvironmentVariables section will override
 	the default values inherited from
@@ -232,9 +224,14 @@
 
 <refsect1><title>EXAMPLES</title>
 <para>
-Example #1:
+The following example will write the words "Hello world" to a file named
+/tmp/hello.log:
 <programlisting>
-TODO: put example here
+{
+	"Label": "com.example.hello_world",
+	"Program": ["/usr/bin/printf", "Hello world\n"],
+	"StandardOutPath": "/tmp/hello.log"
+}
 </programlisting>
 </para>
 </refsect1>
@@ -254,4 +251,13 @@ TODO: put example here
 		Mark Heily &lt;mark@heily.com&gt;
 	</para>
 </refsect1>
+
+<refsect1>
+	<title>BUGS</title>
+	
+	<para>The <replaceable>Description</replaceable> key is not implemented yet.</para>
+	<para>The <replaceable>EnableGlobbing</replaceable> key is not implemented yet.</para>
+	<para>The <replaceable>Sockets</replaceable> key is not implemented yet.</para>
+</refsect1>
+
 </refentry>
