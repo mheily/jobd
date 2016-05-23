@@ -24,7 +24,7 @@ namespace libjob
 class Manifest
 {
 public:
-	json json;
+	nlohmann::json json;
 
 	Manifest()
 	{

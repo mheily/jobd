@@ -28,6 +28,8 @@
 namespace libjob
 {
 
+using json = nlohmann::json;
+
 void Manifest::readFile(const string path)
 {
 	this->path = path;
