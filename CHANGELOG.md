@@ -4,13 +4,15 @@ All notable changes to this project will be documented in this file
 using the [Keep A ChangeLog](http://keepachangelog.com/) style.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## UNRELEASED
+## [0.7.0] - 2016/05/22
+
 ### Added
 - Support for the CreateDataset key, which creates ZFS datasets on-demand when the job
   is launched.
  
 ### Changed
-- Start rewriting parts of launchd in C++.
+- Name has changed to 'jobd'
+- Major rewrite in C++.
 
 ## [0.6.1] - 2016/04/18
 ### Fixed

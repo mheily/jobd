@@ -569,7 +569,7 @@ void JobManager::updateKeepaliveWakeInterval()
 		}
 
 		log_debug("scheduled next wakeup event in %d ms at t=%ld",
-				time_delta, this->next_keepalive_wakeup);
+				time_delta, (long)this->next_keepalive_wakeup);
 	}
 }
 
