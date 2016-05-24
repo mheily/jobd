@@ -114,7 +114,7 @@ add_standard_environment_variables(vector<string>& env)
 
 void Job::setup_environment()
 {
-	json env = this->manifest.json["EnvironmentVariables"];
+	nlohmann::json env = this->manifest.json["EnvironmentVariables"];
 	map<string,string> default_env;
 
 	/* KLUDGE: when running as root, assume we are a system daemon and avoid adding any
@@ -155,7 +155,7 @@ void Job::setup_environment()
 		}
 	}
 
-	for (json::iterator it = env.begin(); it != env.end(); ++it) {
+	for (nlohmann::json::iterator it = env.begin(); it != env.end(); ++it) {
 		string keyval = it.key() + '=' + it.value().get<string>();
 		this->environment.push_back(keyval);
 	}
@@ -187,7 +187,7 @@ void Job::setup_environment()
 void Job::exec()
 {
 	char* envp[this->environment.size() + 1];
-	for (int i = 0; i < this->environment.size(); i++) {
+	for (size_t i = 0; i < this->environment.size(); i++) {
 		envp[i] = (char*) this->environment[i].c_str();
 	}
 	envp[this->environment.size()] = nullptr;
@@ -195,7 +195,7 @@ void Job::exec()
 	vector<string> json_argv = this->manifest.json["Program"].get<vector<string>>();
 
 	char* argv[json_argv.size() + 1];
-	for (int i = 0; i < json_argv.size(); i++) {
+	for (size_t i = 0; i < json_argv.size(); i++) {
 		argv[i] = (char*) json_argv[i].c_str();
 	}
 	argv[json_argv.size()] = nullptr;

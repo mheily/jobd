@@ -31,6 +31,7 @@ extern "C" {
 
 using std::cout;
 using std::endl;
+using json = nlohmann::json;
 
 static std::unique_ptr<libjob::jobdConfig> jobd_config(new libjob::jobdConfig);
 

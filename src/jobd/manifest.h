@@ -26,8 +26,6 @@
 #include <nlohmann/json.hpp>
 #include "socket.h"
 
-using json = nlohmann::json;
-
 struct dataset_list;
 struct chroot_jail;
 
@@ -47,7 +45,7 @@ struct cron_spec {
 
 typedef struct job_manifest {
 	LIST_ENTRY(job_manifest) jm_le;
-	json     json;
+	nlohmann::json     json;
 	char    *label;
 
 	char    *user_name;

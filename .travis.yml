@@ -22,6 +22,8 @@ addons:
     - bc
     - libcurl4-openssl-dev
     - clang-3.6
+    - g++-4.9
+    - g++-multilib
 
   coverity_scan:
     project:
@@ -41,6 +43,9 @@ addons:
 script:
 - ./configure
 - make CXX=clang++-3.6
+- make clean
+- make CXX=g++-4.9
+#FIXME: breaks: - make CXX=g++-4.9 CXXFLAGS="-m32" LDFLAGS="-m32" # build in 32-bit mode
 
 # FIXME: want to add this, once it's fixed up
 # - make check
