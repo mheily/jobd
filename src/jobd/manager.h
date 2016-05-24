@@ -33,7 +33,7 @@ public:
 	void unloadJob(const string& label);
 	void clearJob(const string& label);
 	void unloadAllJobs();
-	void listAllJobs(json& result);
+	void listAllJobs(nlohmann::json& result);
 
 	JobManager() {}
 	~JobManager();
