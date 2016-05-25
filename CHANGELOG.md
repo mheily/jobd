@@ -9,6 +9,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Build failure on 32-bit systems
 - Fix a compiler warning with GCC 4.9
 
+### Added
+- Support building on MacOS X
+
 ## [0.7.0] - 2016/05/22
 ### Added
 - Support for the CreateDataset key, which creates ZFS datasets on-demand when the job
