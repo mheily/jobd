@@ -17,6 +17,7 @@
 ###### PRIVATE ######
 
 ARGV=$*
+_uname=$(uname)
 PACKAGE_NAME=myprogram
 PACKAGE_VERSION=0.0.1
 if [ -z "$TOPDIR" ] ; then
@@ -274,8 +275,7 @@ rc_script() {
 	elif [ -x '/etc/init.d' ] ; then
 		RC_SCRIPT_DIR="/etc/init.d"
 	else
-		_uname=$(uname)
-		case `uname` in
+		case $_uname in
 		"FreeBSD") RC_SCRIPT_DIR="/usr/local/etc/rc.d" ;;
 		"Linux") RC_SCRIPT_DIR="/etc/init.d" ;;
 		*) err 'Unable to determine RC_SCRIPT_DIR'
@@ -400,6 +400,12 @@ ${_library}.a: $_curdir_objs $depends
 }
 
 emit_shared_library() {
+	if [ $_uname = "Darwin" ] ; then
+		# TODO: use -dynamiclib as per http://www.finkproject.org/doc/porting/porting.en.html
+		echo "FIXME: cannot build shared libraries on Darwin yet"
+		return
+	fi
+
 	_saved_cflags=$cflags
 		
 	_basic_libname=$(echo $soname | sed 's/\.so\..*/.so/')
@@ -587,7 +593,7 @@ emit_subdir_rules() {
 }
 
 emit_platform_tweaks() {
-	if [ `uname` = 'Linux' ] ; then
+	if [ $_uname = 'Linux' ] ; then
 		_mf_vars="$mf_vars
 CFLAGS+=-D_GNU_SOURCE"
 	fi
