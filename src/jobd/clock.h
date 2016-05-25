@@ -24,7 +24,9 @@
 #include <libjob/logger.h>
 
 #if defined(__MACH__)
+extern "C" {
 #include "../vendor/PosixMachTiming/src/timing_mach.h"
+}
 #endif
 
 /*

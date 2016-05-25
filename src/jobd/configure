@@ -43,11 +43,10 @@ fi
 
 manpage 'jobd.8'
 
-# DEADWOOD: no time for this port right now
 ## MacOS needs a POSIX clock_gettime() function
-##if [ `uname` = "Darwin" ] ; then
-#	launchd_SOURCES="$launchd_SOURCES ../vendor/PosixMachTiming/src/timing_mach.c"
-#fi
+if [ `uname` = "Darwin" ] ; then
+	jobd_SOURCES="$jobd_SOURCES ../../vendor/PosixMachTiming/src/timing_mach.c"
+fi
      
 # TODO: add a --debug option to configure; this wont work because CFLAGS specifies -O2
 #if [ -n "$DEBUG" ] ; then
