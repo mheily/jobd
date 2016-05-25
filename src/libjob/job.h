@@ -51,6 +51,7 @@ namespace libjob {
 
 		void set_jobdir();
 		void set_socketpath();
+		void createDirectories();
 	};
 }
 #endif
