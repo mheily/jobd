@@ -76,7 +76,6 @@ static std::string get_user_runtimedir()
 	return dir;
 #else
 	const char *xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
-	const char *home = getenv("HOME");
 
 	/* TODO: Per the XDG Base Directory Specification,
 	 * we should validate the ownership and permissions of this directory. */
