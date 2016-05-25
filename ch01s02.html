@@ -1,0 +1,194 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>Terminology</title><meta name="generator" content="DocBook XSL Stylesheets V1.76.1"><link rel="home" href="index.html" title="The jobd Job Framework"><link rel="up" href="ch01.html" title="Chapter 1. Overview"><link rel="prev" href="ch01.html" title="Chapter 1. Overview"><link rel="next" href="ch02.html" title="Chapter 2. Designing tools that use the Job Framework"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">Terminology</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="ch01.html">Prev</a> </td><th width="60%" align="center">Chapter 1. Overview</th><td width="20%" align="right"> <a accesskey="n" href="ch02.html">Next</a></td></tr></table><hr></div><div class="section" title="Terminology"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="idp68609792"></a>Terminology</h2></div></div></div><p>
+The following terms have specific meanings within the job framework:
+</p><div class="variablelist"><dl><dt><a name="term_job"></a><span class="term">Job</span></dt><dd><p>
+A <em class="wordasword">job</em> is a set of one or more of the following:
+				</p><div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>An executable <a class="link" href="ch01s02.html#term_program">program</a>,</p></li><li class="listitem"><p>The <a class="link" href="ch01s02.html#term_context">execution context</a>,</p></li><li class="listitem"><p>External <a class="link" href="ch01s02.html#term_resource">resources</a> to be acquired or created when the job runs,</p></li><li class="listitem"><p><a class="link" href="ch01s02.html#term_dependency">Dependencies</a> that must be satisfied before the job can run,</p></li><li class="listitem"><p><a class="link" href="ch01s02.html#term_method">Methods</a> that an administrator can invoke to manipulate the job,</p></li><li class="listitem"><p>Configuration <a class="link" href="ch01s02.html#term_property">properties</a> that can be customized by an administrator.</p></li></ul></div><p>
+				Jobs are defined in <a class="link" href="ch01s02.html#term_manifest">manifests</a>.
+				</p></dd><dt><a name="term_manifest"></a><span class="term">Manifest</span></dt><dd><p>
+A <em class="wordasword">manifest</em> is a document that contains all of the information about a <a class="link" href="ch01s02.html#term_job">job</a>.
+Manifests are written in <a class="ulink" href="http://json.org/" target="_top">JSON</a> format.
+				</p><p>
+Here is a simple "hello world" manifest for a job:
+</p><pre class="programlisting">
+{
+    "Label": "hello.world",
+    "Program": ["/bin/echo", "Hello world!"],
+    "StandardOutPath": "/tmp/job.log",
+}
+</pre><p>
+When this job runs, it will write the words "Hello world!" to a file named */tmp/job.log*
+				</p></dd><dt><a name="term_method"></a><span class="term">Method</span></dt><dd><p>
+	A
+	<a class="link" href="ch01s02.html#term_job">job</a>
+	can define custom
+	<em class="wordasword">methods</em>
+	in their
+	<a class="link" href="ch01s02.html#term_manifest">manifest</a>
+	. A method is a public API for the job, and can be thought of in
+	similar terms to methods in object-oriented programs. 
+				</p><p>
+Here is a simple manifest for a job that runs a daemon and offers a "status" method to display the current status:			
+				</p><pre class="programlisting">
+{
+    "Label": "com.example.my-daemon",
+    "Program": "/usr/local/sbin/my-daemon",
+    "Methods": {
+        "status": ["/bin/echo", "Here is my status output"],
+    },
+}				
+				</pre><p>
+This method can be invoked by *jobctl(1)* like this:			
+				</p><pre class="programlisting">
+# jobctl my-daemon status
+				</pre><p>
+The effect of running the above command is that the phrase "Here is my status output" will be printed to the standard output.
+				</p><p>
+For more detail about methods, see the [specification](../wiki/Functional-Specification#methods).
+				</p></dd><dt><a name="term_program"></a><span class="term">Program</span></dt><dd><p>
+	The
+	<em class="wordasword">program</em>
+	is the argument vector that is passed to
+	[execve(2)](https://www.freebsd.org/cgi/man.cgi?query=execve&amp;apropos=0&amp;sektion=0&amp;manpath=FreeBSD+10.3-RELEASE&amp;arch=default&amp;format=html)
+	when a job is launched. Jobs may also define methods and hooks that run
+	immediately before or after the program is executed; these are also programs specified in the same way.
+				</p><p>
+				Here is an example of how a program is written out in JSON:
+				</p><pre class="programlisting">
+["/bin/echo", "Hello world!"]
+				</pre></dd><dt><a name="term_property"></a><span class="term">Property</span></dt><dd><p>
+	A manifest may contain one or more <em class="wordasword">properties</em> of the job. A property
+	is a simple key/value pair of strings. These properties may be
+	substituted as variables in various places throughout the manifest, and
+	may be retrieved or set by the *jobcfg(1)* command.
+
+				</p><p>
+Here is an example manifest for a job that exposes a "greeting" property:
+				</p><pre class="programlisting">
+{
+    "Label": "hello.world",
+    "Program": ["/bin/echo", "${greeting}"],
+    "Properties": {
+         "greeting": "This is the default value",
+    },
+    "StandardOutPath": "/tmp/hello.log",
+}				
+				</pre><p>
+When this job runs, it will write the words "This is the default value" to a file named */tmp/job.log*
+				</p><p>
+An administrator can override the default value of a property by using the <span class="command"><strong>jobcfg</strong></span>. Example:
+				</p><pre class="programlisting">
+# jobcfg hello.world set greeting="This is the overridden value"				
+				</pre><p>
+The next time the job is executed, it will write the words "This is the overridden value" to a file named */tmp/job.log*
+				</p></dd><dt><a name="term_label"></a><span class="term">Label</span></dt><dd><p>
+	A <em class="wordasword">label</em> uniquely identifies each <a class="link" href="ch01s02.html#term_job">job</a>.
+	 Labels are written using
+	 <a class="ulink" href="https://en.wikipedia.org/wiki/Reverse_domain_name_notation" target="_top">
+	 reverse domain name notation
+	 </a>.
+	The label for each job is specified in the <a class="link" href="ch01s02.html#term_manifest">manifest</a>.
+				</p><p>
+Labels should be written in snake-case, to have a consistent style.
+For example, use 'com.example.nginx_web_server' to describe a job for running the NGINX web server.
+</p><p>
+	For more about labels, see the
+	[specification](../wiki/Functional-Specification#labels).
+				</p></dd><dt><a name="term_context"></a><span class="term">Execution Context</span></dt><dd><p>
+	Jobs are executed when the
+	<span class="command"><strong>jobd</strong></span>
+	daemon calls
+	<acronym class="acronym">fork(2)</acronym> to create a child process. This child process eventually
+	becomes the job.
+	</p><p>The <em class="wordasword">execution context</em> refers to changes to the child process that take
+	place prior to calling execve(2) to
+	start the <a class="link" href="ch01s02.html#term_program">program</a>. Examples
+	include:
+				</p><div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>setting environment variables</p></li><li class="listitem"><p>calling setuid(2) and setgid(2)</p></li><li class="listitem"><p>calling chdir(2) to change the working directory</p></li><li class="listitem"><p>calling chroot(2) to change the root directory</p></li><li class="listitem"><p>calling setrlimit(2) to adjust resource limits</p></li><li class="listitem"><p>calling jail_attach(2) to enter a FreeBSD jail</p></li></ul></div></dd><dt><a name="term_resource"></a><span class="term">Resource</span></dt><dd><p>
+A <em class="wordasword">resource</em> is a generic term for external things to be acquired on behalf of 
+a <a class="link" href="ch01s02.html#term_job">job</a>. The resources are owned by the job, and may be automatically
+destroyed when the job terminates.
+				</p><p>
+ Examples include:
+				</p><div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>
+	creating sockets and binding them to ports
+						</p></li><li class="listitem"><p>
+	mounting filesystems
+					</p></li><li class="listitem"><p>
+	creating network interfaces
+					</p></li><li class="listitem"><p>
+	assigning IP addresses to network interfaces
+					</p></li><li class="listitem"><p>
+	installing packages
+					</p></li><li class="listitem"><p>
+	cloning ZFS datasets
+					</p></li><li class="listitem"><p>
+	creating jail(2) jails, chroot(2) jails, or Linux control groups
+					</p></li></ul></div><p>
+	Resources are acquired at the time when the job is scheduled to run.
+	If the job is <a class="link" href="ch01s02.html#term_transient">transient</a>
+	, its resources will be destroyed when the job
+	terminates; otherwise, the resources will be re-used the next time the
+	job runs. When the job is unloaded, its resources will be destroyed.
+				</p></dd><dt><a name="term_dependency"></a><span class="term">Dependency</span></dt><dd><p>
+A <em class="wordasword">dependency</em> is a generic term for things that determine whether or not a 
+ <a class="link" href="ch01s02.html#term_job">job</a> can be executed.
+				</p><p>
+Examples include:
+				</p><div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>
+	the status of other jobs,
+						</p></li><li class="listitem"><p>
+	one or more <a class="link" href="ch01s02.html#term_ondemand">on-demand conditions</a>,
+					</p></li><li class="listitem"><p>
+	the current system load average,
+					</p></li><li class="listitem"><p>
+	the amount of time the system has been idle,
+					</p></li><li class="listitem"><p>
+	special cases, such as when the computer is starting up or shutting down
+					</p></li></ul></div><p>
+Jobs will be executed as soon as all of their dependencies are met.
+				</p></dd><dt><a name="term_scheduler"></a><span class="term">Scheduler</span></dt><dd><p>
+A job <em class="wordasword">scheduler</em> manages the lifecycle of zero or more <a class="link" href="ch01s02.html#term_job">jobs</a>.
+The job lifecycle covers the following steps:
+</p><div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><p>
+	Loading the job into memory, i.e. parsing the manifest
+	</p></li><li class="listitem"><p>
+	Checking the dependencies to determine when the job can be executed
+	</p></li><li class="listitem"><p>
+	Acquiring resources when the job is ready to run
+	</p></li><li class="listitem"><p>
+	Forking a child process and executing the job's program
+	</p></li><li class="listitem"><p>
+	Waiting for the child process to exit
+	</p></li><li class="listitem"><p>
+	Restarting the child process automatically, if the manifest requires it
+	</p></li><li class="listitem"><p>
+	Updating the history of the job to record the exit status
+	</p></li><li class="listitem"><p>
+	Unloading the job from memory
+	</p></li></ol></div><p>
+Depending on the settings in the <a class="link" href="ch01s02.html#term_manifest">manifest</a>,
+jobs may be launched immediately, or 
+<a class="link" href="ch01s02.html#term_ondemand">on-demand</a>
+when specific conditions are met.
+				</p></dd><dt><a name="term_ondemand"></a><span class="term">On-Demand Scheduling</span></dt><dd><p>
+<a class="link" href="ch01s02.html#term_job">Jobs</a> 
+may be scheduled to run <em class="wordasword">on-demand</em> based on one 
+or more conditions, such as:
+				</p><div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>
+				periodic interval timers
+				</p></li><li class="listitem"><p>
+				calendar scheduling, like cron(8)
+				</p></li><li class="listitem"><p>
+				incoming socket connections
+				</p></li><li class="listitem"><p>
+				files being created within a spool directory
+				</p></li></ul></div></dd><dt><a name="term_transient"></a><span class="term">Transient</span></dt><dd><p>
+A <a class="link" href="ch01s02.html#term_job">job</a> can be designated as <em class="wordasword">transient</em> in
+its <a class="link" href="ch01s02.html#term_manifest">manifest</a>. This has the following effect: 
+ 				</p><p>
+ When the <a class="link" href="ch01s02.html#term_program">program</a> exits, all <a class="link" href="ch01s02.html#term_resource">resources</a>
+ will be automatically destroyed. If the exit code is zero, the job will be automatically
+ be unloaded from the <a class="link" href="ch01s02.html#term_scheduler">scheduler</a>. Otherwise, if the
+ exit code is non-zero, the job will not be unloaded and remain in the scheduler to
+ alert the administrator that there is a failed job.
+			</p></dd></dl></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="ch01.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="ch01.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="ch02.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">Chapter 1. Overview </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> Chapter 2. Designing tools that use the Job Framework</td></tr></table></div></body></html>
