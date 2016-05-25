@@ -1,15 +1,22 @@
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>job</title><meta name="generator" content="DocBook XSL Stylesheets V1.76.1"><link rel="home" href="index.html" title="jobd Handbook"><link rel="up" href="apa.html" title="Appendix A. Manual pages"><link rel="prev" href="re02.html" title="jobctl"><link rel="next" href="re04.html" title="jobd"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">job</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="re02.html">Prev</a> </td><th width="60%" align="center">Appendix A. Manual pages</th><td width="20%" align="right"> <a accesskey="n" href="re04.html">Next</a></td></tr></table><hr></div><div class="refentry" title="job"><a name="job_5"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>job — configuration format for jobd</p></div><div class="refsect1" title="DESCRIPTION"><a name="idp67874048"></a><h2>DESCRIPTION</h2><p>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>job</title><meta name="generator" content="DocBook XSL Stylesheets V1.76.1"><link rel="home" href="index.html" title="The jobd Job Framework"><link rel="up" href="apa.html" title="Appendix A. Manual pages"><link rel="prev" href="re02.html" title="jobctl"><link rel="next" href="re04.html" title="jobd"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">job</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="re02.html">Prev</a> </td><th width="60%" align="center">Appendix A. Manual pages</th><td width="20%" align="right"> <a accesskey="n" href="re04.html">Next</a></td></tr></table><hr></div><div class="refentry" title="job"><a name="job_5"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>job — configuration format for jobd</p></div><div class="refsect1" title="DESCRIPTION"><a name="idp65529600"></a><h2>DESCRIPTION</h2><p>
 	Jobs are configured using a set of key/value pairs within a JSON configuration file. The only required key is the Label; all other 
 	keys are optional.
 	</p><p>
 	The following configuration options are available:
-	</p><div class="variablelist"><dl><dt><span class="term">EnvironmentVariables</span></dt><dd><p>
+	</p><div class="variablelist"><dl><dt><span class="term">Description</span></dt><dd><p>A short, one-line description of what the job does.
+	</p></dd><dt><span class="term">Enable</span></dt><dd><p>If true, the job will be automatically enabled. If the job is on-demand, it will be 
+	started as soon as the on-demand conditions are met. If the job is scheduled, it will be
+	started according to the schedule. Otherwise, the job will start immediately.
+	</p></dd><dt><span class="term">EnableGlobbing</span></dt><dd><p>If true, the program arguments will be passed to 
+	<span class="citerefentry"><span class="refentrytitle">glob</span>(3)</span>
+	for possible expansion.
+	</p></dd><dt><span class="term">EnvironmentVariables</span></dt><dd><p>
 		A dictionary of environment variables to set in the process.
 		</p><p>
 		All jobs will be started with a minimal set of environment variables
 		inherited from <span class="command"><strong>jobd</strong></span>. These variables may include
 		one or more of the following:
-		</p><div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>DISPLAY</p></li><li class="listitem"><p>HOME</p></li><li class="listitem"><p>i18n variables: NLSPATH, LANG</p></li><li class="listitem"><p>LOGNAME</p></li><li class="listitem"><p>PATH</p></li><li class="listitem"><p>LC_ALL, LC_COLATE, LC_CTYPE, and other POSIX locale variables.</p></li><li class="listitem"><p>PWD</p></li><li class="listitem"><p>SHELL</p></li><li class="listitem"><p>TMPDIR</p></li><li class="listitem"><p>TZ</p></li><li class="listitem"><p>USER</p></li></ul></div><p>
+		</p><p>DISPLAY, HOME, LOGNAME, PATH,</p><p>NLSPATH, LANG,</p><p>PWD, SHELL, TMPDIR, TZ, USER,</p><p>LC_ALL, LC_COLATE, LC_CTYPE, and other POSIX locale variables.</p><p>
 	Any variables defined in the EnvironmentVariables section will override
 	the default values inherited from
 	<span class="command"><strong>jobd</strong></span>.
@@ -57,15 +64,21 @@
 		</p></dd><dt><span class="term">UserName</span></dt><dd><p>The name of the user that the program will run as.
 		</p></dd><dt><span class="term">WorkingDirectory</span></dt><dd><p>
 		A directory to chdir(2) into prior to executing the process.
-		</p></dd></dl></div></div><div class="refsect1" title="EXAMPLES"><a name="idp67914496"></a><h2>EXAMPLES</h2><p>
-Example #1:
+		</p></dd></dl></div></div><div class="refsect1" title="EXAMPLES"><a name="idp68343680"></a><h2>EXAMPLES</h2><p>
+The following example will write the words "Hello world" to a file named
+/tmp/hello.log:
 </p><pre class="programlisting">
-TODO: put example here
+{
+	"Label": "com.example.hello_world",
+	"Program": ["/usr/bin/printf", "Hello world\n"],
+	"StandardOutPath": "/tmp/hello.log",
+	"Enable": true
+}
 </pre><p>
-</p></div><div class="refsect1" title="SEE ALSO"><a name="idp67916032"></a><h2>SEE ALSO</h2><p>
+</p></div><div class="refsect1" title="SEE ALSO"><a name="idp68345216"></a><h2>SEE ALSO</h2><p>
 	<span class="citerefentry"><span class="refentrytitle">jobcfg</span>(1)</span>
 	<span class="citerefentry"><span class="refentrytitle">jobd</span>(8)</span>
 	<span class="citerefentry"><span class="refentrytitle">job</span>(5)</span>
-	</p></div><div class="refsect1" title="AUTHORS"><a name="idp67919488"></a><h2>AUTHORS</h2><p>
+	</p></div><div class="refsect1" title="AUTHORS"><a name="idp68348672"></a><h2>AUTHORS</h2><p>
 		Mark Heily &lt;mark@heily.com&gt;
-	</p></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="re02.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="apa.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="re04.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">jobctl </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> jobd</td></tr></table></div></body></html>
+	</p></div><div class="refsect1" title="BUGS"><a name="idp68349824"></a><h2>BUGS</h2><p>The <em class="replaceable"><code>Description</code></em> key is not implemented yet.</p><p>The <em class="replaceable"><code>EnableGlobbing</code></em> key is not implemented yet.</p><p>The <em class="replaceable"><code>Sockets</code></em> key is not implemented yet.</p></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="re02.html">Prev</a> </td><td width="20%" align="center"><a accesskey="u" href="apa.html">Up</a></td><td width="40%" align="right"> <a accesskey="n" href="re04.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">jobctl </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> jobd</td></tr></table></div></body></html>
