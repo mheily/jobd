@@ -35,6 +35,7 @@
 
 #include "config.h"
 #include "calendar.h"
+#include "daemon.h"
 #include <libjob/logger.h>
 #include "manager.h"
 #include "manifest.h"
@@ -117,12 +118,7 @@ main(int argc, char *argv[])
 
 	create_pid_file();
 
-/* daemon(3) is deprecated on MacOS */
-//DISABLED: gcc hates these pragmas and will not compile
-//pragma clang diagnostic push
-//pragma clang diagnostic ignored "-Wdeprecated-declarations"
-
-	if (options.daemon && daemon(0, 0) < 0) {
+	if (options.daemon && compat_daemon(0, 0) < 0) {
 		fprintf(stderr, "ERROR: Unable to daemonize\n");
 		pidfile_remove(state.pfh);
 		exit(EX_OSERR);
