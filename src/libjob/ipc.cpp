@@ -30,6 +30,10 @@ extern "C" {
 #include "ipc.h"
 #include "logger.h"
 
+#if !defined(MSG_NOSIGNAL) && defined(SO_NOSIGPIPE)
+#define MSG_NOSIGNAL 0
+#endif
+
 namespace libjob {
 
 ipcClient::ipcClient(std::string path) {
@@ -160,6 +164,14 @@ ipcSession::ipcSession(int server_fd, struct sockaddr_un sa) {
         	log_errno("accept(2)");
                 throw std::system_error(errno, std::system_category());
         }
+
+#if !defined(MSG_NOSIGNAL) && defined(SO_NOSIGPIPE)
+	int flags = 1;
+	if (setsockopt(this->sockfd, SOL_SOCKET, SO_NOSIGPIPE, &flags, sizeof(flags)) < 0) {
+        	log_errno("setsockopt(2)");
+                throw std::system_error(errno, std::system_category());
+        }
+#endif
 
         log_debug("accepted incoming connection on server fd %d, client fd %d",
         	server_fd, this->sockfd);
