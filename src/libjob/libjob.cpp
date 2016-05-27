@@ -22,32 +22,83 @@
 extern "C" {
 	#include <sys/stat.h>
 	#include <unistd.h>
+
+	#ifdef __APPLE__
+	#include "TargetConditionals.h"
+	#if !TARGET_OS_MAC
+	#error Unsupported OS
+	#endif
+	#endif
 }
 
 #include "job.h"
 #include "jobStatus.hpp"
+
+static std::string get_user_datadir() 
+{
+	const char *home = getenv("HOME");
+	if (!home) {
+		throw "Missing HOME directory environment variable";	
+	}
+
+#if TARGET_OS_MAC
+	std::string dir = std::string(home) + "/Library/Jobd";
+	return dir;
+#else
+	const char *xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
+
+	/* TODO: Per the XDG Base Directory Specification,
+	 * we should validate the ownership and permissions of this directory. */
+	if (xdg_runtime_dir != NULL) {
+		return xdg_runtime_dir;
+	} else if (home != NULL) {
+		std::string dir = std::string(home) + "/.jobd";
+		(void) mkdir(dir.c_str(), 0700);
+		dir += "/db";
+		(void) mkdir(dir.c_str(), 0700);
+		return dir;
+	} else {
+		throw "unable to locate data dir: HOME or XDG_RUNTIME_DIR must be set";
+	}
+#endif
+}
+
+static std::string get_user_runtimedir() 
+{
+	const char *home = getenv("HOME");
+	if (!home) {
+		throw "Missing HOME directory environment variable";	
+	}
+
+#if TARGET_OS_MAC
+	std::string dir = std::string(home) + "/Library/Jobd/run";
+//TODO: mkdir_idempotent
+	return dir;
+#else
+	const char *xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
+
+	/* TODO: Per the XDG Base Directory Specification,
+	 * we should validate the ownership and permissions of this directory. */
+	if (xdg_runtime_dir != NULL) {
+		return xdg_runtime_dir;
+	} else if (home != NULL) {
+		std::string dir = std::string(home) + "/.jobd";
+		(void) mkdir(dir.c_str(), 0700);
+		dir += "/run";
+		(void) mkdir(dir.c_str(), 0700);
+		return dir;
+	} else {
+		throw "unable to locate runtime dir: HOME or XDG_RUNTIME_DIR must be set";
+	}
+#endif
+}
 
 static std::string get_data_dir() {
 	if (getuid() == 0) {
 		(void) mkdir("/var/db/jobd", 0755);
 		return "/var/db/jobd";
 	} else {
-		const char *xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
-		const char *home = getenv("HOME");
-
-		/* TODO: Per the XDG Base Directory Specification,
-		 * we should validate the ownership and permissions of this directory. */
-		if (xdg_runtime_dir != NULL) {
-			return xdg_runtime_dir;
-		} else if (home != NULL) {
-			std::string dir = std::string(home) + "/.jobd";
-			(void) mkdir(dir.c_str(), 0700);
-			dir += "/db";
-			(void) mkdir(dir.c_str(), 0700);
-			return dir;
-		} else {
-			throw "unable to locate data dir: HOME or XDG_RUNTIME_DIR must be set";
-		}
+		return get_user_datadir();
 	}
 }
 
@@ -56,22 +107,7 @@ static std::string get_runtime_dir() {
 		(void) mkdir("/var/run/jobd", 0755);
 		return "/var/run/jobd";
 	} else {
-		const char *xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
-		const char *home = getenv("HOME");
-
-		/* TODO: Per the XDG Base Directory Specification,
-		 * we should validate the ownership and permissions of this directory. */
-		if (xdg_runtime_dir != NULL) {
-			return xdg_runtime_dir;
-		} else if (home != NULL) {
-			std::string dir = std::string(home) + "/.jobd";
-			(void) mkdir(dir.c_str(), 0700);
-			dir += "/run";
-			(void) mkdir(dir.c_str(), 0700);
-			return dir;
-		} else {
-			throw "unable to locate runtime dir: HOME or XDG_RUNTIME_DIR must be set";
-		}
+		return get_user_runtimedir();
 	}
 }
 
@@ -95,16 +131,46 @@ static std::string get_jobdir() {
 		if (xdg_config_home) {
 			return std::string(xdg_config_home) + "/job.d";
 		} else {
+#if TARGET_OS_MAC
+			return std::string(home) + "/Library/Jobd/job.d";
+#else
 			return std::string(home) + "/.config/job.d";
+#endif
 		}
 	}
 	//log_info("jobdir=" + this->jobdir);
 };
 
+void libjob::jobdConfig::createDirectories() {
+	std::vector<std::string> paths;
+
+	const char *home = getenv("HOME");
+	if (getuid() > 0 && !home) {
+		throw "Missing HOME directory environment variable";	
+	}
+
+#if TARGET_OS_MAC
+	if (getuid() > 0) {
+		paths.push_back(std::string(home) + "/Library/Jobd");
+		paths.push_back(std::string(home) + "/Library/Jobd/run");
+		paths.push_back(std::string(home) + "/Library/Jobd/job.d");
+	} else {
+		throw "FIXME -- TODO";
+	}	
+
+	for (auto& it : paths) {
+		(void) mkdir(it.c_str(), 0700);
+	}
+#else
+	//TODO: move other dir creation code here
+#endif
+}
+
 libjob::jobdConfig::jobdConfig() {
 	this->runtimeDir = get_runtime_dir();
 	this->dataDir = get_data_dir();
 	this->jobdir = get_jobdir();
+	this->createDirectories();
 	this->socketPath = get_socketpath();
 }
 

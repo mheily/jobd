@@ -7,7 +7,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## UNRELEASED
 ### Fixed
 - Build failure on 32-bit systems
-- Fix a compiler warning with GCC 4.9
+- Fix a compiler warning with GCC 4.9.
+- Handle disabling jobs correctly. [Bug #66]
+
+### Added
+- Support building on MacOS X
 
 ## [0.7.0] - 2016/05/22
 ### Added
