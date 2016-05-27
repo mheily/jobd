@@ -404,7 +404,8 @@ void JobManager::reapChildProcess(pid_t pid, int status)
 				job->jobStatus.getPid(), last_exit_status, term_signal);
 
 		//TODO: these three calls cause sync() to run three times.
-		// would like one function that sets all three.
+		// would like one function that sets all three,
+		// such as a Job::reap(last_exit_status, term_signal) function
 		job->jobStatus.setLastExitStatus(last_exit_status);
 		job->jobStatus.setTermSignal(term_signal);
 		job->jobStatus.setPid(0);
@@ -417,9 +418,12 @@ void JobManager::reapChildProcess(pid_t pid, int status)
 }
 
 void JobManager::rescheduleJob(unique_ptr<Job>& job) {
-	if (job->state == JOB_STATE_KILLED) {
-		/* The job is unloaded, so nobody cares about the exit status */
-		this->jobs.erase(job->getLabel());
+	//TODO: handle the case of unloading the job
+	//this->jobs.erase(job->getLabel());
+
+	if (job->state == JOB_STATE_KILLED && !job->isEnabled()) {
+		log_debug("job `%s' is disabled and will not be rescheduled", job->getLabel().c_str());
+		job->state = JOB_STATE_LOADED;
 		return;
 	}
 
