@@ -61,15 +61,27 @@ void show_version() {
 	std::cout << "job version " + jobd_config->version << std::endl;
 }
 
+std::string format_job_status(json& status) {
+	if (status["Enabled"].get<bool>() == false) {
+		return "disabled";
+	} else {
+		if (status["State"] == "running") {
+			return "\033[0;32mrunning\033[0m ";
+		} else {
+			return "\033[1;31moffline\033[0m ";
+		}
+	}
+}
+
 void list_response_handler(libjob::jsonRpcResponse& response)
 {
 	try {
-		const char* format = "%-24s %s\n";
+		const char* format = "%s     %s\n";
 		json o = response.getResult();
-		printf(format, "Label", "Status");
-		printf("%s\n", string(72, '-').c_str());
+		printf(format, "\033[4mSTATUS\033[0m  ", "\033[4mLABEL\033[0m");
 		for (json::iterator it = o.begin(); it != o.end(); ++it) {
-			printf(format, it.key().c_str(), it.value().dump().c_str());
+			std::string status = format_job_status(it.value());
+			printf(format, status.c_str(), it.key().c_str());
 		}
 	} catch(const std::exception& e) {
 		std::cout << "ERROR: Unhandled exception: " << e.what() << '\n';

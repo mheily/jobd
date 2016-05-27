@@ -13,6 +13,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - Support building on MacOS X
+- Color support to 'jobctl list', along with a simpler default display
 
 ## [0.7.0] - 2016/05/22
 ### Added
