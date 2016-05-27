@@ -59,24 +59,11 @@ void usage()
 	printf("todo: usage\n");
 }
 
-void create_pid_file()
+void create_pid_file(const std::string& pidfilePath)
 {
 	pid_t otherpid;
 
-	if (getuid() == 0) {
-		path_sprintf(&options.pidfile, "/var/run/launchd.pid");
-	} else {
-		char statedir[PATH_MAX];
-
-		path_sprintf(&statedir, "%s/.launchd", getenv("HOME"));
-		mkdir_idempotent(statedir, 0700);
-		path_sprintf(&statedir, "%s/.launchd/run", getenv("HOME"));
-		mkdir_idempotent(statedir, 0700);
-
-		path_sprintf(&options.pidfile, "%s/launchd.pid", statedir);
-	}
-
-	state.pfh = pidfile_open(options.pidfile, 0600, &otherpid);
+	state.pfh = pidfile_open(pidfilePath.c_str(), 0600, &otherpid);
 	if (state.pfh == NULL) {
 		if (errno == EEXIST) {
 			fprintf(stderr, "WARNING: Daemon already running, pid: %jd.\n", (intmax_t) otherpid);
@@ -87,10 +74,10 @@ void create_pid_file()
 	}
 }
 
-#ifndef UNIT_TEST
 int
 main(int argc, char *argv[])
 {
+	libjob::jobdConfig jobd_config;
 	int c;
 
 	/* Sanitize environment variables */
@@ -116,7 +103,7 @@ main(int argc, char *argv[])
 			}
 	}
 
-	create_pid_file();
+	create_pid_file(jobd_config.pidfilePath);
 
 	if (options.daemon && compat_daemon(0, 0) < 0) {
 		fprintf(stderr, "ERROR: Unable to daemonize\n");
@@ -125,8 +112,6 @@ main(int argc, char *argv[])
 	} else {
 		log_freopen(stdout);
 	}
-
-//pragma clang diagnostic pop
 
 	pidfile_write(state.pfh);
 
@@ -146,4 +131,3 @@ main(int argc, char *argv[])
 	/* NOTREACHED */
 	exit(EXIT_SUCCESS);
 }
-#endif /* !UNIT_TEST */

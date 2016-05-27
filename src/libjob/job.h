@@ -42,6 +42,9 @@ namespace libjob {
 		/** The path to the IPC socket */
 		std::string socketPath;
 
+		/** The path to the pidfile */
+		std::string pidfilePath;
+
 		jobdConfig();
 		//void load_manifest(std::string path);
 

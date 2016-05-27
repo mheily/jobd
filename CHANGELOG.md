@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Build failure on 32-bit systems
 - Fix a compiler warning with GCC 4.9.
 - Handle disabling jobs correctly. [Bug #66]
+- Fix the path to the pidfile and socket, and be consistent about it.
 
 ### Added
 - Support building on MacOS X

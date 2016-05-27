@@ -112,11 +112,7 @@ static std::string get_runtime_dir() {
 }
 
 static std::string get_socketpath() {
-	if (getuid() == 0) {
-		return "/var/run/jobd.sock";
-	} else {
-		return get_runtime_dir() + "/jobd.sock";
-	}
+	return get_runtime_dir() + "/jobd.sock";
 }
 
 static std::string get_jobdir() {
@@ -172,6 +168,7 @@ libjob::jobdConfig::jobdConfig() {
 	this->jobdir = get_jobdir();
 	this->createDirectories();
 	this->socketPath = get_socketpath();
+	this->pidfilePath = get_runtime_dir() + "/jobd.pid";
 }
 
 
