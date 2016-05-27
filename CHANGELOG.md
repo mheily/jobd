@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file
 using the [Keep A ChangeLog](http://keepachangelog.com/) style.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## UNRELEASED
+## [0.7.1] - 2016/05/27
 ### Fixed
 - Build failure on 32-bit systems
 - Fix a compiler warning with GCC 4.9.
@@ -13,7 +13,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - Support building on MacOS X
-- Color support to 'jobctl list', along with a simpler default display
+- Colorized the output of 'jobctl list', and simplified the output
 
 ## [0.7.0] - 2016/05/22
 ### Added
