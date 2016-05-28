@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file
 using the [Keep A ChangeLog](http://keepachangelog.com/) style.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## UNRELEASED
+### Fixed
+- Prevent the IPC socket from being deleted if the child fails to exec()
+
+### Added
+- Experimental support for Capsicum and inherited job descriptors
+
 ## [0.7.1] - 2016/05/27
 ### Fixed
 - Build failure on 32-bit systems
