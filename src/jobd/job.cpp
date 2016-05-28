@@ -29,6 +29,7 @@ extern "C" {
 #endif
 }
 
+#include "capsicum.h"
 #include "chroot.h"
 #include "calendar.h"
 #include "dataset.h"
@@ -372,6 +373,7 @@ void Job::start_child_process()
 	//(void) umask(job->jm->umask);
 
 	this->setup_environment();
+	capsicum_resources_acquire(this->manifest.json, this->environment);
 	this->exec();
 }
 

@@ -1,0 +1,11 @@
+{
+	"Enable": true,
+	"Label": "com.heily.captest",
+	"Program": ["/bin/sleep", "99999"],
+	"Capsicum": {
+		"kqfd": {
+			"SystemCall": "kqueue",
+			"Rights": ["kqueue"]
+		}
+	}
+}

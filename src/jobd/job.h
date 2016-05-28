@@ -219,6 +219,7 @@ private:
 	/** Environment variables, in the form of KEY=value */
 	vector<string> environment;
 
+	void capsicumize();
 	void acquire_resources();
 	void apply_resource_limits();
 	void lookup_credentials();
