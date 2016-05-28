@@ -19,6 +19,9 @@
 /** One-time initialization at program startup */
 int ipc_init(int kqfd);
 
+/** Shutdown the IPC subsystem in the child after a fork(2) call */
+void ipc_fork_handler();
+
 /** Shutdown the IPC subsystem at program exit */
 void ipc_shutdown();
 

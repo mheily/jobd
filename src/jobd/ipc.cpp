@@ -46,7 +46,15 @@ int ipc_init(int kqfd) {
 	return 0;
 }
 
-void ipc_shutdown() {
+void ipc_shutdown()
+{
+	log_debug("shutting down the IPC server");
+	delete ipc_server;
+}
+
+void ipc_fork_handler()
+{
+	ipc_server->fork_handler();
 	delete ipc_server;
 }
 

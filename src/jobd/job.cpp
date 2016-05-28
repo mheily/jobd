@@ -221,7 +221,6 @@ void Job::exec()
 #endif
 
 	this->redirect_stdio();
-	closelog();
 
 	int rv = execve(path, argv, envp);
 	if (rv < 0) {
@@ -531,6 +530,7 @@ void Job::run() {
 		throw std::system_error(errno, std::system_category());
 	} else if (pid == 0) {
 		try {
+			this->manager->forkHandler();
 			this->start_child_process();
 		} catch(const std::system_error& e) {
 			//FIXME: log_error("child caught exception: errno=%d (%s)", e.code(), e.what());

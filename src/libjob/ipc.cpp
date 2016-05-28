@@ -52,7 +52,6 @@ ipcClient::~ipcClient() {
 }
 
 ipcServer::~ipcServer() {
-	log_debug("shutting down IPC server");
 	if (this->sockfd >= 0)
 		(void) close(this->sockfd);
 	if (this->socket_path != "")
@@ -158,6 +157,7 @@ void ipcClient::dispatch(jsonRpcRequest request, jsonRpcResponse& response) {
 }
 
 ipcSession::ipcSession(int server_fd, struct sockaddr_un sa) {
+	socklen_t sa_len = sizeof(sa);
         this->server_sa = sa;
         this->sockfd = accept(server_fd, (struct sockaddr *)&this->client_sa, &sa_len);
         if (this->sockfd < 0) {
@@ -181,6 +181,13 @@ ipcSession::~ipcSession() {
 	log_debug("closing session");
 	if (this->sockfd >= 0)
 		(void) ::close(this->sockfd);
+}
+
+void ipcServer::fork_handler()
+{
+	if (this->sockfd >= 0)
+		(void) close(this->sockfd);
+	this->socket_path = "";
 }
 
 } // namespace

@@ -35,6 +35,9 @@ public:
 	void unloadAllJobs();
 	void listAllJobs(nlohmann::json& result);
 
+	/** Cleanup things in the child process after fork(2) is called */
+	void forkHandler();
+
 	JobManager() {}
 	~JobManager();
 

@@ -58,6 +58,9 @@ namespace libjob {
 		~ipcServer();
 		int get_sockfd() { return this->sockfd; }
 
+		/** Gracefully terminate the server after fork(2) is called */
+		void fork_handler();
+
 	private:
 		void create_socket();
 		std::string socket_path = "";

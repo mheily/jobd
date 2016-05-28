@@ -667,10 +667,17 @@ static void setup_logging()
 #endif
 }
 
+void JobManager::forkHandler()
+{
+	ipc_fork_handler();
+#ifndef UNIT_TEST
+	closelog();
+#endif
+}
+
 JobManager::~JobManager()
 {
 	if (this->pidfile_handle)
 		pidfile_remove(pidfile_handle);
 	ipc_shutdown();
 }
-
