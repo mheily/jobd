@@ -231,17 +231,19 @@ void Job::exec()
 }
 
 void Job::redirect_stdio() {
+	const char *path;
 	int fd;
 
 	// TODO: simplify this by using .get<string>().c_str
-	const char *stdin_path = this->manifest.json["StandardInPath"].get<string>().c_str();
-	const char *stdout_path = this->manifest.json["StandardOutPath"].get<string>().c_str();
-	const char *stderr_path = this->manifest.json["StandardErrorPath"].get<string>().c_str();
+	string stdin_path = this->manifest.json["StandardInPath"];
+	string stdout_path = this->manifest.json["StandardOutPath"];
+	string stderr_path = this->manifest.json["StandardErrorPath"];
 
-	log_debug("setting stdin path to %s", stdin_path);
-	fd = open(stdin_path, O_RDONLY);
+	path = stdin_path.c_str();
+	log_debug("setting stdin path to %s", path);
+	fd = open(path, O_RDONLY);
 	if (fd < 0) {
-		log_errno("open(2) of %s", stdin_path);
+		log_errno("open(2) of %s", path);
 		throw std::system_error(errno, std::system_category());
 	}
 	if (dup2(fd, STDIN_FILENO) < 0) {
@@ -254,10 +256,11 @@ void Job::redirect_stdio() {
 		throw std::system_error(errno, std::system_category());
 	}
 
-	log_debug("setting stdout path to %s", stdout_path);
-	fd = open(stdout_path, O_CREAT | O_WRONLY, 0600);
+	path = stdout_path.c_str();
+	log_debug("setting stdout path to %s", path);
+	fd = open(path, O_CREAT | O_WRONLY, 0600);
 	if (fd < 0) {
-		log_errno("open(2) of %s", stdout_path);
+		log_errno("open(2) of %s", path);
 		throw std::system_error(errno, std::system_category());
 	}
 	if (dup2(fd, STDOUT_FILENO) < 0) {
@@ -270,10 +273,11 @@ void Job::redirect_stdio() {
 		throw std::system_error(errno, std::system_category());
 	}
 
-	log_debug("setting stderr path to %s", stderr_path);
-	fd = open(stderr_path, O_CREAT | O_WRONLY, 0600);
+	path = stderr_path.c_str();
+	log_debug("setting stderr path to %s", path);
+	fd = open(path, O_CREAT | O_WRONLY, 0600);
 	if (fd < 0) {
-		log_errno("open(2) of %s", stderr_path);
+		log_errno("open(2) of %s", path);
 		throw std::system_error(errno, std::system_category());
 	}
 	if (dup2(fd, STDERR_FILENO) < 0) {

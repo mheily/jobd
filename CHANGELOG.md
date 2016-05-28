@@ -6,10 +6,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## UNRELEASED
 ### Fixed
-- Prevent the IPC socket from being deleted if the child fails to exec()
+- Prevent the IPC socket from being deleted by accident. [Bug #69]
+- Fix a memory corruption problem when redirecting STDIO. [Bug #70]
 
 ### Added
-- Experimental support for Capsicum and inherited job descriptors
+- Experimental support for Capsicum and inherited job descriptors.
 
 ## [0.7.1] - 2016/05/27
 ### Fixed
