@@ -144,11 +144,10 @@ static int create_descriptor_for(const json& j)
 {
 	cap_rights_t setrights;
 	int fd;
-	string syscall = j["SystemCall"];
+	string syscall = j["SystemCall"][0];
 
 	if (syscall == "kqueue") {
 		fd = kqueue();
-		cap_rights_init(&setrights, CAP_KQUEUE); //XXX-HARDCODED
 	} else {
 		log_error("unsupported system call: %s", syscall.c_str());
 		return -1;
@@ -168,7 +167,6 @@ static int create_descriptor_for(const json& j)
 			return -1;
 		}
 		unsigned long long val = kv->second;
-		log_debug("%lu rights", (uint64_t)val);
 		cap_rights_set(&setrights, val);
 	}
 	cap_rights_limit(fd, &setrights);
