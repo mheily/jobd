@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sect1 PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"
+           "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
+
+<section><title>Features</title>
+<para>
+This section describes the design of major features of the job framework.
+</para>
+
+<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="sect2-capsicum.xml" />
+
+</section>
+
+

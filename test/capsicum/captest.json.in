@@ -1,0 +1,13 @@
+{
+	"Enable": true,
+	"Label": "captest",
+	"Program": ["@@PWD@@/captest"],
+	"StandardOutPath": "@@PWD@@/captest.out",
+	"StandardErrorPath": "@@PWD@@/captest.err",
+	"Capsicum": {
+		"kqfd": {
+			"SystemCall": ["kqueue"],
+			"Rights": ["kqueue"]
+		}
+	}
+}

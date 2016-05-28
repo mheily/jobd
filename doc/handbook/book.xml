@@ -42,6 +42,10 @@
 
 </chapter>
 
+<chapter>
+<title>Design of the Job Framework</title>
+<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="sect1-design.xml" />
+</chapter>
 
 <chapter>
 	<title>Designing tools that use the Job Framework</title>

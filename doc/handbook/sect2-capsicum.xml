@@ -1,64 +1,77 @@
-Could relaunchd offer a mechanism to create capsicum(4) sandboxes?
------------------------------------------------------------------
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sect2 PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"
+           "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
 
-  It would be possible to extend launchd(8) to give it the ability to
-initialize the sandbox for programs that are Capsicum aware. This would improve
-the overall security of programs which use Capsicum.
+<section><title>Capsicum</title>
+<para>
+The job framework has the ability to initialize the sandbox for programs 
+that are Capsicum aware. This improves the overall security of programs
+which use Capsicum.
+</para>
 
-  The main benefit of adding Capsicum support to launchd is that the
+<para>
+  The main benefit of adding Capsicum support to jobd is that the
 capsicum(4) security policy can be viewed and audited by the end user or system
 administrator, without requiring them to look at the source code or trust the
 person who compiled the program. The security policy is in a separate document,
 that is separate from the source code and the binary excutable.
-
+</para>
+<para>
   If someone puts a backdoor in the source code of a daemon, having a separate
-security policy managed by launchd will thwart the effectiveness of the
+security policy managed by jobd will thwart the effectiveness of the
 backdoor. You no longer have to trust that the code you are running actually
-puts itself into a sandbox; instead, you can trust that launchd initializes the
+puts itself into a sandbox; instead, you can trust that jobd initializes the
 sandbox according to the policy that you can audit fairly easily.
-
+</para>
+<para>
   This would require some kind of user interaction when the security policy of
 a program changes, similar to how smartphones ask you to confirm changes to app
 permissions when you upgrade to a new version of an app.
-
+</para>
+<para>
  You could execute an untrusted binary without having the source code,
   and be confident that the binary will run in a sandbox as described in the
-launchd.plist(5) file. 
+job(5) file. 
+</para>
 
-## Implementation
-
-The basic idea is that programs could add Capsicum directives to their
-launchd.plist(5) job specifications. Here's an example:
-
-```C
+<para>
+The basic idea is that you add a CapsicumRights section
+to the job manifest. Here's an example:
+</para>
+<programlisting>
 {
   "Label": "mydaemon",
-  "Program": "/usr/local/sbin/mydaemon",
+  "Program": ["/usr/local/sbin/mydaemon"],
   "User": "nobody",
   "Group": "nogroup",
-  "Capsicum": {
-    "CapabilitySet": {
-      "kq_fd": {
-        "SystemCall":["kqueue"], 
-        "Rights": ["CAP_KQUEUE"]},
-      },
-      "resolv_fd":{
-        "SystemCall": ["open", "/etc/resolv.conf", "O_RDONLY"], 
-        "Rights": ["CAP_READ", "CAP_SYNC", "CAP_EVENT"],
-      },
-      "data_fd": {
-        "SystemCall": ["open", "/var/mydata", "O_RDONLY"], 
-        "Rights": ["CAP_CREATE"],
-      },
-    }
+  "ChrootDirectory": "/var/empty",
+  "CreateDescriptors": {
+      "kqueue": ["kqueue"],
+      "resolv_conf": ["open", "/etc/resolv.conf", "O_RDONLY"],
+      "mydata": ["open", "/var/mydata", "O_RDONLY"]
+  },
+  "CapsicumRights": {
+      "kqueue": ["kqueue"],
+      "resolv_conf": ["read", "sync", "event"],
+      "mydata": ["create"]
   }
 }
-```
+</programlisting>
 
-When launchd starts the job, it would translate the above
+<para>
+The reason that the CreateDescriptors is separate from the CapsicumRights
+is that multiple sandboxing mechanisms can share the same set of descriptors.
+The above example will acquire the descriptors prior to calling chroot(2),
+which is useful on platforms that do not have Capsicum.
+</para>
+
+<para>
+When jobd starts the job, it would translate the above
 job manifest into the following code and execute it:
+</para>
 
-```C
+<programlisting>
+<![CDATA[
    int fd[3];
 
    fd[0] = kqueue();
@@ -75,26 +88,34 @@ job manifest into the following code and execute it:
 
         cap_rights_init(&setrights, CAP_CREATE);
         cap_rights_limit(fd[2], &setrights);
-
+      
         cap_enter();
-        
+      
+        setenv("JOBD_DESCRIPTOR_kqueue", fd[0], 1);
+        setenv("JOBD_DESCRIPTOR_resolv_conf", fd[1], 1);
+        setenv("JOBD_DESCRIPTOR_mydata", fd[2], 1);
+                
         execve("/usr/local/sbin/mydaemon", NULL, NULL);
     }
-```
-   
+]]>
+</programlisting>
+<para>
 The 'mydaemon' executable would be linked with librelaunch,
 which would provide a function for retrieving the file descriptors
 by looking up their key. There could also be a fallback mechanism
 in case the program was built without support for librelaunch.
+</para>
 
+<para>
 Here's what it would look like, roughly:
+</para>
 
-```C
-#if USE_LIBRELAUNCH
-# include <relaunch.h>
-#else
-# define launch_capsicum_fd(_id) (-1)
-#endif
+<programlisting>
+<![CDATA[
+#define jobd_get_descriptor(name) do { \
+	char *
+   char *value = getenv("
+} while (0)
 
 int kq_fd, resolv_fd, data_fd;
 
@@ -112,4 +133,7 @@ data_fd = launch_get_cap_fd("data_fd");
 if (data_fd < 0) {
         data_fd = open("/var/mydata", O_RDONLY);
 }
-```
+]]>
+</programlisting>
+
+</section>

@@ -177,15 +177,16 @@ static int create_descriptor_for(const json& j)
 static void parse_capability_set(json& top, vector<string>& environment)
 {
 	for (json::iterator it = top.begin(); it != top.end(); ++it) {
-		string key = "JOBD_CAP_" + it.key();
+		string key = "JOB_DESCRIPTOR_" + it.key();
 		int fd = create_descriptor_for(it.value());
 		if (fd < 0) {
+			log_error("bad descriptor type");
 			throw "unable to create descriptor";
 		}
 
 		string keyval = key + '=' + std::to_string(fd);
 		environment.push_back(keyval);
-		//log_debug("CAP: %s", keyval.c_str());
+		log_debug("setting %s", keyval.c_str());
 	}
 }
 #endif // HAVE_CAPSICUM

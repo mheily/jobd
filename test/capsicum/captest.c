@@ -24,10 +24,11 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+#include <job/descriptor.h>
 
 int main()
 {
-	int server = socket(PF_INET, SOCK_STREAM, 0);
+	int server;
 	int client;
 	struct sockaddr_in server_sa;
 	struct sockaddr_storage client_sa;
@@ -38,6 +39,11 @@ int main()
 	server_sa.sin_port = htons(7654);
 	server_sa.sin_addr.s_addr = inet_addr("127.0.0.1");
 
+	if ((server = job_descriptor_get("server_socket")) < 0) {
+		server = socket(PF_INET, SOCK_STREAM, 0);
+	}
+	if (server < 0)
+		err(1, "socket");
 	if (bind(server, (struct sockaddr *) &server_sa, sizeof(server_sa)) < 0)
 		err(1, "bind");
 	if (listen(server, 1) < 0)
