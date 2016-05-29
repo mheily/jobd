@@ -1,4 +1,4 @@
-.TH "JOBD" "8" "May 18, 2016" "FreeBSD 11.0-CURRENTMAR2016" "FreeBSD System Manager's Manual"
+.TH "JOBD" "8" "May 29, 2016" "FreeBSD 11.0-CURRENTMAR2016" "FreeBSD System Manager's Manual"
 .nh
 .if n .ad l
 .SH "NAME"
@@ -46,9 +46,9 @@ Do not become a daemon.
 -v
 Increase the logging verbosity.
 .SH "ENVIRONMENT"
-The
+When running under a debugger, it is useful to prevent
 \fBjobd\fR
-command does not rely on any environment variables.
+from calling fork(2). This can be done by setting the JOBD_DEBUG_NOFORK environment variable to any non-empty string.
 .SH "FILES"
 .TP 8n
 /usr/local/etc/job.d

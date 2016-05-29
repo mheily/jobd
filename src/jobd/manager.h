@@ -45,6 +45,16 @@ public:
 
 	void createProcessEventWatch(pid_t pid);
 
+	bool isNoFork() const
+	{
+		return noFork;
+	}
+
+	void setNoFork(bool noFork = false)
+	{
+		this->noFork = noFork;
+	}
+
 private:
 	/** kqueue(2) descriptor for the main event loop */
 	int kqfd;
@@ -55,6 +65,11 @@ private:
 
 	/** The walltime when we should wake up and scan for KeepAlive=true jobs to restart */
 	time_t next_keepalive_wakeup = 0;
+
+	/** If true, fork() will not be called prior to launching a job.
+	 * This is useful for debugging, but should never be done in production.
+	 */
+	bool noFork = false;
 
 	void scanJobDirectory();
 	void reapChildProcess(pid_t pid, int status);

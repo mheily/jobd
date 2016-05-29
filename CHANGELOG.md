@@ -10,6 +10,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Fix a memory corruption problem when redirecting STDIO. [Bug #70]
 - Fix a memory corruption problem when changing the working directory. [Bug #71]
 
+### Changed
+- Instead of compiling with -DNOFORK, you can get the same effect
+by setting JOBD_DEBUG_NOFORK=yes in jobd's environment.
+
 ### Added
 - Experimental support for Capsicum and inherited job descriptors.
 

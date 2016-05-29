@@ -353,12 +353,11 @@ void Job::start_child_process()
 #endif
 #endif
 
-#ifndef NOFORK
-	if (setsid() < 0) {
+	if (!this->manager->isNoFork() && setsid() < 0) {
 		log_errno("setsid");
 		throw std::system_error(errno, std::system_category());
 	}
-#endif
+
 	if (reset_signal_handlers() < 0) {
 		log_error("unable to reset signal handlers");
 		throw std::system_error(errno, std::system_category());
@@ -543,15 +542,17 @@ void Job::lookup_credentials() {
 }
 
 void Job::run() {
+	pid_t pid;
 	this->acquire_resources();
 	this->lookup_credentials();
 
-	// This is only useful for debugging errors that prevent exec()
-#ifdef NOFORK
-	pid_t pid = 0;
-#else
-	pid_t pid = fork();
-#endif
+	// This is useful for debugging errors that prevent exec()
+	if (this->manager->isNoFork()) {
+		pid = 0;
+	} else {
+		pid = fork();
+	}
+
 	if (pid < 0) {
 		log_errno("fork(2)");
 		throw std::system_error(errno, std::system_category());

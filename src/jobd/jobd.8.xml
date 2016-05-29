@@ -79,7 +79,7 @@ command should be executed.
 <refsect1>
 	<title>ENVIRONMENT</title>
 	<para>
-	The <command>jobd</command> command does not rely on any environment variables.
+	When running under a debugger, it is useful to prevent <command>jobd</command> from calling fork(2). This can be done by setting the JOBD_DEBUG_NOFORK environment variable to any non-empty string.
 	</para>
 </refsect1>
 

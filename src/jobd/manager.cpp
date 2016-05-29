@@ -65,6 +65,10 @@ void JobManager::setup(struct pidfh *pfh)
 {
 	this->pidfile_handle = pfh;
 
+	if (getenv("JOBD_DEBUG_NOFORK")) {
+		this->setNoFork(true);
+	}
+
 	if ((this->kqfd = kqueue()) < 0)
 		err(1, "kqueue(2)");
 	setup_logging();
