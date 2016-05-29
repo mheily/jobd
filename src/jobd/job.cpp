@@ -223,7 +223,7 @@ void Job::exec()
 
 	this->redirect_stdio();
 
-	int fd = open(path, O_EXEC);
+	int fd = open(path, O_RDONLY);
 	if (fd < 0) {
 		//FIXME: need to reopen stderr to something useful; by default it is /dev/null
 		std::cerr << "ERROR: open(2) failed for " << path << '\n';
@@ -241,7 +241,7 @@ void Job::exec()
 
 #endif
 
-	//this->enterCapabilityMode();
+	this->enterCapabilityMode();
 
 	int rv = fexecve(fd, argv, envp);
 	if (rv < 0) {
