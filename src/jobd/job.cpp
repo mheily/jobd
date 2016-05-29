@@ -188,6 +188,8 @@ void Job::setup_environment()
 
 void Job::exec()
 {
+	int rv;
+
 	char* envp[this->environment.size() + 1];
 	for (size_t i = 0; i < this->environment.size(); i++) {
 		envp[i] = (char*) this->environment[i].c_str();
@@ -239,14 +241,14 @@ void Job::exec()
 		exit(242);
 	}
 
-#endif
-
 	this->enterCapabilityMode();
-
-	int rv = fexecve(fd, argv, envp);
+	rv = fexecve(fd, argv, envp);
+#else
+	rv = execve(path, argv, envp);
+#endif
 	if (rv < 0) {
 		//FIXME: need to reopen stderr to something useful; by default it is /dev/null
-		std::cerr << "ERROR: fexecve(2) failed for " << path << '\n';
+		std::cerr << "ERROR: execve(2) failed for " << path << '\n';
 		exit(243);
     	}
 }
@@ -255,7 +257,6 @@ void Job::redirect_stdio() {
 	const char *path;
 	int fd;
 
-	// TODO: simplify this by using .get<string>().c_str
 	string stdin_path = this->manifest.json["StandardInPath"];
 	string stdout_path = this->manifest.json["StandardOutPath"];
 	string stderr_path = this->manifest.json["StandardErrorPath"];
