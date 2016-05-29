@@ -4,39 +4,71 @@
 
 <section><title>Capsicum</title>
 <para>
+<ulink url="https://www.cl.cam.ac.uk/research/security/capsicum/">Capsicum</ulink> is
+a security mechanism that can be used to place programs within a sandbox.
+Prior to entering the sandbox, file and socket descriptors are acquired, and
+restrictions are applied to how those descriptors may be manipulated.
+ Once the sandbox is entered, the program cannot interact
+with global namespaces like the filesystem or other processes, and
+may only use the descriptors that it already has opened.
+</para>
+<para>
 The job framework has the ability to initialize the sandbox for programs 
 that are Capsicum aware. This improves the overall security of programs
 which use Capsicum.
 </para>
 
 <para>
-  The main benefit of adding Capsicum support to jobd is that the
-capsicum(4) security policy can be viewed and audited by the end user or system
-administrator, without requiring them to look at the source code or trust the
-person who compiled the program. The security policy is in a separate document,
-that is separate from the source code and the binary excutable.
-</para>
-<para>
-  If someone puts a backdoor in the source code of a daemon, having a separate
-security policy managed by jobd will thwart the effectiveness of the
-backdoor. You no longer have to trust that the code you are running actually
-puts itself into a sandbox; instead, you can trust that jobd initializes the
-sandbox according to the policy that you can audit fairly easily.
-</para>
-<para>
-  This would require some kind of user interaction when the security policy of
-a program changes, similar to how smartphones ask you to confirm changes to app
-permissions when you upgrade to a new version of an app.
-</para>
-<para>
- You could execute an untrusted binary without having the source code,
-  and be confident that the binary will run in a sandbox as described in the
-job(5) file. 
+	Capsicum traditionally is implemented by modifying the source code
+	of a program to essentially sandbox itself when it executes.
+	
+	One benefit of applying	Capsicum security policy within jobd 
+	is that the security policy can be viewed and audited by the
+	end user or system administrator, without requiring them to look
+	at the source code.
 </para>
 
 <para>
-The basic idea is that you add a CapsicumRights section
-to the job manifest. Here's an example:
+	There is also no need to trust the person who
+	wrote the program or compiled the program, as the security policy 
+	is in a separate document.
+	
+	You don't have to trust that the code you are running actually
+puts itself into a sandbox; instead, you can (hopefully) trust that 
+jobd initializes the sandbox according to the policy that you can 
+audit fairly easily.
+</para>
+
+<para>
+  For example, if someone put a backdoor in the source code of a daemon,
+  having a separate security policy managed by jobd will limit the 
+  effectiveness of the backdoor to provide privilege escalation, because
+  the daemon will be limited to access only those resources available to
+  the sandbox.
+</para>
+
+<para>
+In the future, it would be nice to have some kind of user interaction when
+ the security policy of a program changes, similar to how smartphones ask 
+ you to confirm changes to app permissions when you upgrade to a new version 
+of an app.
+
+This is totally possible as an extension to the job framework, but would be
+almost impossible to implement using the Capsicum API by itself.
+</para>
+
+
+<para>
+To capsicumize a job, you will need to add two sections to the manifest: 
+CreateDescriptors and CapsicumRights. In the CreateDescriptors section, 
+you define what file descriptors should be created, and give each
+descriptor a unique name. In the CapsicumRights section, you apply 
+<ulink url="https://www.freebsd.org/cgi/man.cgi?query=rights">rights(4)</ulink>
+to each of these descriptors.
+</para>
+
+<para>
+Here's an example:
 </para>
 <programlisting>
 {
@@ -67,7 +99,7 @@ which is useful on platforms that do not have Capsicum.
 
 <para>
 When jobd starts the job, it would translate the above
-job manifest into the following code and execute it:
+job manifest into something like the following code and execute it:
 </para>
 
 <programlisting>
@@ -100,40 +132,46 @@ job manifest into the following code and execute it:
 ]]>
 </programlisting>
 <para>
-The 'mydaemon' executable would be linked with librelaunch,
-which would provide a function for retrieving the file descriptors
-by looking up their key. There could also be a fallback mechanism
-in case the program was built without support for librelaunch.
-</para>
+The 'mydaemon' executable would then be responsible for retrieving 
+the file descriptors by examining the environment variables. This
+can be done using the job_descriptor_get() function. 
 
-<para>
-Here's what it would look like, roughly:
+Here's an idea of what the 'mydaemon' program would need to do:
 </para>
 
 <programlisting>
 <![CDATA[
-#define jobd_get_descriptor(name) do { \
-	char *
-   char *value = getenv("
-} while (0)
+#include <err.h>
+#include <stdlib.h>
+#include <sys/event.h>
 
-int kq_fd, resolv_fd, data_fd;
+#if HAVE_JOB_DESCRIPTOR_H
+#include <job/descriptor.h>
+#else
+#define job_descriptor_get(x) (-1)
+#endif
 
-kq_fd = launch_get_cap_fd("kq_fd");
-if (kq_fd < 0) {
-        kq_fd = kqueue();
-}
+int main(int argc, char *argv[])
+{
+    int kqfd;
 
-resolv_fd = launch_get_cap_fd("resolv_fd");
-if (resolv_fd < 0) {
-        resolv_fd = open("/etc/resolv.conf", O_RDONLY);
-}
+    kqfd = job_descriptor_get("kqueue");
+    if (kqfd < 0) {
+        kqfd = kqueue();
+        if (kqfd < 0) {
+            err(1, "kqueue(2)");
+        }
+    }
 
-data_fd = launch_get_cap_fd("data_fd");
-if (data_fd < 0) {
-        data_fd = open("/var/mydata", O_RDONLY);
+    /* ... additional code omitted ... */
 }
 ]]>
 </programlisting>
 
+<para>
+Notice how in the above example, the program needs to have a 
+fallback plan in case that job_descriptor_get() fails or is not available.
+This is necessary to gracefully support building on operating systems that do not
+have jobd and/or Capsicum.
+</para>
 </section>
