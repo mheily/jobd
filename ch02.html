@@ -1,8 +1,147 @@
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>Chapter 2. Designing tools that use the Job Framework</title><meta name="generator" content="DocBook XSL Stylesheets V1.76.1"><link rel="home" href="index.html" title="The jobd Job Framework"><link rel="up" href="index.html" title="The jobd Job Framework"><link rel="prev" href="ch01s02.html" title="Terminology"><link rel="next" href="apa.html" title="Appendix A. Manual pages"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">Chapter 2. Designing tools that use the Job Framework</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="ch01s02.html">Prev</a> </td><th width="60%" align="center"> </th><td width="20%" align="right"> <a accesskey="n" href="apa.html">Next</a></td></tr></table><hr></div><div class="chapter" title="Chapter 2. Designing tools that use the Job Framework"><div class="titlepage"><div><div><h2 class="title"><a name="idp64096512"></a>Chapter 2. Designing tools that use the Job Framework</h2></div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><span class="sect1"><a href="ch02.html#idp66389120">Service management</a></span></dt><dd><dl><dt><span class="sect2"><a href="ch02.html#idp66390144">Terminology</a></span></dt></dl></dd></dl></div><div class="sect1" title="Service management"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="idp66389120"></a>Service management</h2></div></div></div><p>TODO: Describe how a service manager could be written using the Job Framework.</p><div class="sect2" title="Terminology"><div class="titlepage"><div><div><h3 class="title"><a name="idp66390144"></a>Terminology</h3></div></div></div><div class="variablelist"><dl><dt><a name="term_service"></a><span class="term">Service</span></dt><dd><p>
-A <em class="wordasword">service</em> is a type of <a class="link" href="ch01s02.html#term_job">job</a> that normally:
-				</p><div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>runs as a background daemon</p></li><li class="listitem"><p>is launched when the computer boots</p></li><li class="listitem"><p>runs for the entire time the computer is powered on</p></li><li class="listitem"><p>allows the administrator to execute <a class="link" href="ch02.html#term_runcontrol">run control</a> commands</p></li></ul></div></dd><dt><a name="term_servicemanager"></a><span class="term">Service Manager</span></dt><dd><p>
-A <em class="wordasword">service manager</em> is a program that manages <a class="link" href="ch02.html#term_service">services</a>.
-				</p></dd><dt><a name="term_runcontrol"></a><span class="term">Service</span></dt><dd><p>
-Administrators can use <em class="wordasword">run control</em> commands to manipulate the state or
-configuration of services. These commands typically allow you to perform actions like:
-				</p><div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem"><p>start</p></li><li class="listitem"><p>stop</p></li><li class="listitem"><p>restart</p></li><li class="listitem"><p>reload</p></li><li class="listitem"><p>enable</p></li><li class="listitem"><p>disable</p></li></ul></div></dd></dl></div></div></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="ch01s02.html">Prev</a> </td><td width="20%" align="center"> </td><td width="40%" align="right"> <a accesskey="n" href="apa.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">Terminology </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> Appendix A. Manual pages</td></tr></table></div></body></html>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>Chapter 2. Design of the Job Framework</title><meta name="generator" content="DocBook XSL Stylesheets V1.76.1"><link rel="home" href="index.html" title="The jobd Job Framework"><link rel="up" href="index.html" title="The jobd Job Framework"><link rel="prev" href="ch01s02.html" title="Terminology"><link rel="next" href="ch03.html" title="Chapter 3. Designing tools that use the Job Framework"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">Chapter 2. Design of the Job Framework</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="ch01s02.html">Prev</a> </td><th width="60%" align="center"> </th><td width="20%" align="right"> <a accesskey="n" href="ch03.html">Next</a></td></tr></table><hr></div><div class="chapter" title="Chapter 2. Design of the Job Framework"><div class="titlepage"><div><div><h2 class="title"><a name="idp64162048"></a>Chapter 2. Design of the Job Framework</h2></div></div></div><div class="toc"><p><b>Table of Contents</b></p><dl><dt><span class="section"><a href="ch02.html#idp74590592">Features</a></span></dt><dd><dl><dt><span class="section"><a href="ch02.html#idp74589440">Capsicum</a></span></dt></dl></dd></dl></div><div class="section" title="Features"><div class="titlepage"><div><div><h2 class="title" style="clear: both"><a name="idp74590592"></a>Features</h2></div></div></div><p>
+This section describes the design of major features of the job framework.
+</p><div class="section" title="Capsicum"><div class="titlepage"><div><div><h3 class="title"><a name="idp74589440"></a>Capsicum</h3></div></div></div><p>
+<a class="ulink" href="https://www.cl.cam.ac.uk/research/security/capsicum/" target="_top">Capsicum</a> is
+a security mechanism that can be used to place programs within a sandbox.
+Prior to entering the sandbox, file and socket descriptors are acquired, and
+restrictions are applied to how those descriptors may be manipulated.
+ Once the sandbox is entered, the program cannot interact
+with global namespaces like the filesystem or other processes, and
+may only use the descriptors that it already has opened.
+</p><p>
+The job framework has the ability to initialize the sandbox for programs 
+that are Capsicum aware. This improves the overall security of programs
+which use Capsicum.
+</p><p>
+	Capsicum traditionally is implemented by modifying the source code
+	of a program to essentially sandbox itself when it executes.
+	
+	One benefit of applying	Capsicum security policy within jobd 
+	is that the security policy can be viewed and audited by the
+	end user or system administrator, without requiring them to look
+	at the source code.
+</p><p>
+	There is also no need to trust the person who
+	wrote the program or compiled the program, as the security policy 
+	is in a separate document.
+	
+	You don't have to trust that the code you are running actually
+puts itself into a sandbox; instead, you can (hopefully) trust that 
+jobd initializes the sandbox according to the policy that you can 
+audit fairly easily.
+</p><p>
+  For example, if someone put a backdoor in the source code of a daemon,
+  having a separate security policy managed by jobd will limit the 
+  effectiveness of the backdoor to provide privilege escalation, because
+  the daemon will be limited to access only those resources available to
+  the sandbox.
+</p><p>
+In the future, it would be nice to have some kind of user interaction when
+ the security policy of a program changes, similar to how smartphones ask 
+ you to confirm changes to app permissions when you upgrade to a new version 
+of an app.
+
+This is totally possible as an extension to the job framework, but would be
+almost impossible to implement using the Capsicum API by itself.
+</p><p>
+To capsicumize a job, you will need to add two sections to the manifest: 
+CreateDescriptors and CapsicumRights. In the CreateDescriptors section, 
+you define what file descriptors should be created, and give each
+descriptor a unique name. In the CapsicumRights section, you apply 
+<a class="ulink" href="https://www.freebsd.org/cgi/man.cgi?query=rights" target="_top">rights(4)</a>
+to each of these descriptors.
+</p><p>
+Here's an example:
+</p><pre class="programlisting">
+{
+  "Label": "mydaemon",
+  "Program": ["/usr/local/sbin/mydaemon"],
+  "User": "nobody",
+  "Group": "nogroup",
+  "ChrootDirectory": "/var/empty",
+  "CreateDescriptors": {
+      "kqueue": ["kqueue"],
+      "resolv_conf": ["open", "/etc/resolv.conf", "O_RDONLY"],
+      "mydata": ["open", "/var/mydata", "O_RDONLY"]
+  },
+  "CapsicumRights": {
+      "kqueue": ["kqueue"],
+      "resolv_conf": ["read", "sync", "event"],
+      "mydata": ["create"]
+  }
+}
+</pre><p>
+The reason that the CreateDescriptors is separate from the CapsicumRights
+is that multiple sandboxing mechanisms can share the same set of descriptors.
+The above example will acquire the descriptors prior to calling chroot(2),
+which is useful on platforms that do not have Capsicum.
+</p><p>
+When jobd starts the job, it would translate the above
+job manifest into something like the following code and execute it:
+</p><pre class="programlisting">
+
+   int fd[3];
+
+   fd[0] = kqueue();
+   fd[1] = open("/etc/resolv.conf", O_RDONLY);
+   fd[2] = open("/var/mydata", O_RDONLY);
+   if (fork() == 0) {
+        cap_rights_t setrights;
+
+        cap_rights_init(&amp;setrights, CAP_KQUEUE);
+        cap_rights_limit(fd[0], &amp;setrights);
+
+        cap_rights_init(&amp;setrights, CAP_READ | CAP_SYNC | CAP_EVENT);
+        cap_rights_limit(fd[1], &amp;setrights);
+
+        cap_rights_init(&amp;setrights, CAP_CREATE);
+        cap_rights_limit(fd[2], &amp;setrights);
+      
+        cap_enter();
+      
+        setenv("JOBD_DESCRIPTOR_kqueue", fd[0], 1);
+        setenv("JOBD_DESCRIPTOR_resolv_conf", fd[1], 1);
+        setenv("JOBD_DESCRIPTOR_mydata", fd[2], 1);
+                
+        execve("/usr/local/sbin/mydaemon", NULL, NULL);
+    }
+
+</pre><p>
+The 'mydaemon' executable would then be responsible for retrieving 
+the file descriptors by examining the environment variables. This
+can be done using the job_descriptor_get() function. 
+
+Here's an idea of what the 'mydaemon' program would need to do:
+</p><pre class="programlisting">
+
+#include &lt;err.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;sys/event.h&gt;
+
+#if HAVE_JOB_DESCRIPTOR_H
+#include &lt;job/descriptor.h&gt;
+#else
+#define job_descriptor_get(x) (-1)
+#endif
+
+int main(int argc, char *argv[])
+{
+    int kqfd;
+
+    kqfd = job_descriptor_get("kqueue");
+    if (kqfd &lt; 0) {
+        kqfd = kqueue();
+        if (kqfd &lt; 0) {
+            err(1, "kqueue(2)");
+        }
+    }
+
+    /* ... additional code omitted ... */
+}
+
+</pre><p>
+Notice how in the above example, the program needs to have a 
+fallback plan in case that job_descriptor_get() fails or is not available.
+This is necessary to gracefully support building on operating systems that do not
+have jobd and/or Capsicum.
+</p></div></div></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="ch01s02.html">Prev</a> </td><td width="20%" align="center"> </td><td width="40%" align="right"> <a accesskey="n" href="ch03.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">Terminology </td><td width="20%" align="center"><a accesskey="h" href="index.html">Home</a></td><td width="40%" align="right" valign="top"> Chapter 3. Designing tools that use the Job Framework</td></tr></table></div></body></html>
