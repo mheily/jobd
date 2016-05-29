@@ -32,6 +32,7 @@ extern "C" {
 #include "capsicum.h"
 #include "chroot.h"
 #include "calendar.h"
+#include "descriptor.h"
 #include "dataset.h"
 #include "job.h"
 #include <libjob/logger.h>
@@ -222,11 +223,31 @@ void Job::exec()
 
 	this->redirect_stdio();
 
-	int rv = execve(path, argv, envp);
+	int fd = open(path, O_EXEC);
+	if (fd < 0) {
+		//FIXME: need to reopen stderr to something useful; by default it is /dev/null
+		std::cerr << "ERROR: open(2) failed for " << path << '\n';
+		exit(241);
+	}
+
+#if HAVE_CAPSICUM
+	cap_rights_t rights;
+
+	if (cap_rights_limit(fd, cap_rights_init(&rights, CAP_READ, CAP_FEXECVE)) < 0) {
+		//FIXME: need to reopen stderr to something useful; by default it is /dev/null
+		std::cerr << "Unable to limit capability rights";
+		exit(242);
+	}
+
+#endif
+
+	//this->enterCapabilityMode();
+
+	int rv = fexecve(fd, argv, envp);
 	if (rv < 0) {
-		//FIXME: will never be seen because logging is turned off
-		log_errno("execve(2) of %s", argv[0]);
-		throw std::system_error(errno, std::system_category());
+		//FIXME: need to reopen stderr to something useful; by default it is /dev/null
+		std::cerr << "ERROR: fexecve(2) failed for " << path << '\n';
+		exit(243);
     	}
 }
 
@@ -345,9 +366,10 @@ void Job::start_child_process()
 
 	this->apply_resource_limits();
 
-	const char *cwd = this->manifest.json["WorkingDirectory"].get<string>().c_str();
-	if (chdir(cwd) < 0) {
-		log_error("chdir(2) to %s", cwd);
+	string cwd = this->manifest.json["WorkingDirectory"];
+	log_debug("setting working directory to %s", cwd.c_str());
+	if (chdir(cwd.c_str()) < 0) {
+		log_error("chdir(2) to %s", cwd.c_str());
 		throw std::system_error(errno, std::system_category());
 	}
 
@@ -376,7 +398,8 @@ void Job::start_child_process()
 	//(void) umask(job->jm->umask);
 
 	this->setup_environment();
-	capsicum_resources_acquire(this->manifest.json, this->environment);
+	this->createDescriptors();
+	capsicum_resources_acquire(this->manifest.json, this->descriptors);
 	this->exec();
 }
 
@@ -571,4 +594,32 @@ void Job::clearFault()
 	} else {
 		log_debug("tried to clear a job that was not in a faulted state");
 	}
+}
+
+void Job::createDescriptors()
+{
+	if (manifest.json.find("CreateDescriptors") != manifest.json.end()) {
+		log_debug("creating descriptors");
+		nlohmann::json o = manifest.json["CreateDescriptors"];
+		for (nlohmann::json::iterator it = o.begin(); it != o.end(); ++it) {
+			int fd = create_descriptor_for(it.value());
+			descriptors[it.key()] = fd;
+
+			// Push this as an environment variable
+			string key = "JOB_DESCRIPTOR_" + it.key();
+			string kv = key + '=' + std::to_string(fd);
+			this->environment.push_back(kv);
+			log_debug("setting %s", kv.c_str());
+		}
+	}
+}
+
+void Job::enterCapabilityMode()
+{
+#if HAVE_CAPSICUM
+	if (manifest.json.find("CapsicumRights") != manifest.json.end()) {
+		cap_enter();
+		log_debug("entered capability mode");
+	}
+#endif
 }

@@ -14,26 +14,17 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifdef __FreeBSD__
-#define HAVE_CAPSICUM 1
-#else
-#define HAVE_CAPSICUM 0
-#endif
-
 extern "C" {
 #include <sys/types.h>
 #include <sys/event.h>
 #include <sys/time.h>
-#if HAVE_CAPSICUM
-#include <sys/capsicum.h>
-#endif
 #include <unistd.h>
 }
 
 #include <libjob/logger.h>
 #include "capsicum.h"
 
-using json = nlohmann::json;
+using json_t = nlohmann::json;
 
 #if HAVE_CAPSICUM
 
@@ -140,64 +131,38 @@ static const std::map<string, unsigned long long> cap_rights_strings =
 		{ "write", CAP_WRITE },
 };
 
-static int create_descriptor_for(const json& j)
+static void set_rights(int fd, const json_t& json)
 {
 	cap_rights_t setrights;
-	int fd;
-	string syscall = j["SystemCall"][0];
-
-	if (syscall == "kqueue") {
-		fd = kqueue();
-	} else {
-		log_error("unsupported system call: %s", syscall.c_str());
-		return -1;
-	}
-
-	if (fd < 0) {
-		log_errno("%s syscall", syscall.c_str());
-		return -1;
-	}
 
 	cap_rights_init(&setrights);
-	for (auto const & it : j["Rights"]) {
+	for (auto const & it : json) {
 		auto kv = cap_rights_strings.find(it);
 		if (kv == cap_rights_strings.end()) {
 			log_error("invalid rights string");
-			close(fd);
-			return -1;
+			throw "bad rights string";
 		}
 		unsigned long long val = kv->second;
 		cap_rights_set(&setrights, val);
 	}
 	cap_rights_limit(fd, &setrights);
-
-	return fd;
-}
-
-static void parse_capability_set(json& top, vector<string>& environment)
-{
-	for (json::iterator it = top.begin(); it != top.end(); ++it) {
-		string key = "JOB_DESCRIPTOR_" + it.key();
-		int fd = create_descriptor_for(it.value());
-		if (fd < 0) {
-			log_error("bad descriptor type");
-			throw "unable to create descriptor";
-		}
-
-		string keyval = key + '=' + std::to_string(fd);
-		environment.push_back(keyval);
-		log_debug("setting %s", keyval.c_str());
-	}
 }
 #endif // HAVE_CAPSICUM
 
-void capsicum_resources_acquire(json& manifest, vector<string>& environment)
+void capsicum_resources_acquire(json_t& manifest, std::map<std::string, int> descriptors)
 {
 #if HAVE_CAPSICUM
-	if (manifest.find("Capsicum") == manifest.end()) {
-		return;
+	if (manifest.find("CapsicumRights") != manifest.end()) {
+		json_t o = manifest["CapsicumRights"];
+		for (nlohmann::json::iterator it = o.begin(); it != o.end(); ++it) {
+			string key = it.key();
+			auto kv = descriptors.find(key);
+			if (kv == descriptors.end()) {
+				log_error("no descriptor matching `%s'", key.c_str());
+				throw "bad manifest";
+			}
+			set_rights(kv->second, it.value());
+		}
 	}
-
-	parse_capability_set(manifest["Capsicum"], environment);
 #endif
 }

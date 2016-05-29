@@ -39,11 +39,20 @@ int main()
 	server_sa.sin_port = htons(7654);
 	server_sa.sin_addr.s_addr = inet_addr("127.0.0.1");
 
+	puts("captest starting");
+
 	if ((server = job_descriptor_get("server_socket")) < 0) {
 		server = socket(PF_INET, SOCK_STREAM, 0);
 	}
 	if (server < 0)
 		err(1, "socket");
+	printf("server fd = %d\n", server);
+
+	int enabled = 1;
+	if (setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &enabled, sizeof(enabled)) < 0) {
+		err(1, "setsockopt");
+	}
+
 	if (bind(server, (struct sockaddr *) &server_sa, sizeof(server_sa)) < 0)
 		err(1, "bind");
 	if (listen(server, 1) < 0)

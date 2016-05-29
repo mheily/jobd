@@ -16,19 +16,8 @@
 
 #pragma once
 
-#ifdef __FreeBSD__
-#define HAVE_CAPSICUM 1
-#else
-#define HAVE_CAPSICUM 0
-#endif
-
-extern "C" {
-#if HAVE_CAPSICUM
-#include <sys/capsicum.h>
-#endif
-}
-
 #include <libjob/namespaceImport.hpp>
 
-void capsicum_resources_acquire(nlohmann::json& manifest,
-		std::map<std::string, int> descriptors);
+#include "job.h"
+
+int create_descriptor_for(const nlohmann::json& j);

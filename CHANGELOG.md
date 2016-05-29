@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Prevent the IPC socket from being deleted by accident. [Bug #69]
 - Fix a memory corruption problem when redirecting STDIO. [Bug #70]
+- Fix a memory corruption problem when changing the working directory. [Bug #71]
 
 ### Added
 - Experimental support for Capsicum and inherited job descriptors.

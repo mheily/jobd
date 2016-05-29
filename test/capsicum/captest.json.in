@@ -2,12 +2,13 @@
 	"Enable": true,
 	"Label": "captest",
 	"Program": ["@@PWD@@/captest"],
+	"WorkingDirectory": "@@PWD@@",
 	"StandardOutPath": "@@PWD@@/captest.out",
 	"StandardErrorPath": "@@PWD@@/captest.err",
-	"Capsicum": {
-		"kqfd": {
-			"SystemCall": ["kqueue"],
-			"Rights": ["kqueue"]
-		}
+	"CreateDescriptors": {
+		"server_socket": ["socket", "PF_INET", "SOCK_STREAM", "0"]
+	},
+	"CapsicumRights": {
+		"server_socket": ["bind", "listen", "setsockopt", "event"]
 	}
 }
