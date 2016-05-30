@@ -600,11 +600,18 @@ void JobManager::listAllJobs(nlohmann::json& result)
 
 void JobManager::mainLoop()
 {
+	int rv;
 	struct kevent kev;
 
 	for (;;) {
-		if (kevent(this->kqfd, NULL, 0, &kev, 1, NULL) < 1) {
+		rv = kevent(this->kqfd, NULL, 0, &kev, 1, NULL);
+		if (rv == 0) {
+			log_debug("spurious wakeup; no events pending");
+			continue;
+		}
+		if (rv < 0) {
 			if (errno == EINTR) {
+				log_warning("spurious wakeup; got signal"); // should not happen..
 				continue;
 			} else {
 				err(1, "kevent(2)");
