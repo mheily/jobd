@@ -30,14 +30,16 @@
 #        jobcfg_LDADD="${jobcfg_LDADD} -ljail"
 #fi
 
-if [ $check_program_docbook2mdoc = "1" ] ; then
+if [ -n "$manpage_generator" ] ; then
 	custom_target 'jobcfg.1' 'jobcfg.1.xml' \
-		'docbook2mdoc jobcfg.1.xml | mandoc -T man > jobcfg.1'
+		"${manpage_generator} jobcfg.1.xml > jobcfg.1"
 
-	custom_target 'jobcfg.1.html' 'jobcfg.1.xml' \
-		'docbook2mdoc jobcfg.1.xml | mandoc -mdoc -T html > jobcfg.1.html'
+	manpage 'jobcfg.1'
+
+	#TODO: move to doc/
+	#custom_target 'jobcfg.1.html' 'jobcfg.1.xml' \
+	#	'docbook2mdoc jobcfg.1.xml | mandoc -mdoc -T html > jobcfg.1.html'
 fi
 
-manpage 'jobcfg.1'
 
 write_makefile
