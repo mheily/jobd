@@ -192,6 +192,7 @@ void Job::exec()
 
 	char* envp[this->environment.size() + 1];
 	for (size_t i = 0; i < this->environment.size(); i++) {
+		log_debug("setenv: %s", this->environment[i].c_str());
 		envp[i] = (char*) this->environment[i].c_str();
 	}
 	envp[this->environment.size()] = nullptr;
@@ -313,6 +314,39 @@ void Job::redirect_stdio() {
 	}
 }
 
+void Job::createCapsicumLoaderDescriptors()
+{
+	int fd;
+	string fdset;
+
+	// TODO: refactor into loop
+
+	fd = open("/lib", O_RDONLY);
+	if (fd < 0)
+		throw std::system_error(errno, std::system_category());
+	fdset = std::to_string(fd);
+
+	fd = open("/libexec", O_RDONLY);
+	if (fd < 0)
+		throw std::system_error(errno, std::system_category());
+	fdset += ':' + std::to_string(fd);
+
+	fd = open("/usr/lib", O_RDONLY);
+	if (fd < 0)
+		throw std::system_error(errno, std::system_category());
+	fdset += ':' + std::to_string(fd);
+
+	fd = open("/usr/local/lib", O_RDONLY);
+	if (fd < 0)
+		throw std::system_error(errno, std::system_category());
+	fdset += ':' + std::to_string(fd);
+
+	// TODO: run cap_rights_set() on descriptors
+
+	this->environment.push_back("LD_LIBRARY_PATH_FDS=" + fdset);
+	log_debug("Capsicum loader fdset: %s", fdset.c_str());
+}
+
 int
 reset_signal_handlers()
 {
@@ -399,7 +433,12 @@ void Job::start_child_process()
 
 	this->setup_environment();
 	this->createDescriptors();
-	capsicum_resources_acquire(this->manifest.json, this->descriptors);
+
+	if (this->useCapsicum()) {
+		this->createCapsicumLoaderDescriptors();
+		capsicum_resources_acquire(this->manifest.json, this->descriptors);
+	}
+
 	this->exec();
 }
 
@@ -624,4 +663,9 @@ void Job::enterCapabilityMode()
 		log_debug("entered capability mode");
 	}
 #endif
+}
+
+bool Job::useCapsicum()
+{
+	return (manifest.json.find("CapsicumRights") != manifest.json.end());
 }

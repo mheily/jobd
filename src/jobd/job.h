@@ -222,6 +222,11 @@ private:
 	std::map<std::string, int> descriptors;
 	void createDescriptors();
 
+	// Capsicum
+	void enterCapabilityMode();
+	void createCapsicumLoaderDescriptors();
+	bool useCapsicum();
+
 	void acquire_resources();
 	void apply_resource_limits();
 	void lookup_credentials();
@@ -229,7 +234,6 @@ private:
 	void start_child_process();
 	void redirect_stdio();
 	void setup_environment();
-	void enterCapabilityMode();
 	void exec();
 };
 
