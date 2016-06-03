@@ -27,14 +27,16 @@ libjob_SOURCES=`ls *.cpp | tr '\n' ' '`
 libjob_SONAME="libjob.so.0"
 libjob_DEPENDS="$kqueue_DEPENDS"
 
-if [ "$check_program_docbook2mdoc" = "1" ] ; then
+if [ -n "$manpage_generator" ] ; then
 	custom_target 'job.5' 'job.5.xml' \
-		'docbook2mdoc job.5.xml | mandoc -T man > job.5'
+		"${manpage_generator} job.5.xml > job.5"
 	
-	custom_target 'job.5.html' 'job.5.xml' \
-		'docbook2mdoc job.5.xml | mandoc -mdoc -T html > job.5.html'
+	#TODO: move to /doc
+	#custom_target 'job.5.html' 'job.5.xml' \
+	#	'docbook2mdoc job.5.xml | mandoc -mdoc -T html > job.5.html'
+
+	manpage 'job.5'
 fi
 
-manpage 'job.5'
 
 write_makefile

@@ -32,16 +32,18 @@ if [ "`uname`" = 'FreeBSD' ] ; then
         jobd_LDADD="${jobd_LDADD} -ljail"
 fi
 
-if [ $check_program_docbook2mdoc = "1" ] ; then
+if [ -n "$manpage_generator" ] ; then
 	custom_target 'jobd.8' 'jobd.8.xml' \
-	        'docbook2mdoc jobd.8.xml | mandoc -T man > jobd.8'
+	        "${manpage_generator} jobd.8.xml > jobd.8"
 	
-	custom_target 'jobd.8.html' 'jobd.8.xml' \
-	        'docbook2mdoc jobd.8.xml | mandoc -mdoc -T html > jobd.8.html'
+	manpage 'jobd.8'
+
+	# TODO: move to doc/ directory
+	#custom_target 'jobd.8.html' 'jobd.8.xml' \
+	#        "${manpage_generator} jobd.8.xml | mandoc -mdoc -T html > jobd.8.html'
 	
 fi
 
-manpage 'jobd.8'
 
 ## MacOS needs a POSIX clock_gettime() function
 if [ `uname` = "Darwin" ] ; then

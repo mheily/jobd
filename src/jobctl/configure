@@ -30,14 +30,16 @@ if [ "`uname`" = 'FreeBSD' ] ; then
         jobctl_LDADD="${jobctl_LDADD} -ljail"
 fi
 
-if [ $check_program_docbook2mdoc = "1" ] ; then
+if [ -n "$manpage_generator" ] ; then
 	custom_target 'jobctl.1' 'jobctl.1.xml' \
-		'docbook2mdoc jobctl.1.xml | mandoc -T man > jobctl.1'
+		"${manpage_generator} jobctl.1.xml > jobctl.1"
 	
-	custom_target 'jobctl.1.html' 'jobctl.1.xml' \
-		'docbook2mdoc jobctl.1.xml | mandoc -mdoc -T html > jobctl.1.html'
+	manpage 'jobctl.1'
+
+	# TODO: move to /doc
+	#custom_target 'jobctl.1.html' 'jobctl.1.xml' \
+	#	'docbook2mdoc jobctl.1.xml | mandoc -mdoc -T html > jobctl.1.html'
 fi
 
-manpage 'jobctl.1'
 
 write_makefile
