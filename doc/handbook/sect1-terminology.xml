@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE sect1 PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"
-           "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
-
-<section><title>Terminology</title>
+<section xml:lang="en" xmlns="http://docbook.org/ns/docbook" 
+version="5.0" xmlns:xi="http://www.w3.org/2001/XInclude" xmlns:xl="http://www.w3.org/1999/xlink">
+<title>Terminology</title>
 <para>
 The following terms have specific meanings within the job framework:
 </para>
 
 <variablelist>
-		<varlistentry id="term_job">
+		<varlistentry xml:id="term_job">
 			<term>Job</term>
 			<listitem>
 				<para>
@@ -29,12 +28,12 @@ A <wordasword>job</wordasword> is a set of one or more of the following:
 			</listitem>
 		</varlistentry>
 
-		<varlistentry id="term_manifest">
+		<varlistentry xml:id="term_manifest">
 			<term>Manifest</term>
 			<listitem>
 				<para>
 A <wordasword>manifest</wordasword> is a document that contains all of the information about a <link linkend="term_job">job</link>.
-Manifests are written in <ulink url="http://json.org/">JSON</ulink> format.
+Manifests are written in <link xl:href="http://json.org/">JSON</link> format.
 				</para>
 				
 				<para>
@@ -53,7 +52,7 @@ When this job runs, it will write the words "Hello world!" to a file named */tmp
 			</listitem>
 		</varlistentry>
 		
-		<varlistentry id="term_method">
+		<varlistentry xml:id="term_method">
 			<term>Method</term>
 			<listitem>
 				<para>
@@ -94,7 +93,7 @@ For more detail about methods, see the [specification](../wiki/Functional-Specif
 			</listitem>
 		</varlistentry>
 		
-		<varlistentry id="term_program">
+		<varlistentry xml:id="term_program">
 			<term>Program</term>
 			<listitem>
 				<para>
@@ -116,7 +115,7 @@ For more detail about methods, see the [specification](../wiki/Functional-Specif
 			</listitem>
 		</varlistentry>
 
-		<varlistentry id="term_property">
+		<varlistentry xml:id="term_property">
 			<term>Property</term>
 			<listitem>
 				<para>
@@ -159,15 +158,15 @@ The next time the job is executed, it will write the words "This is the overridd
 			</listitem>
 		</varlistentry>
 		
-		<varlistentry id="term_label">
+		<varlistentry xml:id="term_label">
 			<term>Label</term>
 			<listitem>
 				<para>
 	A <wordasword>label</wordasword> uniquely identifies each <link linkend="term_job">job</link>.
 	 Labels are written using
-	 <ulink url="https://en.wikipedia.org/wiki/Reverse_domain_name_notation">
+	 <link xl:href="https://en.wikipedia.org/wiki/Reverse_domain_name_notation">
 	 reverse domain name notation
-	 </ulink>.
+	 </link>.
 	The label for each job is specified in the <link linkend="term_manifest">manifest</link>.
 				</para>
 				
@@ -182,7 +181,7 @@ For example, use 'com.example.nginx_web_server' to describe a job for running th
 			</listitem>
 		</varlistentry>
 				
-		<varlistentry id="term_context">
+		<varlistentry xml:id="term_context">
 			<term>Execution Context</term>
 			<listitem>
 				<para>
@@ -209,7 +208,7 @@ For example, use 'com.example.nginx_web_server' to describe a job for running th
 			</listitem>
 		</varlistentry>
 		
-		<varlistentry id="term_resource">
+		<varlistentry xml:id="term_resource">
 			<term>Resource</term>
 			<listitem>
 				<para>
@@ -255,7 +254,7 @@ destroyed when the job terminates.
 		</varlistentry>
 
 		
-		<varlistentry id="term_dependency">
+		<varlistentry xml:id="term_dependency">
 			<term>Dependency</term>
 			<listitem>
 				<para>
@@ -289,7 +288,7 @@ Jobs will be executed as soon as all of their dependencies are met.
 			</listitem>
 		</varlistentry>
 		
-		<varlistentry id="term_scheduler">
+		<varlistentry xml:id="term_scheduler">
 			<term>Scheduler</term>
 			<listitem>
 				<para>
@@ -333,7 +332,7 @@ when specific conditions are met.
 			</listitem>
 		</varlistentry>
 		
-		<varlistentry id="term_ondemand">
+		<varlistentry xml:id="term_ondemand">
 			<term>On-Demand Scheduling</term>
 			<listitem>
 				<para>
@@ -363,7 +362,7 @@ or more conditions, such as:
 			</listitem>
 		</varlistentry>
 		
-		<varlistentry id="term_transient">
+		<varlistentry xml:id="term_transient">
 			<term>Transient</term>
 			<listitem>
 				<para>

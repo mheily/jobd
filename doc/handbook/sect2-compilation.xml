@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <section xml:lang="en" xmlns="http://docbook.org/ns/docbook" version="5.0" xmlns:xi="http://www.w3.org/2001/XInclude" xmlns:xl="http://www.w3.org/1999/xlink">
-
-<title>Features</title>
-<para>
-This section describes the design of major features of the job framework.
-</para>
-
-<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="sect2-capsicum.xml" />
-
+	<title>Compilation</title>
+	<para>
+	On MacOS X:
+	</para>
+	
+	<para>
+	Install from Homebrew: docbook2x, xmlto, jing
+	</para>
+	
+	
 </section>
-
-

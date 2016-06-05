@@ -65,6 +65,7 @@ fi
 
 check_program 'docbook2mdoc'
 check_program 'docbook2x-man'
+check_program 'docbook2man'    # part of docbook2X
 check_program 'mdoc'
 check_program 'groff'
 if [ "$check_program_docbook2mdoc" = "1" -a "$check_program_mdoc" = "1" ] ; then
@@ -72,6 +73,9 @@ if [ "$check_program_docbook2mdoc" = "1" -a "$check_program_mdoc" = "1" ] ; then
 	make_define 'manpage_formatter' 'mdoc'
 elif [ "$check_program_docbook2x_man" = "1" -a "$check_program_groff" = "1" ] ; then
 	make_define 'manpage_generator' 'docbook2x-man'
+	make_define 'manpage_formatter' 'groff'
+elif [ "$check_program_docbook2man" = "1" -a "$check_program_groff" = "1" ] ; then
+	make_define 'manpage_generator' 'docbook2man'
 	make_define 'manpage_formatter' 'groff'
 else
 	echo "**WARNING** manpages will not be generated; please install docbook2mdoc or docbook2x"

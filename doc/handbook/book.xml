@@ -1,17 +1,20 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"
-           "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
-
-<book lang="en_US">
-<bookinfo>
+<?xml version="1.0" encoding="UTF-8"?>             
+<book xmlns="http://docbook.org/ns/docbook" 
+        xmlns:xi="http://www.w3.org/2001/XInclude"
+        xmlns:xlink="http://www.w3.org/1999/xlink" 
+        version="5.0" xml:lang="en_US">
+<info>
 <title>The jobd Job Framework</title>
-<date>April 23, 2016 </date><author>
-<firstname>Mark</firstname><surname>Heily</surname></author>
+<date>April 23, 2016 </date>
+<author>
+<personname>
+<firstname>Mark</firstname><surname>Heily</surname>
+</personname>
+</author>
   <copyright>
     <year>2016</year>
     <holder>Mark Heily</holder>
 </copyright>
-
 <legalnotice>
 <para>
 	Permission to use, copy, modify, and/or distribute this document for
@@ -29,7 +32,7 @@
 </para>
 </legalnotice>
 
-</bookinfo>
+</info>
 
 <chapter>
 

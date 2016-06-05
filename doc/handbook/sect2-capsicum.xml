@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE sect2 PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"
-           "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
-
-<section><title>Capsicum</title>
+<section xml:lang="en" xmlns="http://docbook.org/ns/docbook" version="5.0" xmlns:xi="http://www.w3.org/2001/XInclude" xmlns:xl="http://www.w3.org/1999/xlink">
+<title>Capsicum</title>
 <para>
-<ulink url="https://www.cl.cam.ac.uk/research/security/capsicum/">Capsicum</ulink> is
+<link xl:href="https://www.cl.cam.ac.uk/research/security/capsicum/">Capsicum</link> is
 a security mechanism that can be used to place programs within a sandbox.
 Prior to entering the sandbox, file and socket descriptors are acquired, and
 restrictions are applied to how those descriptors may be manipulated.
@@ -63,7 +61,7 @@ To capsicumize a job, you will need to add two sections to the manifest:
 CreateDescriptors and CapsicumRights. In the CreateDescriptors section, 
 you define what file descriptors should be created, and give each
 descriptor a unique name. In the CapsicumRights section, you apply 
-<ulink url="https://www.freebsd.org/cgi/man.cgi?query=rights">rights(4)</ulink>
+<link xl:href="https://www.freebsd.org/cgi/man.cgi?query=rights">rights(4)</link>
 to each of these descriptors.
 </para>
 

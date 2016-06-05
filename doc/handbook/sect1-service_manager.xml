@@ -1,16 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE sect1 PUBLIC "-//OASIS//DTD DocBook XML V4.4//EN"
-           "http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd">
-
-<sect1>
-
+<section xml:lang="en" xmlns="http://docbook.org/ns/docbook" 
+version="5.0" xmlns:xi="http://www.w3.org/2001/XInclude" xmlns:xl="http://www.w3.org/1999/xlink">
 <title>Service management</title>
 
 <para>TODO: Describe how a service manager could be written using the Job Framework.</para>
 
-<sect2><title>Terminology</title>
+<section><title>Terminology</title>
 <variablelist>
-		<varlistentry id="term_service">
+		<varlistentry xml:id="term_service">
 			<term>Service</term>
 			<listitem>
 				<para>
@@ -25,7 +22,7 @@ A <wordasword>service</wordasword> is a type of <link linkend="term_job">job</li
 			</listitem>
 		</varlistentry>
 		
-		<varlistentry id="term_servicemanager">
+		<varlistentry xml:id="term_servicemanager">
 			<term>Service Manager</term>
 			<listitem>
 				<para>
@@ -34,7 +31,7 @@ A <wordasword>service manager</wordasword> is a program that manages <link linke
 			</listitem>
 		</varlistentry>
 
-		<varlistentry id="term_runcontrol">
+		<varlistentry xml:id="term_runcontrol">
 			<term>Service</term>
 			<listitem>
 				<para>
@@ -52,8 +49,8 @@ configuration of services. These commands typically allow you to perform actions
 			</listitem>
 		</varlistentry>
 </variablelist>
-</sect2>
-</sect1>     
+</section>
+</section>     
 
 <!-- 
 

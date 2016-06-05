@@ -14,15 +14,19 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
+XMLTO=xmlto --skip-validation
 GH_PAGES_CHECKOUT=../../../jobd-gh-pages
 
-all: clean build-html build-html-nochunks
+all: clean check build-html build-html-nochunks
 	
+check:
+	jing docbookxi.rng *.xml || true # FIXME: ../../src/*/*.xml
+
 build-html:
-	xmlto -o html html book.xml
+	$(XMLTO) -o html html book.xml
 
 build-html-nochunks:
-	xmlto -o html-nochunks html-nochunks book.xml
+	$(XMLTO) -o html-nochunks html-nochunks book.xml
 
 preview: clean build-html-nochunks
 	firefox --new-window ./html-nochunks/book.html
