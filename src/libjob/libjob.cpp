@@ -158,6 +158,10 @@ void libjob::jobdConfig::createDirectories() {
 		(void) mkdir(it.c_str(), 0700);
 	}
 #else
+	if (getuid() > 0) {
+		std::string path = std::string(home) + "/.config";
+		(void) mkdir(path.c_str(), 0700);
+	}
 	//TODO: move other dir creation code here
 #endif
 }
