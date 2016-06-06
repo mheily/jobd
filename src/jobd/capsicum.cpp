@@ -87,8 +87,12 @@ static const std::map<string, unsigned long long> cap_rights_strings =
 		{ "kqueue", CAP_KQUEUE },
 		{ "kqueue_change", CAP_KQUEUE_CHANGE },
 		{ "kqueue_event", CAP_KQUEUE_EVENT },
+#ifdef CAP_LINKAT_SOURCE
 		{ "linkat_source", CAP_LINKAT_SOURCE },
 		{ "linkat_target", CAP_LINKAT_TARGET },
+		{ "renameat_source", CAP_RENAMEAT_SOURCE },
+		{ "renameat_target", CAP_RENAMEAT_TARGET },
+#endif /* CAP_LINKAT_SOURCE */
 		{ "listen", CAP_LISTEN },
 		{ "lookup", CAP_LOOKUP },
 		{ "mac_get", CAP_MAC_GET },
@@ -113,8 +117,6 @@ static const std::map<string, unsigned long long> cap_rights_strings =
 		{ "pwrite", CAP_PWRITE },
 		{ "read", CAP_READ },
 		{ "recv", CAP_RECV },
-		{ "renameat_source", CAP_RENAMEAT_SOURCE },
-		{ "renameat_target", CAP_RENAMEAT_TARGET },
 		{ "seek", CAP_SEEK },
 		{ "seek_tell", CAP_SEEK_TELL },
 		{ "sem_getvalue", CAP_SEM_GETVALUE },
