@@ -152,6 +152,19 @@ main(int argc, char *argv[])
 			list_response_handler(response);
 		}
 
+		if (command_or_label == "load") {
+			request.setMethod("load");
+			char *resolved_path = realpath(argv[1], NULL);
+			if (!resolved_path) {
+				puts("ERROR: unable to resolve path");
+				exit(EXIT_FAILURE);
+			}
+			puts(resolved_path);
+			request.addParam(std::string(resolved_path));
+			ipc_client->dispatch(request, response);
+			//FIXME: check response
+			free(resolved_path);
+		}
 	} catch(const std::system_error& e) {
 		std::cout << "Caught system_error with code " << e.code()
 	                  << " meaning " << e.what() << '\n';

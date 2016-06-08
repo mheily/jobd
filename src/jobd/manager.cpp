@@ -86,6 +86,21 @@ void JobManager::setup(struct pidfh *pfh)
 	this->scanJobDirectory();
 }
 
+void JobManager::defineJob(const string& path)
+{
+	unique_ptr<Job> job(new Job);
+
+	log_debug("parsing %s", path.c_str());
+	job->setManager(this);
+	job->parseManifest(path);
+	job->jobStatus.setLabel(job->getLabel());
+	job->jobProperty.setLabel(job->getLabel());
+	if (!jobs.insert(std::make_pair(job->getLabel(), std::move(job))).second) {
+		log_error("Duplicate label detected");
+		throw std::invalid_argument("Tried to add a job with a duplicate label");
+	}
+}
+
 void JobManager::scanJobDirectory()
 {
 	DIR	*dirp;
@@ -98,8 +113,6 @@ void JobManager::scanJobDirectory()
 	if ((dirp = opendir(jobdir)) == NULL)
 		err(1, "opendir(3)");
 
-	std::unordered_set<string> labels;
-
 	while (dirp) {
 		if (readdir_r(dirp, &entry, &result) < 0)
 			err(1, "readdir_r(3)");
@@ -110,44 +123,21 @@ void JobManager::scanJobDirectory()
 
 		std::string d_name = std::string(entry.d_name);
 		std::string path = this->jobd_config.jobdir + "/" + d_name;
-		std::string label = d_name;
-		label = std::regex_replace(label, std::regex("\\.json$"), "");
-		labels.insert(label);
-		cout << label << '\n';
-		if (this->jobs.find(label) != this->jobs.end()) {
-			log_debug("skipping existing job");
-			continue;
-		}
-
-		unique_ptr<Job> job(new Job);
 		try {
-			log_debug("parsing %s", path.c_str());
-			unique_ptr<Job> job(new Job);
-			job->setManager(this);
-			job->parseManifest(path);
-			job->jobStatus.setLabel(job->getLabel());
-			job->jobProperty.setLabel(job->getLabel());
-			if (!this->jobs.insert(std::make_pair(job->getLabel(), std::move(job))).second) {
-				log_error("Duplicate label detected");
-				continue;
-			} else {
-				pending_jobs++;
-			}
+			defineJob(path);
 		} catch (std::system_error& e) {
 			log_error("error parsing %s: %s", path.c_str(), e.what());
 		}
-		job_count++;
 	}
 	if (closedir(dirp) < 0)
 		err(1, "closedir(3)");
 
 	log_debug("finished scanning jobs: total=%zu new=%zu", job_count, pending_jobs);
 
-	// Load and run any newly created files
-	if (pending_jobs > 0) {
-		this->runPendingJobs();
-	}
+	runPendingJobs();
 
+	//REMOVE THIS
+#if 0
 	// Unload jobs that have been removed from the job directory
 	vector<string> to_be_removed;
 	for (auto& it : this->jobs) {
@@ -161,6 +151,7 @@ void JobManager::scanJobDirectory()
 	for (auto& it : to_be_removed) {
 		this->unloadJob(it);
 	}
+#endif
 }
 
 void JobManager::runPendingJobs()

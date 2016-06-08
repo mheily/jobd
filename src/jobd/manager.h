@@ -32,8 +32,10 @@ public:
 	void enableJob(const string& label);
 	void unloadJob(const string& label);
 	void clearJob(const string& label);
+	void defineJob(const string& path);
 	void unloadAllJobs();
 	void listAllJobs(nlohmann::json& result);
+	void runPendingJobs();
 
 	/** Cleanup things in the child process after fork(2) is called */
 	void forkHandler();
@@ -78,7 +80,6 @@ private:
 	unique_ptr<Job>& getJobByLabel(const string& label);
 	void removeJob(Job& job);
 	void rescheduleJob(unique_ptr<Job>& job);
-	void runPendingJobs();
 	void updateKeepaliveWakeInterval();
 	void handleKeepaliveWakeup();
 	void wakeJob(const string& label);

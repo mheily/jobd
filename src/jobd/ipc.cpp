@@ -71,9 +71,11 @@ void ipc_request_handler(void) {
 
 		auto method = request.method();
 		if (method == "load") {
-//deadwood
-				log_error("manager_load_job() failed");
-				response.setResult("ERROR");
+			json result;
+			manager.defineJob(request.getParam(0));
+			manager.runPendingJobs();
+			result["FIXME"] = "TODO";
+			response.setResult(result);
 		} else if (method == "list") {
 			json result;
 			manager.listAllJobs(result);
