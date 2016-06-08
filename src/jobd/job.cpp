@@ -471,6 +471,9 @@ void job_free(job_t job)
 void Job::load() {
 	//TODO: sockets
 	//TODO: schedule and timer
+
+	chroot_jail.parseManifest(manifest.json);
+
 	this->setState(JOB_STATE_LOADED);
 	log_debug("loaded %s", this->getLabel().c_str());
 }
@@ -533,30 +536,29 @@ void Job::unload()
 		this->setState(JOB_STATE_DEFINED);
 	}
 
+	chroot_jail.releaseResources();
 #if 0
 	keepalive_remove_job(job);
 	if (job->jm->datasets)
 		dataset_list_unload_handler(job->jm->datasets);
-	if (job->jm->chroot_jail)
-		chroot_jail_unload_handler(job->jm->chroot_jail);
 #endif
 }
 
-void Job::acquire_resources() {
-	log_debug("TODO");
+void Job::acquire_resources() 
+{
+	if (manifest.json.find("ChrootJail") != manifest.json.end()) {
+		chroot_jail.acquireResources();
+	}
+
+//TODO: port to C++
 #if 0
-	static int job_acquire_resources(job_t job)
-	{
-		if (job->jm->datasets && dataset_list_load_handler(job->jm->datasets) < 0) {
+	if (job->jm->datasets && dataset_list_load_handler(job->jm->datasets) < 0) {
 			log_error("unable to create datasets");
-			return -1;
-		}
-		if (job->jm->chroot_jail && chroot_jail_load_handler(job->jm->chroot_jail) < 0) {
-			log_error("unable to create chroot(2) jail");
 			return -1;
 		}
 		return 0;
 	}
+
 #endif
 }
 

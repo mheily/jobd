@@ -17,14 +17,34 @@
 #ifndef RELAUNCHD_CHROOT_H_
 #define RELAUNCHD_CHROOT_H_
 
+#include <libjob/namespaceImport.hpp>
 #include "manifest.h"
 
-struct chroot_jail;
+class ChrootJail {
+public:
+	ChrootJail() {};
+	void parseManifest(const nlohmann::json json);
+	void acquireResources();
+	void releaseResources();
+	int set_execution_context();
+	bool valid();
 
-//int chroot_jail_parse_manifest(job_manifest_t manifest, const ucl_object_t *obj);
-int chroot_jail_load_handler(struct chroot_jail *jail);
-int chroot_jail_unload_handler(struct chroot_jail *jail);
-int chroot_jail_context_handler(struct chroot_jail *jail);
-void chroot_jail_free(struct chroot_jail *jail);
+	/** FIXME: duplicate of main manifest key */
+	std::string rootDirectory;
+
+	/** Tarball to be extracted into the chroot directory */
+	std::string dataSource;
+
+	bool destroyAtUnload = false;
+	bool acquired = false;
+
+	const bool isDefined() const {
+		return defined;
+	} 
+
+private:
+	bool defined = false;
+	void createChrootJail();
+};
 
 #endif /* RELAUNCHD_CHROOT_H_ */

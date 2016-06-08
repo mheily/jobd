@@ -24,26 +24,15 @@
 
 #include "util.h"
 
-class ChrootJail {
-public:
-	ChrootJail() {};
-	//int parse_manifest(const ucl_object_t *obj);
-	int acquire_resources();
-	int release_resources();
-	int set_execution_context();
-	bool valid();
-
-	/** FIXME: duplicate of main manifest key */
-	std::string rootDirectory;
-
-	/** Tarball to be extracted into the chroot directory */
-	std::string dataSource;
-
-	bool destroyAtUnload = false;
-	bool acquired = false;
-private:
-	bool createChrootJail();
-};
+void ChrootJail::parseManifest(const nlohmann::json json)
+{
+       if (json.find("ChrootJail") == json.end()) {
+		defined = false;
+		return;
+        }
+	//TODO: actually parse stuff
+	defined = true;
+}
 
 #if 0
 
@@ -85,37 +74,36 @@ int ChrootJail::parse_manifest(const ucl_object_t *obj)
 }
 #endif
 
-int ChrootJail::acquire_resources() {
-	if (access(this->rootDirectory.c_str(), R_OK | W_OK | X_OK) < 0) {
+void ChrootJail::acquireResources() 
+{
+	if (access(rootDirectory.c_str(), R_OK | W_OK | X_OK) < 0) {
 		if (errno != ENOENT) {
 			log_errno("access(2) of %s", this->rootDirectory.c_str());
-			return -1;
+			throw std::system_error(errno, std::system_category());
 		}
 
 		// TODO: verify it's a directory, not a file
 
-		if (!this->createChrootJail())
-			return -1;
+		createChrootJail();
 	}
 
-	this->acquired = true;
-
-	return 0;
+	acquired = true;
 }
 
-bool ChrootJail::createChrootJail() {
+void ChrootJail::createChrootJail() 
+{
 	char buf[COMMAND_MAX];
 	std::string command;
 
 	if (mkdir(this->rootDirectory.c_str(), 0700) < 0) {
 		log_errno("mkdir(2) of %s", this->rootDirectory.c_str());
-		return false;
+		throw std::system_error(errno, std::system_category());
 	}
 
 	command = "tar -C " + this->rootDirectory + " -xf " + this->dataSource;
 	if (run_system(&buf, "%s", command.c_str()) < 0) {
 		log_error("unable to unpack %s", this->dataSource.c_str());
-		return false;
+		throw std::system_error(errno, std::system_category());
 	}
 
 	// FIXME: assumes FreeBSD
@@ -123,15 +111,15 @@ bool ChrootJail::createChrootJail() {
 	command = "mount -t devfs devfs " + this->rootDirectory + "/dev";
 	if (run_system(&buf, "%s", command.c_str()) < 0) {
 		log_error("unable to mount devfs");
-		return false;
+		throw std::system_error(errno, std::system_category());
 	}
-
-	return true;
 }
 
-int ChrootJail::release_resources() {
-	if (!this->acquired)
-		return 0;
+void ChrootJail::releaseResources() 
+{
+	if (!defined || !acquired) {
+		return;
+	}
 
 	if (this->destroyAtUnload) {
 		char buf[COMMAND_MAX];
@@ -141,59 +129,40 @@ int ChrootJail::release_resources() {
 		command = "umount -f " + this->rootDirectory + "/dev";
 		if (run_system(&buf, "%s", command.c_str()) < 0) {
 			log_error("unable to unmount /dev");
-			return false;
+			throw std::system_error(errno, std::system_category());
 		}
 
 		// FIXME: FreeBSD'ism
 		command = "chflags -R noschg " + this->rootDirectory;
 		if (run_system(&buf, "%s", command.c_str()) < 0) {
 			log_error("unable to run chflags");
-			return false;
+			throw std::system_error(errno, std::system_category());
 		}
 
 		command = "rm -rf " + this->rootDirectory;
 		if (run_system(&buf, "%s", command.c_str()) < 0) {
 			log_error("unable to remove %s", this->rootDirectory.c_str());
-			return false;
+			throw std::system_error(errno, std::system_category());
 		}
 	}
 
-	this->acquired = false;
-
-	return 0;
+	acquired = false;
 }
 
-bool ChrootJail::valid() {
+bool ChrootJail::valid() 
+{
 	// FIXME: validate root directory is not /
 
 	// TODO: verify everything is a legal pathname
 	return this->rootDirectory.length();
 }
 
-int ChrootJail::set_execution_context() {
+int ChrootJail::set_execution_context() 
+{
 	log_debug("chroot(2) to %s", this->rootDirectory.c_str());
 	if (chroot(this->rootDirectory.c_str()) < 0) {
 		log_errno("chroot(2) to %s", this->rootDirectory.c_str());
 		return -1;
 	}
 	return 0;
-}
-
-int chroot_jail_load_handler(struct chroot_jail *jail) {
-	if (!jail) return 0;
-	return reinterpret_cast<ChrootJail*>(jail)->acquire_resources();
-}
-
-int chroot_jail_unload_handler(struct chroot_jail *jail) {
-	if (!jail) return 0;
-	return reinterpret_cast<ChrootJail*>(jail)->release_resources();
-}
-
-int chroot_jail_context_handler(struct chroot_jail *jail) {
-	if (!jail) return 0;
-	return reinterpret_cast<ChrootJail*>(jail)->set_execution_context();
-}
-
-void chroot_jail_free(struct chroot_jail *jail) {
-	delete reinterpret_cast<ChrootJail*>(jail);
 }
