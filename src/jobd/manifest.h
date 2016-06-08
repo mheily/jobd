@@ -27,7 +27,6 @@
 #include "socket.h"
 
 struct dataset_list;
-struct chroot_jail;
 
 /** The default throttle interval, in seconds */
 const uint32_t DEFAULT_THROTTLE_INTERVAL = 10;
@@ -64,7 +63,6 @@ typedef struct job_manifest {
 
 	//cvec_t	 environment_variables;
 	struct dataset_list *datasets;
-	struct chroot_jail *chroot_jail;
 	mode_t   umask;
 	uint32_t timeout;
 	uint32_t exit_timeout;

@@ -25,6 +25,7 @@
 #include "../../vendor/FreeBSD/sys/queue.h"
 #include <unistd.h>
 
+#include "chroot.h"
 #include "manifest.h"
 #include <libjob/jobProperty.hpp>
 #include <libjob/jobStatus.hpp>
@@ -71,6 +72,7 @@ struct job {
 
 	/** A parsed JSON manifest */
 	libjob::Manifest manifest;
+
 
 	job_state_t state;
 	pid_t pid;
@@ -206,6 +208,8 @@ private:
 	libjob::JobProperty jobProperty;
 	enum e_job_state state;
 
+	/** A chroot(2) jail, defined in ChrootJail in the manifest */
+	ChrootJail chroot_jail;
 
 	/* Credentials and /etc/passwd info */
 	uid_t uid;
