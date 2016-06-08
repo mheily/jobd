@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="jobadm">
+
+<refmeta>
+<refentrytitle>jobadm</refentrytitle>
+<manvolnum>1</manvolnum>
+</refmeta>
+
+<refnamediv>
+<refname>jobadm</refname>
+<refpurpose>administer jobd and the job database</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+
+	<cmdsynopsis>
+	<command>jobadm</command>
+	<arg choice='plain'>dump</arg>
+	</cmdsynopsis>
+	
+	<cmdsynopsis>
+	<command>jobadm</command>
+	<arg choice='plain'>list</arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	<command>jobadm</command>
+	<arg choice='plain'>load</arg>
+	<arg choice='req'><replaceable>path</replaceable></arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	<command>jobadm</command>
+	<arg choice='plain'>restart</arg>
+	</cmdsynopsis>
+	
+	<cmdsynopsis>
+	<command>jobadm</command>
+	<arg choice='plain'>restore</arg>
+	</cmdsynopsis>
+
+	<cmdsynopsis>
+	<command>jobadm</command>
+	<arg choice='plain'>unload</arg>
+	<arg choice='req'><replaceable>label</replaceable></arg>
+	</cmdsynopsis>
+</refsynopsisdiv>
+
+<refsect1><title>Description</title>
+<para>
+<command>jobadm</command> is used to administer the job database. The following subcommands
+are available:
+</para>
+
+<variablelist>
+
+	<varlistentry>
+		<term>
+			<literal>jobadm</literal>
+			<literal>dump</literal>
+		</term>
+		<listitem>
+			<para>
+Dump the contents of the job database to standard output.
+			</para>
+		</listitem>
+	</varlistentry>
+	
+	<varlistentry>
+		<term>
+			<literal>jobadm</literal>
+			<literal>list</literal>
+		</term>
+		<listitem>
+			<para>
+List all of the jobs, one per line.
+			</para>
+		</listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>
+			<literal>jobadm</literal>
+			<literal>load</literal>
+			<replaceable>path</replaceable>
+		</term>
+		<listitem>
+			<para>
+Load a new job into the database. The <replaceable>path</replaceable>
+argument should specify the path to the manifest, or '-' to load
+from standard input.
+			</para>
+		</listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>
+			<literal>jobadm</literal>
+			<literal>restart</literal>
+		</term>
+		<listitem>
+			<para>
+Restart the jobd process. All running jobs will be terminated.
+(TODO: should there be a "reload" option that does not terminate
+jobs?)
+			</para>
+		</listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>
+			<literal>jobadm</literal>
+			<literal>restore</literal>
+		</term>
+		<listitem>
+			<para>
+Restore the current job database from standard input.
+(TODO: Decide what happens to jobs that are running but
+are not listed in the dumpfile).
+			</para>
+		</listitem>
+	</varlistentry>
+	
+		<varlistentry>
+		<term>
+			<literal>jobadm</literal>
+			<literal>unload</literal>
+			<replaceable>label</replaceable>
+		</term>
+		<listitem>
+			<para>
+Unload a job from the database. The <replaceable>label</replaceable>
+argument should specify the job label.
+			</para>
+		</listitem>
+	</varlistentry>
+	
+</variablelist>
+
+</refsect1>
+
+<refsect1>
+	<title>ENVIRONMENT</title>
+	<para>
+	The <command>jobadm</command> command does not rely on any environment variables.
+	</para>
+</refsect1>
+
+<refsect1>
+	<title>EXIT STATUS</title>
+	<para>
+	The <command>jobadm</command> command exits 0 on success, and >0 if an error occurs
+	</para>
+</refsect1>
+
+<refsect1>
+	<title>SEE ALSO</title>
+	<para>
+	jobcfg(1), jobctl(1), jobd(8), job(5)
+	</para>
+</refsect1>
+
+<refsect1>
+	<title>AUTHORS</title>
+	<para>
+		Mark Heily &lt;mark@heily.com&gt;
+	</para>
+</refsect1>
+
+<refsect1>
+	<title>BUGS</title>
+	<para>
+	This command is not implemented yet.
+	</para>
+</refsect1>
+
+
+</refentry>

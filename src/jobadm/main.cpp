@@ -37,15 +37,13 @@ static std::unique_ptr<libjob::jobdConfig> jobd_config(new libjob::jobdConfig);
 
 // All commands that this utility accepts
 const std::unordered_set<string> commands = {
-	"disable", "enable",
-	"refresh", "restart",
-	"mark", "clear",
+	"list",
 };
 
 void usage() {
 	std::cout <<
 		"Usage:\n\n"
-		"  jobctl <label> [enable|disable|clear|refresh|restart|status]\n"
+		"  jobadm <list>\n"
 		"  -or-\n"
 		"  job [-h|--help|-v|--version]\n"
 		"\n"
@@ -57,6 +55,34 @@ void usage() {
 
 void show_version() {
 	std::cout << "job version " + jobd_config->version << std::endl;
+}
+
+std::string format_job_status(json& status) {
+	if (status["Enabled"].get<bool>() == false) {
+		return "disabled";
+	} else {
+		if (status["State"] == "running") {
+			return "\033[0;32mrunning\033[0m ";
+		} else {
+			return "\033[1;31moffline\033[0m ";
+		}
+	}
+}
+
+void list_response_handler(libjob::jsonRpcResponse& response)
+{
+	try {
+		const char* format = "%s     %s\n";
+		json o = response.getResult();
+		printf(format, "\033[4mSTATUS\033[0m  ", "\033[4mLABEL\033[0m");
+		for (json::iterator it = o.begin(); it != o.end(); ++it) {
+			std::string status = format_job_status(it.value());
+			printf(format, status.c_str(), it.key().c_str());
+		}
+	} catch(const std::exception& e) {
+		std::cout << "ERROR: Unhandled exception: " << e.what() << '\n';
+		throw;
+	}
 }
 
 void transpose_helper(string& param0, string& param1) {
@@ -76,28 +102,10 @@ void transpose_helper(string& param0, string& param1) {
 	}
 }
 
-void dispatch_request(std::string label, std::string command)
-{
-	std::unique_ptr<libjob::ipcClient> ipc_client(new libjob::ipcClient(jobd_config->socketPath));
-	libjob::jsonRpcResponse response;
-	libjob::jsonRpcRequest request;
-
-	request.setId(1); // Not used
-	request.setMethod(command);
-	request.addParam(label);
-
-	if (command == "restart" || command == "mark") {
-		puts("ERROR: Command not implemented yet");
-		exit(1);
-	}
-
-	ipc_client->dispatch(request, response);
-	//TODO: handle response
-}
-
 int
 main(int argc, char *argv[])
 {
+
 	char ch;
 	static struct option longopts[] = {
 			{ "help", no_argument, NULL, 'h' },
@@ -126,18 +134,23 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	if (argc < 2) {
-		std::cout << "ERROR: Insufficient arguments\n";
-		usage();
-		return EXIT_FAILURE;
-	}
-
 	try {
+		std::unique_ptr<libjob::ipcClient> ipc_client(new libjob::ipcClient(jobd_config->socketPath));
+		libjob::jsonRpcResponse response;
+		libjob::jsonRpcRequest request;
 
-		std::string label = std::string(argv[0]);
-		std::string command = std::string(argv[1]);
-		transpose_helper(label, command);
-		dispatch_request(label, command);
+		request.setId(1); // Not used
+
+		if (argc < 1)
+			throw "insufficient arguments";
+
+		std::string command_or_label = std::string(argv[0]);
+
+		if (command_or_label == "list") {
+			request.setMethod("list");
+			ipc_client->dispatch(request, response);
+			list_response_handler(response);
+		}
 
 	} catch(const std::system_error& e) {
 		std::cout << "Caught system_error with code " << e.code()

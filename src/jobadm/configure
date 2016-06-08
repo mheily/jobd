@@ -15,9 +15,26 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-. ../config.sub
-. ../vars.sh
+. ../../config.sub
+. ../../vars.sh
 
-SUBDIRS="libjob jobd jobadm jobcfg jobctl"
+bin_PROGRAMS=jobadm
+
+jobadm_CXXFLAGS="-include ../../config.h -std=c++11 -Wall -Werror -I.. -I../../vendor "
+jobadm_LDFLAGS="-L ../libjob"
+jobadm_LDADD="../libjob/libjob.a"
+jobadm_SOURCES=`ls *.cpp | tr '\n' ' '`
+jobadm_DEPENDS="../libjob/libjob.a"
+
+#if [ -n "$manpage_generator" ] ; then
+#	custom_target 'jobadm.1' 'jobadm.1.xml' \
+#		"${manpage_generator} jobadm.1.xml > jobadm.1"
+#
+#	manpage 'jobadm.1'
+#
+#	#TODO: move to doc/
+#	#custom_target 'jobadm.1.html' 'jobadm.1.xml' \
+#	#	'docbook2mdoc jobadm.1.xml | mandoc -mdoc -T html > jobadm.1.html'
+#fi
 
 write_makefile
