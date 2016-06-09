@@ -85,23 +85,6 @@ void list_response_handler(libjob::jsonRpcResponse& response)
 	}
 }
 
-void transpose_helper(string& param0, string& param1) {
-	if (commands.find(param1) == commands.end() && commands.find(param0) != commands.end()) {
-		std::cout << "jobctl: syntax error -- did you mean to say 'jobctl " +
-				param1 + " " + param0 + "' (Y/n)? ";
-		string response;
-		std::getline (std::cin, response);
-		if (response == "" || response == "y" || response == "Y") {
-			string tmp = param0;
-			param0 = param1;
-			param1 = tmp;
-		} else {
-			std::cout << "Fatal error: invalid syntax\n";
-			exit(1);
-		}
-	}
-}
-
 int
 main(int argc, char *argv[])
 {
