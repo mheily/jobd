@@ -242,7 +242,11 @@ void JobManager::unloadJob(unique_ptr<Job>& job) {
 }
 
 void JobManager::unloadJob(const string& label) {
-	unique_ptr<Job>& job = this->jobs.find(label)->second;
+	auto it = jobs.find(label);
+	if (it == jobs.end())
+		throw std::invalid_argument("label not found");
+
+	unique_ptr<Job>& job = it->second;
 	this->unloadJob(job);
 }
 
