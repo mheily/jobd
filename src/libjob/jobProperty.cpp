@@ -67,5 +67,9 @@ void JobProperty::setDataDirectory(std::string& path)
 	(void) mkdir(path.c_str(), 0755);
 }
 
+void JobProperty::unloadHandler()
+{
+	(void) unlink(path.c_str()); // TODO: error checking
+}
 
 }

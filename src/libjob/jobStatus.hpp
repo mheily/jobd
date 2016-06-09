@@ -74,6 +74,8 @@ public:
 		this->sync();
 	}
 
+	void unloadHandler();
+
 private:
 	static std::string runtimeDir;
 	std::string path;

@@ -98,6 +98,8 @@ public:
 		return fault_state_as_string[this->json["FaultState"].get<int>()];
 	}
 
+	void unloadHandler();
+
 private:
 	static std::string dataDir;
 	std::string path;

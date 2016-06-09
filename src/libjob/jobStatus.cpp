@@ -57,5 +57,9 @@ void JobStatus::setRuntimeDirectory(std::string& path)
 	(void) mkdir(path.c_str(), 0755);
 }
 
+void JobStatus::unloadHandler()
+{
+	(void) unlink(path.c_str()); //TODO: log errors
+}
 
 }

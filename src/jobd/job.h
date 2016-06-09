@@ -54,7 +54,11 @@ typedef enum e_job_state {
 
 	JOB_STATE_WAITING,
 	JOB_STATE_RUNNING,
+
+	/** The child process has been killed, but not yet reaped */
 	JOB_STATE_KILLED,
+
+	/** The child process exited, and will not be auto-restarted */
 	JOB_STATE_EXITED,
 } job_state_t;
 
@@ -72,7 +76,6 @@ struct job {
 
 	/** A parsed JSON manifest */
 	libjob::Manifest manifest;
-
 
 	job_state_t state;
 	pid_t pid;
@@ -195,6 +198,11 @@ public:
 	void load();
 	void run();
 	void unload();
+	void releaseAllResources();
+
+	bool isLoaded() const {
+		return loaded;
+	}
 
 private:
 	JobManager* manager;
@@ -207,6 +215,8 @@ private:
 	libjob::JobStatus jobStatus;
 	libjob::JobProperty jobProperty;
 	enum e_job_state state;
+
+	bool loaded = false;
 
 	/** A chroot(2) jail, defined in ChrootJail in the manifest */
 	ChrootJail chroot_jail;

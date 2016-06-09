@@ -475,6 +475,7 @@ void Job::load() {
 	chroot_jail.parseManifest(manifest.json);
 
 	this->setState(JOB_STATE_LOADED);
+	loaded = true;
 	log_debug("loaded %s", this->getLabel().c_str());
 }
 
@@ -519,9 +520,32 @@ int job_load(job_t job)
 }
 #endif
 
+void Job::releaseAllResources()
+{
+	if (loaded) {
+		log_warning("tried to release resources of a loaded job");
+		throw std::logic_error("resources still in use");
+	}
+
+	jobStatus.unloadHandler();
+	jobProperty.unloadHandler();
+	chroot_jail.releaseResources();
+#if 0
+	keepalive_remove_job(job);
+	if (job->jm->datasets)
+		dataset_list_unload_handler(job->jm->datasets);
+#endif
+}
+
 void Job::unload()
 {
 	const pid_t pid = this->jobStatus.getPid();
+
+	if (!loaded) {
+		log_warning("tried to unload a job that is already unloaded");
+		return;
+	}
+	loaded = false;
 
 	if (this->state == JOB_STATE_RUNNING) {
 		log_debug("sending SIGTERM to process group %d", pid);
@@ -535,13 +559,6 @@ void Job::unload()
 		//TODO: update the timer interval in timer.c?
 		this->setState(JOB_STATE_DEFINED);
 	}
-
-	chroot_jail.releaseResources();
-#if 0
-	keepalive_remove_job(job);
-	if (job->jm->datasets)
-		dataset_list_unload_handler(job->jm->datasets);
-#endif
 }
 
 void Job::acquire_resources() 

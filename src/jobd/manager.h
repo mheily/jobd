@@ -80,6 +80,7 @@ private:
 	unique_ptr<Job>& getJobByLabel(const string& label);
 	void removeJob(Job& job);
 	void rescheduleJob(unique_ptr<Job>& job);
+	void deleteJob(unique_ptr<Job>& job);
 	void updateKeepaliveWakeInterval();
 	void handleKeepaliveWakeup();
 	void wakeJob(const string& label);

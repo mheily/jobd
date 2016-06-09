@@ -235,7 +235,9 @@ void JobManager::unloadJob(unique_ptr<Job>& job) {
 	log_debug("job %s unloaded", label.c_str());
 
 	if (job->getState() == JOB_STATE_DEFINED) {
-		this->jobs.erase(label);
+		deleteJob(job);
+	} else {
+		log_debug("job deletion deferred; state=%s", job->getStateString().c_str());
 	}
 }
 
@@ -371,9 +373,25 @@ void JobManager::reapChildProcess(pid_t pid, int status)
 	}
 }
 
+void JobManager::deleteJob(unique_ptr<Job>& job)
+{
+	string manifest_path = jobd_config.getManifestDir() + '/' + job->getLabel() + ".json";
+
+	if (unlink(manifest_path.c_str()) < 0) {
+		log_error("unlink(2) of %s", manifest_path.c_str());
+	}
+
+	job->releaseAllResources();
+
+	jobs.erase(job->getLabel());
+	//XXX-will probably leak memory here, need to ::delete job
+}
+
 void JobManager::rescheduleJob(unique_ptr<Job>& job) {
-	//TODO: handle the case of unloading the job
-	//this->jobs.erase(job->getLabel());
+	if (!job->isLoaded()) {
+		deleteJob(job);
+		return;
+	}
 
 	if (job->state == JOB_STATE_KILLED && !job->isEnabled()) {
 		log_debug("job `%s' is disabled and will not be rescheduled", job->getLabel().c_str());
