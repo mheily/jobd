@@ -30,6 +30,10 @@ extern "C" {
 #include "ipc.h"
 #include "logger.h"
 
+#if !defined(MSG_NOSIGNAL) && !defined(SO_NOSIGPIPE)
+#error No mechanism available to ignore SIGPIPE
+#endif
+
 #if !defined(MSG_NOSIGNAL) && defined(SO_NOSIGPIPE)
 #define MSG_NOSIGNAL 0
 #endif
@@ -168,7 +172,7 @@ ipcSession::ipcSession(int server_fd, struct sockaddr_un sa) {
                 throw std::system_error(errno, std::system_category());
         }
 
-#if !defined(MSG_NOSIGNAL) && defined(SO_NOSIGPIPE)
+#ifdef SO_NOSIGPIPE
 	int flags = 1;
 	if (setsockopt(sockfd, SOL_SOCKET, SO_NOSIGPIPE, &flags, sizeof(flags)) < 0) {
         	log_errno("setsockopt(2)");

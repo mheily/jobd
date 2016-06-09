@@ -95,19 +95,11 @@ void ipc_request_handler(void) {
 			manager.clearJob(request.getParam(0));
 			result["FIXME"] = "TODO";
 			response.setResult(result);
-#if 0
 		} else if (method == "unload") {
-			try {
-				auto label = request.getParam(0);
-				if (manager_unload_job(label.c_str()) == 0) {
-					response.setResult("OK");
-				} else {
-					throw "failed to unload job";
-				}
-			} catch (...) {
-				response.setResult("ERROR");
-			}
-#endif
+			json result;
+			manager.unloadJob(request.getParam(0));
+			result["FIXME"] = "TODO";
+			response.setResult(result);
 		} else {
 			log_error("bad method");
 			// TODO: response.setError();

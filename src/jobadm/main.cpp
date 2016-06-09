@@ -127,26 +127,32 @@ main(int argc, char *argv[])
 		if (argc < 1)
 			throw "insufficient arguments";
 
-		std::string command_or_label = std::string(argv[0]);
+		std::string command = std::string(argv[0]);
 
-		if (command_or_label == "list") {
+		if (command == "list") {
 			request.setMethod("list");
 			ipc_client->dispatch(request, response);
 			list_response_handler(response);
 		}
 
-		if (command_or_label == "load") {
-			request.setMethod("load");
+		if (command == "load") {
+			request.setMethod(command);
 			char *resolved_path = realpath(argv[1], NULL);
 			if (!resolved_path) {
 				puts("ERROR: unable to resolve path");
 				exit(EXIT_FAILURE);
 			}
-			puts(resolved_path);
 			request.addParam(std::string(resolved_path));
 			ipc_client->dispatch(request, response);
 			//FIXME: check response
 			free(resolved_path);
+		}
+
+		if (command == "unload") {
+			request.setMethod(command);
+			request.addParam(std::string(argv[1]));
+			ipc_client->dispatch(request, response);
+			//FIXME: check response
 		}
 	} catch(const std::system_error& e) {
 		std::cout << "Caught system_error with code " << e.code()
