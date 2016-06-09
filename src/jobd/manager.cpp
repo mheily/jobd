@@ -332,18 +332,13 @@ unique_ptr<Job>& JobManager::getJobByPid(pid_t pid)
 
 void JobManager::reapChildProcess(pid_t pid, int status)
 {
-// linux will need to do this in a loop after reading a signalfd and getting SIGCHLD
-#if 0
-	pid = waitpid(-1, &status, WNOHANG);
-	if (pid < 0) {
-		if (errno == ECHILD) return;
-		err(1, "waitpid(2)");
-	} else if (pid == 0) {
-		return;
-	}
-#endif
+	int status2;
 
-	this->deleteProcessEventWatch(pid);
+	if (waitpid(pid, &status2, WNOHANG) != pid) {
+		log_errno("waitpid(2)");
+	}
+
+	deleteProcessEventWatch(pid);
 
 	try {
 		unique_ptr<Job>& job = this->getJobByPid(pid);
