@@ -30,9 +30,6 @@ namespace libjob {
 
 		std::string version = "0.0.0";
 
-		/** Directory where users submit job configuration files */
-		std::string jobdir;
-
 		/** Directory where transient runtime files are stored */
 		std::string runtimeDir;
 
@@ -48,6 +45,9 @@ namespace libjob {
 		jobdConfig();
 		//void load_manifest(std::string path);
 
+		const std::string getManifestDir() {
+			return (dataDir + "/manifest");
+		}
 	private:
 		// Tell jobd to reload it's configuration
 		void signal_jobd_reload();

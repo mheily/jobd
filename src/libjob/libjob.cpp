@@ -115,28 +115,6 @@ static std::string get_socketpath() {
 	return get_runtime_dir() + "/jobd.sock";
 }
 
-static std::string get_jobdir() {
-	if (getuid() == 0) {
-		return "/usr/local/etc/job.d"; //FIXME: harcoded prefix
-	} else {
-		const char *xdg_config_home = getenv("XDG_CONFIG_HOME");
-		const char *home = getenv("HOME");
-		if (xdg_config_home == NULL && home == NULL)
-			throw "unable to locate configuration: HOME or XDG_CONFIG_HOME must be set";
-
-		if (xdg_config_home) {
-			return std::string(xdg_config_home) + "/job.d";
-		} else {
-#if TARGET_OS_MAC
-			return std::string(home) + "/Library/Jobd/job.d";
-#else
-			return std::string(home) + "/.config/job.d";
-#endif
-		}
-	}
-	//log_info("jobdir=" + this->jobdir);
-};
-
 void libjob::jobdConfig::createDirectories() {
 	std::vector<std::string> paths;
 
@@ -149,7 +127,7 @@ void libjob::jobdConfig::createDirectories() {
 	if (getuid() > 0) {
 		paths.push_back(std::string(home) + "/Library/Jobd");
 		paths.push_back(std::string(home) + "/Library/Jobd/run");
-		paths.push_back(std::string(home) + "/Library/Jobd/job.d");
+		paths.push_back(std::string(home) + "/Library/Jobd/manifest");
 	} else {
 		throw "FIXME -- TODO";
 	}	
@@ -169,7 +147,6 @@ void libjob::jobdConfig::createDirectories() {
 libjob::jobdConfig::jobdConfig() {
 	this->runtimeDir = get_runtime_dir();
 	this->dataDir = get_data_dir();
-	this->jobdir = get_jobdir();
 	this->createDirectories();
 	this->socketPath = get_socketpath();
 	this->pidfilePath = get_runtime_dir() + "/jobd.pid";

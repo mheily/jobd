@@ -18,6 +18,8 @@
 
 #include <regex>
 #include <unordered_set>
+#include <iostream>
+#include <fstream>
 
 extern "C" {
 #include <dirent.h>
@@ -82,7 +84,6 @@ void JobManager::setup(struct pidfh *pfh)
 	if (ipc_init(this->kqfd) < 0)
 		errx(1, "ipc_init()");
 
-	this->monitorJobDirectory();
 	this->scanJobDirectory();
 }
 
@@ -93,9 +94,23 @@ void JobManager::defineJob(const string& path)
 	log_debug("parsing %s", path.c_str());
 	job->setManager(this);
 	job->parseManifest(path);
-	job->jobStatus.setLabel(job->getLabel());
-	job->jobProperty.setLabel(job->getLabel());
-	if (!jobs.insert(std::make_pair(job->getLabel(), std::move(job))).second) {
+	std::string label = job->getLabel();
+	if (jobs.find(label) != jobs.end()) {
+		log_error("Duplicate label detected");
+		throw std::invalid_argument("Tried to add a job with a duplicate label");
+	}
+
+	job->jobStatus.setLabel(label);
+	job->jobProperty.setLabel(label);
+
+	// Write the parsed, normalized JSON back out to a file
+	std::ofstream ofile;
+	ofile.open(jobd_config.getManifestDir() + '/' + label + ".json");
+	ofile << job->manifest.json.dump(4) << std::endl;
+	ofile.close();
+
+	if (!jobs.insert(std::make_pair(label, std::move(job))).second) {
+		// should not happen because we check earlier, but..
 		log_error("Duplicate label detected");
 		throw std::invalid_argument("Tried to add a job with a duplicate label");
 	}
@@ -107,10 +122,10 @@ void JobManager::scanJobDirectory()
 	struct dirent entry, *result;
 	size_t job_count = 0;
 	size_t pending_jobs = 0;
-	const char *jobdir = this->jobd_config.jobdir.c_str();
+	std::string jobdir = jobd_config.getManifestDir();
 
-	log_debug("scanning %s for jobs", jobdir);
-	if ((dirp = opendir(jobdir)) == NULL)
+	log_debug("scanning %s for jobs", jobdir.c_str());
+	if ((dirp = opendir(jobdir.c_str())) == NULL)
 		err(1, "opendir(3)");
 
 	while (dirp) {
@@ -122,7 +137,7 @@ void JobManager::scanJobDirectory()
 		}
 
 		std::string d_name = std::string(entry.d_name);
-		std::string path = this->jobd_config.jobdir + "/" + d_name;
+		std::string path = jobdir + "/" + d_name;
 		try {
 			defineJob(path);
 		} catch (std::system_error& e) {
@@ -135,23 +150,6 @@ void JobManager::scanJobDirectory()
 	log_debug("finished scanning jobs: total=%zu new=%zu", job_count, pending_jobs);
 
 	runPendingJobs();
-
-	//REMOVE THIS
-#if 0
-	// Unload jobs that have been removed from the job directory
-	vector<string> to_be_removed;
-	for (auto& it : this->jobs) {
-		const string& label = it.first;
-
-		if (labels.find(label) == labels.end()) {
-			log_debug("job %s no longer exists; unloading", label.c_str());
-			to_be_removed.push_back(label);
-		}
-	}
-	for (auto& it : to_be_removed) {
-		this->unloadJob(it);
-	}
-#endif
 }
 
 void JobManager::runPendingJobs()
@@ -186,48 +184,6 @@ void JobManager::runPendingJobs()
 
 		}
 	}
-
-//fixme
-#if 0
-	job_manifest_t jm, jm_tmp;
-	job_t job, job_tmp;
-	LIST_HEAD(,job) joblist;
-
-	LIST_INIT(&joblist);
-
-	/* Pass #1: load all jobs */
-	LIST_FOREACH_SAFE(jm, &pending, jm_le, jm_tmp) {
-		job = job_new(jm);
-		if (!job)
-			errx(1, "job_new()");
-
-		/* Check for duplicate jobs */
-		if (manager_get_job_by_label(jm->label)) {
-			log_error("tried to load a duplicate job with label %s", jm->label);
-			job_free(job);
-			continue;
-		}
-
-		LIST_INSERT_HEAD(&joblist, job, joblist_entry);
-		(void) job_load(job); // FIXME failure handling?
-		log_debug("loaded job: %s", job->jm->label);
-	}
-	LIST_INIT(&pending);
-
-	/* Pass #2: run all loaded jobs */
-	LIST_FOREACH(job, &joblist, joblist_entry) {
-		if (job_is_runnable(job)) {
-			log_debug("running job %s from state %d", job->jm->label, job->state);
-			(void) job_run(job); // FIXME failure handling?
-		}
-	}
-
-	/* Pass #3: move all new jobs to the main jobs list */
-	LIST_FOREACH_SAFE(job, &joblist, joblist_entry, job_tmp) {
-		LIST_REMOVE(job, joblist_entry);
-		LIST_INSERT_HEAD(&jobs, job, joblist_entry);
-	}
-#endif
 }
 
 void JobManager::wakeJob(const string& label)
@@ -321,12 +277,14 @@ void JobManager::deleteProcessEventWatch(pid_t pid)
 	}
 }
 
+//DEADWOOD
+#if 0
 void JobManager::monitorJobDirectory()
 {
 	struct kevent kev;
 	int fd;
 
-	fd = open(this->jobd_config.jobdir.c_str(), O_RDONLY);
+	fd = open(jobd_config.getManifestDir().c_str(), O_RDONLY);
 	if (fd < 0) {
 		log_errno("open(2)");
 		throw std::system_error(errno, std::system_category());
@@ -341,6 +299,7 @@ void JobManager::monitorJobDirectory()
 		throw std::system_error(errno, std::system_category());
 	}
 }
+#endif
 
 unique_ptr<Job>& JobManager::getJobByLabel(const string& label)
 {
@@ -471,10 +430,10 @@ delete_directory_entries(const char *path)
 
 void JobManager::setupDataDirectory()
 {
-	const char *jobdir = this->jobd_config.jobdir.c_str();
+	std::string manifestdir = jobd_config.getManifestDir();
 
-	log_debug("creating %s", jobdir);
-	mkdir_idempotent(jobdir, 0700);
+	log_debug("creating %s", manifestdir.c_str());
+	mkdir_idempotent(manifestdir.c_str(), 0700);
 
 	std::string jobStatusRuntimeDir = this->jobd_config.runtimeDir + std::string("/status");
 	libjob::JobStatus::setRuntimeDirectory(jobStatusRuntimeDir);

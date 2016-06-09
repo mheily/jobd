@@ -60,21 +60,6 @@
 <arg choice='plain'>clear</arg>
 </cmdsynopsis>
 
-<!--
-Do not implement; instead respond to creating/removing files in the job.d directory:
- 
-	<cmdsynopsis>
-	<command>jobctl</command>
-	<arg choice='req'><replaceable>label</replaceable></arg>
-	<arg choice='plain'>unload</arg>
-	</cmdsynopsis>
-	
-	<cmdsynopsis>
-	<command>jobctl</command>
-	<arg choice='plain'>load</arg>
-	<arg choice='req'><replaceable>manifest</replaceable></arg>
-	</cmdsynopsis>
--->
 </refsynopsisdiv>
 
 <refsect1><title>Description</title>

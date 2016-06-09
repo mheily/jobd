@@ -23,8 +23,7 @@
 
 <refsect1><title>Description</title>
 <para>
-<command>jobd</command> manages jobs that are defined in configuration files
-located under <filename>/usr/local/etc/job.d</filename>. The format of job
+<command>jobd</command> manages jobs. The format of job
 configuration files is described in 
 	<citerefentry><refentrytitle>job</refentrytitle><manvolnum>5</manvolnum></citerefentry>
 .
@@ -82,17 +81,21 @@ command should be executed.
 	</para>
 </refsect1>
 
+<!--
+<![CDATA[
 <refsect1>
 	<title>FILES</title>
 	<variablelist>
 	<varlistentry>
-	<term>/usr/local/etc/job.d</term>
+	<term>/usr/local/etc/jobd.conf</term>
 	<listitem>
-	<para>Directory where job manifests are stored.</para>
+	<para>(TODO) Configuration file for jobd.</para>
 	</listitem>
 	</varlistentry>
 	</variablelist>
 </refsect1>
+]]>
+-->
 
 <refsect1>
 	<title>EXIT STATUS</title>
