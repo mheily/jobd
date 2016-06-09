@@ -388,6 +388,7 @@ void JobManager::deleteJob(unique_ptr<Job>& job)
 
 void JobManager::rescheduleJob(unique_ptr<Job>& job) {
 	if (!job->isLoaded()) {
+		log_debug("deleting job");
 		deleteJob(job);
 		return;
 	}
@@ -405,9 +406,15 @@ void JobManager::rescheduleJob(unique_ptr<Job>& job) {
 	}
 
 	if (job->manifest.json["KeepAlive"].get<bool>()) {
+		unsigned int interval = job->manifest.json["ThrottleInterval"].get<unsigned int>();
+
+		log_debug("will restart job %s after %u seconds",
+				job->getLabel().c_str(), interval);
+
 		job->restart_after = current_time() +
 			job->manifest.json["ThrottleInterval"].get<unsigned int>();
 	} else {
+		log_debug("marking job as faulted");
 		// Assume that non-KeepAlive jobs are supposed to run forever
 		// FIXME: For on-demand jobs, this should not be a fault.
 		job->jobProperty.setFaulted(libjob::JobProperty::JOB_FAULT_STATE_OFFLINE,
