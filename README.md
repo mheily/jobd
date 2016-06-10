@@ -8,6 +8,14 @@ system.
 
 For an introduction to jobd, please read the [jobd handbook](http://mheily.github.io/jobd/).
 
+There is a [slide deck](https://docs.google.com/presentation/d/1QY1p8H-tmWw4h5mL63nboFefuMxmDcOPMeyqJJqqF4M/edit?usp=sharing) that was presented at the
+2016 FreeBSD developer summit at BSDcan.
+
+## OLD DOCUMENTATION BELOW
+
+Everything past this point needs to be rewritten to reflect the new
+goals for jobd.
+
 ## Overview 
 
 relaunchd is a service management daemon that is similar to the launchd(8)
