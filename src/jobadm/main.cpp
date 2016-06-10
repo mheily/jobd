@@ -23,10 +23,12 @@
 #include <unordered_set>
 
 extern "C" {
+#include <err.h>
 	#include <getopt.h>
 }
 
-#include "../libjob/job.h"
+#include <libjob/job.h>
+#include <libjob/manifest.hpp>
 #include <libjob/namespaceImport.hpp>
 
 using std::cout;
@@ -85,6 +87,30 @@ void list_response_handler(libjob::jsonRpcResponse& response)
 	}
 }
 
+bool validateManifest(const char* path)
+{
+	libjob::Manifest manifest;
+
+	try {
+		manifest.readFile(path);
+	} catch (...) {
+		return false;
+	}
+
+	return true;
+}
+
+void validateInput(int argc, char *argv[])
+{
+	std::string command = argv[0];
+
+	if (command == "load") {
+		if (!validateManifest(argv[1])) {
+			throw std::runtime_error("invalid manifest");
+		}
+	}
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -117,17 +143,28 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
+	if (argc < 1)
+		errx(1, "insufficient arguments");
+
+	std::string command = std::string(argv[0]);
+	log_freopen(stdout);
+
+	try {
+		validateInput(argc, argv);
+	} catch (std::exception& e) {
+		printf("ERROR: %s\n", e.what());
+		exit(EXIT_FAILURE);
+	} catch (...) {
+		puts("ERROR: Unhandled exception");
+		exit(EXIT_FAILURE);
+	}
+
 	try {
 		std::unique_ptr<libjob::ipcClient> ipc_client(new libjob::ipcClient(jobd_config->socketPath));
 		libjob::jsonRpcResponse response;
 		libjob::jsonRpcRequest request;
 
 		request.setId(1); // Not used
-
-		if (argc < 1)
-			throw "insufficient arguments";
-
-		std::string command = std::string(argv[0]);
 
 		if (command == "list") {
 			request.setMethod("list");

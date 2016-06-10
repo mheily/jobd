@@ -62,5 +62,8 @@ public:
 private:
 	string label = "__invalid_label__";
 	string path;
+
+	void parseJSON();
+	void parseUCL();
 };
 }
