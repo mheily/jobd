@@ -151,24 +151,3 @@ libjob::jobdConfig::jobdConfig() {
 	this->socketPath = get_socketpath();
 	this->pidfilePath = get_runtime_dir() + "/jobd.pid";
 }
-
-
-
-#if 0
-void LibJob::load_manifest(std::string path) {
-	std::cout << "loading: " + path + " into " + this->jobdir << '\n';
-
-	// TODO: check if src exists
-	// Copy the manifest into the configuration directory, using a special extension
-	std::ifstream src(path, std::ios::binary);
-	std::ofstream dst(this->jobdir + "/test.load", std::ios::binary);
-	dst << src.rdbuf();
-}
-#endif
-
-#if 0
-struct libjob_s * libjob_new(void) {
-        LibJob *lj = new LibJob();
-        return reinterpret_cast<struct libjob_s *>(lj);
-}
-#endif

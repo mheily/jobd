@@ -20,6 +20,7 @@
 extern "C" {
 	#include <sys/types.h>
 
+	#include <fcntl.h>
 	#include <sys/un.h>
 	#include <sys/event.h>
 	#include <sys/socket.h>
@@ -28,6 +29,7 @@ extern "C" {
 
 #include "namespaceImport.hpp"
 #include "ipc.h"
+#include "job.h"
 #include "logger.h"
 
 #if !defined(MSG_NOSIGNAL) && !defined(SO_NOSIGPIPE)
@@ -39,6 +41,56 @@ extern "C" {
 #endif
 
 namespace libjob {
+
+static std::unique_ptr<libjob::jobdConfig> jobd_config(new libjob::jobdConfig);
+
+// Launch jobd if it is not running
+void ipcClient::bootstrapJobDaemon()
+{
+	// TODO: replace this horrible mess w/ actual config data
+	std::string jobd_path =
+#ifdef __linux__
+			"/usr/sbin/jobd";
+#else
+			"/usr/local/sbin/jobd";
+#endif
+
+	if (access(jobd_path.c_str(), F_OK) < 0) {
+		log_errno("access");
+		throw "jobd path not found";
+	}
+
+	int fd = open(jobd_config->runtimeDir.c_str(), O_RDONLY);
+	if (fd < 0) {
+		log_errno("open");
+		throw std::system_error(errno, std::system_category());
+	}
+
+	if (flock(fd, LOCK_EX | LOCK_NB) < 0) {
+		log_errno("flock");
+		throw std::system_error(errno, std::system_category());
+	}
+
+	if (system(jobd_path.c_str()) < 0) {
+		log_error("unable to execute %s", jobd_path.c_str());
+		throw std::system_error(errno, std::system_category());
+	}
+
+	for (int i = 0; i < 10; i++) {
+		if (access(socket_path.c_str(), F_OK) < 0) {
+			sleep(1);
+		} else {
+			break;
+		}
+	}
+
+	if (flock(fd, LOCK_UN) < 0) {
+		log_errno("flock");
+		throw std::system_error(errno, std::system_category());
+	}
+
+	(void) close(fd);
+}
 
 ipcClient::ipcClient(std::string path) {
 	socket_path = path;
@@ -65,21 +117,37 @@ ipcServer::~ipcServer() {
 void ipcClient::create_socket() {
 	struct sockaddr_un sock;
 
-        sock.sun_family = AF_LOCAL;
-        strncpy(sock.sun_path, socket_path.c_str(), sizeof(sock.sun_path));
+	sock.sun_family = AF_LOCAL;
+	strncpy(sock.sun_path, socket_path.c_str(), sizeof(sock.sun_path));
 
-        sockfd = socket(AF_LOCAL, SOCK_STREAM, 0);
-        if (sockfd < 0)
-        	throw std::system_error(errno, std::system_category());
+	sockfd = socket(AF_LOCAL, SOCK_STREAM, 0);
+	if (sockfd < 0)
+		throw std::system_error(errno, std::system_category());
 
-        //todo for linux
+	//todo for linux
 #if 0
-        int on = 1;
-        setsockopt(sockfd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on));
+	int on = 1;
+	setsockopt(sockfd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on));
 #endif
 
-        if (connect(sockfd, (struct sockaddr *) &sock, SUN_LEN(&sock)) < 0)
-        	throw std::system_error(errno, std::system_category());
+	bool bootstrap_done = false;
+	for (int i = 0; i < 3; i++) {
+		int rv = connect(sockfd, (struct sockaddr *) &sock, SUN_LEN(&sock));
+		if (rv == 0)
+			break;
+
+		// KLUDGE: connrefused is racy. What if the socket is created but listen() has not been called yet?
+		if (errno == ENOENT || errno == ECONNREFUSED) {
+			if (!bootstrap_done) {
+				bootstrapJobDaemon();
+				bootstrap_done = true;
+			}
+			sleep(1);
+		} else {
+			log_errno("connect");
+			throw std::system_error(errno, std::system_category());
+		}
+	}
 }
 
 void ipcServer::create_socket()

@@ -79,5 +79,6 @@ namespace libjob {
 		void create_socket();
 		std::string socket_path = "";
 		int sockfd = -1;
+		void bootstrapJobDaemon();
 	};
 }

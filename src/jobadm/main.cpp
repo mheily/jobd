@@ -114,7 +114,6 @@ void validateInput(int argc, char *argv[])
 int
 main(int argc, char *argv[])
 {
-
 	char ch;
 	static struct option longopts[] = {
 			{ "help", no_argument, NULL, 'h' },
