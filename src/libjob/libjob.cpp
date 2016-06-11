@@ -124,13 +124,13 @@ void libjob::jobdConfig::createDirectories() {
 	}
 
 #if TARGET_OS_MAC
-	if (getuid() > 0) {
-		paths.push_back(std::string(home) + "/Library/Jobd");
-		paths.push_back(std::string(home) + "/Library/Jobd/run");
-		paths.push_back(std::string(home) + "/Library/Jobd/manifest");
-	} else {
-		throw "FIXME -- TODO";
-	}	
+	if (getuid() == 0) {
+		home = "/";
+	}
+
+	paths.push_back(std::string(home) + "/Library/Jobd");
+	paths.push_back(std::string(home) + "/Library/Jobd/run");
+	paths.push_back(std::string(home) + "/Library/Jobd/manifest");
 
 	for (auto& it : paths) {
 		(void) mkdir(it.c_str(), 0700);
