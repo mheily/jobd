@@ -87,8 +87,8 @@ List all of the jobs, one per line.
 		<listitem>
 			<para>
 Load a new job into the database. The <replaceable>path</replaceable>
-argument should specify the path to the manifest, or '-' to load
-from standard input.
+argument should specify the path to the manifest. Manifests may be written
+in JSON or UCL syntax.
 			</para>
 		</listitem>
 	</varlistentry>
@@ -170,7 +170,7 @@ argument should specify the job label.
 <refsect1>
 	<title>BUGS</title>
 	<para>
-	This command is not implemented yet.
+	Many subcommands are not implemented yet.
 	</para>
 </refsect1>
 

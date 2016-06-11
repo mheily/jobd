@@ -14,7 +14,7 @@
 <refsect1>
 	<title>DESCRIPTION</title>
 	<para>
-	Jobs are configured using a set of key/value pairs within a JSON configuration file. The only required key is the Label; all other 
+	Jobs are configured using a set of key/value pairs within a JSON or UCL configuration file. The only required key is the Label; all other 
 	keys are optional.
 	</para>
 	<para>
