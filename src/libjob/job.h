@@ -25,8 +25,37 @@
 #include "ipc.h"
 
 namespace libjob {
-	class jobdConfig {
-	public:
+
+class jobdConfig {
+public:
+
+	jobdConfig();
+
+	const std::string getManifestDir() const {
+		return (dataDir + "/manifest");
+	}
+
+	const std::string getDataDir() const {
+		return dataDir;
+	}
+
+	const std::string getPidfilePath() const {
+		return pidfilePath;
+	}
+
+	const std::string getRuntimeDir() const {
+		return runtimeDir;
+	}
+
+	const std::string getSocketPath() const {
+		return socketPath;
+	}
+
+	const std::string getVersion() const {
+		return version;
+	}
+
+	private:
 
 		std::string version = "0.0.0";
 
@@ -42,13 +71,6 @@ namespace libjob {
 		/** The path to the pidfile */
 		std::string pidfilePath;
 
-		jobdConfig();
-		//void load_manifest(std::string path);
-
-		const std::string getManifestDir() {
-			return (dataDir + "/manifest");
-		}
-	private:
 		// Tell jobd to reload it's configuration
 		void signal_jobd_reload();
 

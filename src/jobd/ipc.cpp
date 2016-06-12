@@ -32,7 +32,7 @@ int ipc_init(int kqfd) {
 	struct kevent kev;
 
 	main_kqfd = kqfd;
-	const char *socketpath = manager.jobd_config.socketPath.c_str();
+	const char *socketpath = manager.jobd_config.getSocketPath().c_str();
 	log_debug("initializing IPC socket at %s", socketpath);
 	ipc_server = new libjob::ipcServer(socketpath);
 

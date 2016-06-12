@@ -103,7 +103,7 @@ main(int argc, char *argv[])
 			}
 	}
 
-	create_pid_file(jobd_config.pidfilePath);
+	create_pid_file(jobd_config.getPidfilePath());
 
 	if (options.daemon && compat_daemon(0, 0) < 0) {
 		fprintf(stderr, "ERROR: Unable to daemonize\n");

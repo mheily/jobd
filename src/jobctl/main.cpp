@@ -56,7 +56,7 @@ void usage() {
 }
 
 void show_version() {
-	std::cout << "job version " + jobd_config->version << std::endl;
+	std::cout << "job version " + jobd_config->getVersion() << std::endl;
 }
 
 void transpose_helper(string& param0, string& param1) {
@@ -78,7 +78,7 @@ void transpose_helper(string& param0, string& param1) {
 
 void dispatch_request(std::string label, std::string command)
 {
-	std::unique_ptr<libjob::ipcClient> ipc_client(new libjob::ipcClient(jobd_config->socketPath));
+	std::unique_ptr<libjob::ipcClient> ipc_client(new libjob::ipcClient(jobd_config->getSocketPath()));
 	libjob::jsonRpcResponse response;
 	libjob::jsonRpcRequest request;
 

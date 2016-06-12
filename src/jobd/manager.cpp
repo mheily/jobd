@@ -459,10 +459,10 @@ void JobManager::setupDataDirectory()
 	log_debug("creating %s", manifestdir.c_str());
 	mkdir_idempotent(manifestdir.c_str(), 0700);
 
-	std::string jobStatusRuntimeDir = this->jobd_config.runtimeDir + std::string("/status");
+	std::string jobStatusRuntimeDir = jobd_config.getRuntimeDir() + std::string("/status");
 	libjob::JobStatus::setRuntimeDirectory(jobStatusRuntimeDir);
 
-	std::string jobPropertyDataDir = this->jobd_config.dataDir + std::string("/property");
+	std::string jobPropertyDataDir = jobd_config.getDataDir() + std::string("/property");
 	libjob::JobProperty::setDataDirectory(jobPropertyDataDir);
 #if 0
 	char buf[PATH_MAX];
