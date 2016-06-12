@@ -15,9 +15,61 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
+TOPDIR="`pwd`/.."
+export TOPDIR
+
 . ../config.sub
 . ../vars.sh
 
 SUBDIRS="libjob jobd jobadm jobcfg jobctl"
+
+check_header 'sys/limits.h'
+
+check_header 'sys/event.h'
+if [ $check_header_sys_event_h -eq 0 ] ; then
+	echo "building a local copy of libkqueue.. "
+	tar -C $TOPDIR/vendor -zxf $TOPDIR/vendor/libkqueue-2.0.4.tar.gz
+	make_define 'kqueue_dir' "$TOPDIR/vendor/libkqueue-2.0.4"
+	make_define 'kqueue_CFLAGS' "-I$kqueue_dir/include"
+	make_define 'kqueue_LDADD' '$kqueue_dir/.libs/libkqueue.a -lpthread -lrt'
+	make_define 'kqueue_DEPENDS' "$kqueue_dir/.libs/libkqueue.a"
+	make_depend "$kqueue_dir/.libs/libkqueue.a" \
+	    "cd $kqueue_dir && ./configure && make"
+else
+	make_define 'kqueue_CFLAGS' ''
+	make_define 'kqueue_LDADD' ''
+	make_define 'kqueue_DEPENDS' ''	
+fi
+
+check_header 'ucl.h'
+if [ $check_header_ucl_h -eq 0 ] ; then
+	echo "building a local copy of libucl.. "
+
+	# KLUDGE: OpenBSD does not support -gstrict-dwarf
+	if [ `uname` = 'OpenBSD' ] ; then
+		dwarf_options="-gdwarf-2"
+	else
+		dwarf_options="-gdwarf-2 -gstrict-dwarf"
+	fi
+
+	make_define 'libucl_dir' "$TOPDIR/vendor/libucl-0.7.3"
+	make_define 'libucl_CFLAGS' "-I$libucl_dir/include"
+	make_define 'libucl_LDFLAGS' ""
+	make_define 'libucl_LDADD' "$libucl_dir/src/.libs/libucl.a"
+	make_define 'libucl_DEPENDS' "$libucl_dir/src/.libs/libucl.a"
+	tar -C $TOPDIR/vendor -zxf $TOPDIR/vendor/libucl-0.7.3.tar.gz
+	make_depend "$libucl_dir/src/.libs/libucl.a" \
+          "cd $libucl_dir && CFLAGS=\"$dwarf_options -g -O0\" ./configure && make"
+else
+	# KLUDGE: assumes libucl is installed in /usr/local, like on FreeBSD
+	make_define 'libucl_CFLAGS' '-I /usr/local/include'
+	make_define 'libucl_LDFLAGS' '-L /usr/local/lib'
+	make_define 'libucl_LDADD' '-lucl'
+	make_define 'libucl_DEPENDS' ''	
+fi
+
+make_define VENDOR_CXXFLAGS "-I${TOPDIR}/vendor $libucl_CFLAGS $kqueue_CFLAGS"
+make_define VENDOR_LDADD "$libucl_LDADD $kqueue_LDADD"
+make_define VENDOR_DEPENDS "$libucl_DEPENDS $kqueue_DEPENDS"
 
 write_makefile
