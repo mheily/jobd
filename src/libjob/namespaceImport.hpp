@@ -23,7 +23,7 @@
 #include <stdexcept>
 #include <system_error>
 
-#include <nlohmann/json.hpp>
+class nlohmann::json;
 
 // Import various things into the global namespace
 using std::cout;

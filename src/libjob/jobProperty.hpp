@@ -17,9 +17,9 @@
 #pragma once
 
 #include <unistd.h>
-
 #include <string>
-#include <nlohmann/json.hpp>
+
+#include "parser.hpp"
 
 namespace libjob
 {

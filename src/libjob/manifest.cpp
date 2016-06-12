@@ -16,16 +16,14 @@
 
 #include <fstream>
 #include <iostream>
-#include <nlohmann/json.hpp>
 #include <unistd.h>
 
 #include <grp.h>
 #include <pwd.h>
 
-#include <ucl.h>
-
 #include "logger.h"
 #include "manifest.hpp"
+#include "parser.hpp"
 
 namespace libjob
 {
