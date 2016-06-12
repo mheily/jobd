@@ -36,4 +36,4 @@ cache:
 
 # Workaround for GCC-5 problem w/ nlohmann/json
 before_script:
- - gcc-5 -c -std=c++11 vendor/nlohmann/json.hpp
+ - gcc-5 -I vendor/libucl-0.7.3/include -Ivendor -c -std=c++11 src/libjob/parser.hpp
