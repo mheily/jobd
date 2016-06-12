@@ -26,6 +26,7 @@ extern "C" {
 }
 
 #include "jsonRPC.hpp"
+#include "job.h"
 
 namespace libjob {
 
@@ -62,6 +63,7 @@ namespace libjob {
 		void fork_handler();
 
 	private:
+		//libjob::jobdConfig* jobd_config;
 		void create_socket();
 		std::string socket_path = "";
 	        struct sockaddr_un sa;
@@ -72,12 +74,12 @@ namespace libjob {
 	public:
 		void dispatch(jsonRpcRequest request, jsonRpcResponse& response);
 		int get_sockfd() { return this->sockfd; }
-		ipcClient(std::string path);
+		ipcClient();
 		~ipcClient();
 
 	private:
+		libjob::jobdConfig jobd_config;
 		void create_socket();
-		std::string socket_path = "";
 		int sockfd = -1;
 		void bootstrapJobDaemon();
 	};

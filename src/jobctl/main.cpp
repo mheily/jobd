@@ -26,14 +26,15 @@ extern "C" {
 	#include <getopt.h>
 }
 
-#include "../libjob/job.h"
+#include <libjob/job.h>
+#include <libjob/ipc.h>
 #include <libjob/namespaceImport.hpp>
 
 using std::cout;
 using std::endl;
 using json = nlohmann::json;
 
-static std::unique_ptr<libjob::jobdConfig> jobd_config(new libjob::jobdConfig);
+libjob::jobdConfig* jobd_config;
 
 // All commands that this utility accepts
 const std::unordered_set<string> commands = {
@@ -78,7 +79,7 @@ void transpose_helper(string& param0, string& param1) {
 
 void dispatch_request(std::string label, std::string command)
 {
-	std::unique_ptr<libjob::ipcClient> ipc_client(new libjob::ipcClient(jobd_config->getSocketPath()));
+	std::unique_ptr<libjob::ipcClient> ipc_client(new libjob::ipcClient());
 	libjob::jsonRpcResponse response;
 	libjob::jsonRpcRequest request;
 
@@ -104,6 +105,17 @@ main(int argc, char *argv[])
 			{ "version", no_argument, NULL, 'v' },
 			{ NULL, 0, NULL, 0 }
 	};
+
+	try {
+		std::unique_ptr<libjob::jobdConfig> jc(new libjob::jobdConfig);
+		jobd_config = jc.get();
+	} catch (std::exception& e) {
+		printf("ERROR: jobd_config: %s\n", e.what());
+		exit(EXIT_FAILURE);
+	} catch (...) {
+		puts("ERROR: Unhandled exception when initializing jobd_config");
+		exit(EXIT_FAILURE);
+	}
 
 	while ((ch = getopt_long(argc, argv, "hv", longopts, NULL)) != -1) {
 		switch (ch) {

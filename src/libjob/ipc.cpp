@@ -42,8 +42,6 @@ extern "C" {
 
 namespace libjob {
 
-static std::unique_ptr<libjob::jobdConfig> jobd_config(new libjob::jobdConfig);
-
 // Launch jobd if it is not running
 void ipcClient::bootstrapJobDaemon()
 {
@@ -60,7 +58,7 @@ void ipcClient::bootstrapJobDaemon()
 		throw "jobd path not found";
 	}
 
-	int fd = open(jobd_config->runtimeDir.c_str(), O_RDONLY);
+	int fd = open(jobd_config.getRuntimeDir().c_str(), O_RDONLY);
 	if (fd < 0) {
 		log_errno("open");
 		throw std::system_error(errno, std::system_category());
@@ -77,7 +75,7 @@ void ipcClient::bootstrapJobDaemon()
 	}
 
 	for (int i = 0; i < 10; i++) {
-		if (access(socket_path.c_str(), F_OK) < 0) {
+		if (access(jobd_config.getSocketPath().c_str(), F_OK) < 0) {
 			sleep(1);
 		} else {
 			break;
@@ -92,12 +90,13 @@ void ipcClient::bootstrapJobDaemon()
 	(void) close(fd);
 }
 
-ipcClient::ipcClient(std::string path) {
-	socket_path = path;
+ipcClient::ipcClient()
+{
 	create_socket();
 }
 
-ipcServer::ipcServer(std::string path) {
+ipcServer::ipcServer(std::string path)
+{
 	socket_path = path;
 	create_socket();
 }
@@ -118,7 +117,7 @@ void ipcClient::create_socket() {
 	struct sockaddr_un sock;
 
 	sock.sun_family = AF_LOCAL;
-	strncpy(sock.sun_path, socket_path.c_str(), sizeof(sock.sun_path));
+	strncpy(sock.sun_path, jobd_config.getSocketPath().c_str(), sizeof(sock.sun_path));
 
 	sockfd = socket(AF_LOCAL, SOCK_STREAM, 0);
 	if (sockfd < 0)
@@ -144,7 +143,7 @@ void ipcClient::create_socket() {
 			}
 			sleep(1);
 		} else {
-			log_errno("connect");
+			log_errno("connect(2) to %s", jobd_config.getSocketPath().c_str());
 			throw std::system_error(errno, std::system_category());
 		}
 	}

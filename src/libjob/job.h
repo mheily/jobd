@@ -22,7 +22,6 @@
 #include <string>
 
 #include "logger.h"
-#include "ipc.h"
 
 namespace libjob {
 
