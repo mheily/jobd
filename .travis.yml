@@ -33,3 +33,7 @@ cache:
   directories:
     - vendor/libucl-0.7.3
     - vendor/libkqueue-2.0.3
+
+# Workaround for GCC-5 problem w/ nlohmann/json
+before_script:
+ - gcc-5 -c -std=c++11 vendor/nlohmann/json.hpp
