@@ -9,35 +9,27 @@ env:
 
 language: cpp
 
-compiler:
-  - g++-4.9
+matrix:
+  include:
+    - compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-5
+      env: COMPILER=g++-5
 
-addons:
-  apt:
-    packages:
-    - bc
-    - libcurl4-openssl-dev
-    - g++-4.9
-    - g++-multilib
-
-  coverity_scan:
-    project:
-      name: "mheily/relaunchd"
-      description: "A service management daemon similar to the launchd(8)"
-    notification_email: mark@heily.com
-    build_command_prepend: "./configure"
-    build_command:   "make"
-    branch_pattern: coverity_scan
+coverity_scan:
+  project:
+    name: "mheily/relaunchd"
+    description: "A service management daemon similar to the launchd(8)"
+  notification_email: mark@heily.com
+  build_command_prepend: "./configure"
+  build_command:   "make"
+  branch_pattern: coverity_scan
 
 cache:
   directories:
     - vendor/libucl-0.7.3
     - vendor/libkqueue-2.0.3
-
-script:
-- ./configure
-- make CXX=g++-4.9
-#FIXME: breaks: - make CXX=g++-4.9 CXXFLAGS="-m32" LDFLAGS="-m32" # build in 32-bit mode
-
-# FIXME: want to add this, once it's fixed up
-# - make check
