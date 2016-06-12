@@ -20,7 +20,6 @@
 	<para>
 	The following configuration options are available:
 	</para>
-
 	
 <variablelist>
 
@@ -233,22 +232,40 @@
 
 <refsect1><title>EXAMPLES</title>
 <para>
-The following example will write the words "Hello world" to a file named
-/tmp/hello.log:
+The following example is a JSON manifest for a job that
+write the words "Hello world" to a file named /tmp/hello.log:
+</para>
+
 <programlisting>
+<![CDATA[
 {
 	"Label": "com.example.hello_world",
 	"Program": ["/usr/bin/printf", "Hello world\n"],
 	"StandardOutPath": "/tmp/hello.log",
 	"Enable": true
 }
+]]>
 </programlisting>
+
+<para>
+The above manifest could be also be written using the UCL syntax:
 </para>
+
+<programlisting>
+<![CDATA[
+Label = com.example.hello_world
+Program = ["/usr/bin/printf", "Hello world\n"]
+StandardOutPath = /tmp/hello.log
+Enable = true
+]]>
+</programlisting>
+
 </refsect1>
 
 <refsect1>
 	<title>SEE ALSO</title>
 	<para>
+	<citerefentry><refentrytitle>jobadm</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 	<citerefentry><refentrytitle>jobcfg</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 	<citerefentry><refentrytitle>jobd</refentrytitle><manvolnum>8</manvolnum></citerefentry>
 	<citerefentry><refentrytitle>job</refentrytitle><manvolnum>5</manvolnum></citerefentry>

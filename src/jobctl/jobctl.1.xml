@@ -99,21 +99,6 @@ Enable the job. If the job is currently stopped, it will be automatically starte
 			</para>
 		</listitem>
 	</varlistentry>
-
-	<varlistentry>
-		<term>
-			<literal>jobctl</literal>
-			<replaceable>[label]</replaceable>
-			<literal>list</literal>
-		</term>
-	
-		<listitem>
-			<para>
-Display status information about a job. If <replaceable>label</replaceable> is omitted,
-status about all jobs will be displayed. 
-			</para>
-		</listitem>
-	</varlistentry>
 	
 	<varlistentry>
 		<term>
@@ -242,6 +227,7 @@ command directly will implicitly clear the "outdated" fault.
 <refsect1>
 	<title>SEE ALSO</title>
 	<para>
+	<citerefentry><refentrytitle>jobadm</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 	<citerefentry><refentrytitle>jobcfg</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 	<citerefentry><refentrytitle>jobd</refentrytitle><manvolnum>8</manvolnum></citerefentry>
 	<citerefentry><refentrytitle>job</refentrytitle><manvolnum>5</manvolnum></citerefentry>
@@ -257,9 +243,6 @@ command directly will implicitly clear the "outdated" fault.
 
 <refsect1>
 	<title>BUGS</title>
-	<para>
-	The <replaceable>list</replaceable> subcommand does not work if you provide a label.
-	</para>
 
 	<para>
 	The <replaceable>refresh</replaceable> and <replaceable>restart</replaceable> subcommands

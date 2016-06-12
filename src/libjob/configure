@@ -29,7 +29,7 @@ libjob_DEPENDS="$libucl_DEPENDS $kqueue_DEPENDS"
 
 if [ -n "$manpage_generator" ] ; then
 	custom_target 'job.5' 'job.5.xml' \
-		"${manpage_generator} job.5.xml > job.5"
+		"${manpage_generator} job.5.xml > job.5 && sed -i -e 's/>.fi/>/g' job.5"
 	
 	#TODO: move to /doc
 	#custom_target 'job.5.html' 'job.5.xml' \
