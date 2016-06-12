@@ -21,6 +21,9 @@ extern "C" {
 	#include <sys/types.h>
 
 	#include <fcntl.h>
+#ifdef __GLIBC__ /* for flock(2) */
+#include <sys/file.h>
+#endif
 	#include <sys/un.h>
 	#include <sys/event.h>
 	#include <sys/socket.h>
