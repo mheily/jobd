@@ -17,7 +17,7 @@
 #pragma once
 
 #include <string>
-#include <nlohmann/json.hpp>
+#include <libjob/parser.hpp>
 
 #include <grp.h>
 #include <pwd.h>

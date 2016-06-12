@@ -17,7 +17,7 @@
 #pragma once
 
 #include <string>
-#include <nlohmann/json.hpp>
+#include "parser.hpp"
 
 extern "C" {
 #include <sys/types.h>

@@ -16,7 +16,7 @@
 #
 
 . ../../config.sub
-. ../../vars.sh
+. ../vars.sh
 
 #bin_PROGRAMS=jobcfg
 
