@@ -5,7 +5,8 @@ config.log
 vars.sh
 .cproject
 .project
-/launchd
+/vendor/libucl-*
+/vendor/libkqueue-*
 .settings/
 /test/jmtest.log
 *.tar.gz

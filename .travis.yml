@@ -9,11 +9,8 @@ env:
 
 language: cpp
 
-# Would like to use GCC as well, but this will be painful; see
-#   http://genbattle.bitbucket.org/blog/2016/01/17/c++-travis-ci/
-#
 compiler:
-  - clang
+  - g++-4.9
 
 addons:
   apt:
@@ -21,7 +18,6 @@ addons:
     packages:
     - bc
     - libcurl4-openssl-dev
-    - clang-3.6
     - g++-4.9
     - g++-multilib
 
@@ -34,16 +30,13 @@ addons:
     build_command:   "make"
     branch_pattern: coverity_scan
 
-# TESTING: trying to fix the build
-#cache:
-#  directories:
-#    - vendor/libucl-0.7.3
-#    - vendor/libkqueue-2.0.3
+cache:
+  directories:
+    - vendor/libucl-0.7.3
+    - vendor/libkqueue-2.0.3
 
 script:
 - ./configure
-- make CXX=clang++-3.6
-- make clean
 - make CXX=g++-4.9
 #FIXME: breaks: - make CXX=g++-4.9 CXXFLAGS="-m32" LDFLAGS="-m32" # build in 32-bit mode
 
