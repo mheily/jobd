@@ -170,8 +170,14 @@ argument should specify the job label.
 <refsect1>
 	<title>BUGS</title>
 	<para>
-	Many subcommands are not implemented yet.
+	The following subcommands are not implemented yet:
 	</para>
+	
+	<itemizedlist>
+	<listitem><para>dump</para></listitem>
+	<listitem><para>restore</para></listitem>
+	<listitem><para>restart</para></listitem>
+	</itemizedlist>
 </refsect1>
 
 
