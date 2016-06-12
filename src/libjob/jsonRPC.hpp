@@ -16,12 +16,12 @@
 
 #pragma once
 
-
-namespace libjob {
-
 #include <string>
 #include <vector>
-#include <nlohmann/json.hpp>
+
+#include "parser.hpp"
+
+namespace libjob {
 
 	using json = nlohmann::json;
 

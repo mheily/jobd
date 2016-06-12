@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include "../../vendor/FreeBSD/sys/queue.h"
-#include <nlohmann/json.hpp>
+#include <libjob/parser.hpp>
 #include "socket.h"
 
 struct dataset_list;
