@@ -77,9 +77,9 @@ void ipcClient::bootstrapJobDaemon()
 		throw std::system_error(errno, std::system_category());
 	}
 
-	for (int i = 0; i < 10; i++) {
+	for (int i = 0; i < 100; i++) {
 		if (access(jobd_config.getSocketPath().c_str(), F_OK) < 0) {
-			sleep(1);
+			usleep(200);
 		} else {
 			break;
 		}
@@ -133,7 +133,7 @@ void ipcClient::create_socket() {
 #endif
 
 	bool bootstrap_done = false;
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < 30; i++) {
 		int rv = connect(sockfd, (struct sockaddr *) &sock, SUN_LEN(&sock));
 		if (rv == 0)
 			break;
@@ -144,7 +144,7 @@ void ipcClient::create_socket() {
 				bootstrapJobDaemon();
 				bootstrap_done = true;
 			}
-			sleep(1);
+			usleep(100);
 		} else {
 			log_errno("connect(2) to %s", jobd_config.getSocketPath().c_str());
 			throw std::system_error(errno, std::system_category());
