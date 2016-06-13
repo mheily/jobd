@@ -28,8 +28,6 @@
 namespace libjob
 {
 
-using json = nlohmann::json;
-
 static string getFileExtension(const string& path)
 {
 	string::size_type offset = path.rfind('.');
@@ -168,7 +166,7 @@ void Manifest::normalize() {
 
 
 	// Add default values for missing keys
-	for (json::iterator it = default_json.begin(); it != default_json.end(); ++it) {
+	for (nlohmann::json::iterator it = default_json.begin(); it != default_json.end(); ++it) {
 		if (this->json.count(it.key()) == 0) {
 			this->json[it.key()] = it.value();
 		}

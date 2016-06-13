@@ -29,6 +29,7 @@ extern "C" {
 }
 
 #include <libjob/namespaceImport.hpp>
+#include <libjob/parser.hpp>
 
 void capsicum_resources_acquire(nlohmann::json& manifest,
 		std::map<std::string, int> descriptors);
