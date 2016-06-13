@@ -17,6 +17,7 @@
 #pragma once
 
 #include "namespaceImport.hpp"
+#include "parser.hpp"
 
 namespace libjob
 {
