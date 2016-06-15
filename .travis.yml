@@ -18,7 +18,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-5
-      env: COMPILER=g++-5
+      env: CXX=g++-5
 
 coverity_scan:
   project:
@@ -34,6 +34,6 @@ cache:
     - vendor/libucl-0.7.3
     - vendor/libkqueue-2.0.3
 
-# Workaround for GCC-5 problem w/ nlohmann/json
-before_script:
- - gcc-5 -I vendor/libucl-0.7.3/include -Ivendor -c -std=c++11 src/libjob/parser.hpp
+script:
+ - ./configure
+ - CC=gcc-5 CXX=g++-5 make
