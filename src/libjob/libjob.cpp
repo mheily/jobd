@@ -53,7 +53,7 @@ static std::string get_user_datadir()
 		xdg_config_home = home + "/.config";
 	}
 
-	return xdg_config_home + "/jobd";
+	return std::string(xdg_config_home) + "/jobd";
 	//FIXME: see issue 81
 #if 0
 	} else if (home != NULL) {
@@ -86,7 +86,7 @@ static std::string get_user_runtimedir()
 	/* TODO: Per the XDG Base Directory Specification,
 	 * we should validate the ownership and permissions of this directory. */
 	if (xdg_runtime_dir != NULL) {
-		return xdg_runtime_dir + "/jobd";
+		return std::string(xdg_runtime_dir) + "/jobd";
 	} else if (home != NULL) {
 		std::string dir = std::string(home) + "/.jobd";
 		(void) mkdir(dir.c_str(), 0700);
