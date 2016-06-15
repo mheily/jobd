@@ -38,5 +38,4 @@ if [ -n "$manpage_generator" ] ; then
 	manpage 'job.5'
 fi
 
-
 write_makefile
