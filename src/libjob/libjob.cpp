@@ -50,10 +50,12 @@ static std::string get_user_datadir()
 	/* TODO: Per the XDG Base Directory Specification,
 	 * we should validate the ownership and permissions of this directory. */
 	if (xdg_config_home == NULL) {
-		xdg_config_home = home + "/.config";
+		return std::string(home) + "/.config";
+	} else {
+		return std::string(xdg_config_home) + "/jobd";
 	}
 
-	return std::string(xdg_config_home) + "/jobd";
+
 	//FIXME: see issue 81
 #if 0
 	} else if (home != NULL) {
