@@ -28,13 +28,16 @@ check_header 'sys/limits.h'
 check_header 'sys/event.h'
 if [ $check_header_sys_event_h -eq 0 ] ; then
 	echo "building a local copy of libkqueue.. "
-	tar -C $TOPDIR/vendor -zxf $TOPDIR/vendor/libkqueue-2.0.4.tar.gz
+
 	make_define 'kqueue_dir' "$TOPDIR/vendor/libkqueue-2.0.4"
 	make_define 'kqueue_CFLAGS' "-I$kqueue_dir/include"
 	make_define 'kqueue_LDADD' '$kqueue_dir/.libs/libkqueue.a -lpthread -lrt'
 	make_define 'kqueue_DEPENDS' "$kqueue_dir/.libs/libkqueue.a"
-	make_depend "$kqueue_dir/.libs/libkqueue.a" \
-	    "cd $kqueue_dir && ./configure && make"
+
+	tar -C $TOPDIR/vendor -zxf $TOPDIR/vendor/libkqueue-2.0.4.tar.gz
+	( set -x ; cd $kqueue_dir && test -e Makefile || ./configure )
+	custom_target "$kqueue_dir/.libs/libkqueue.a" " " \
+	    "make -C $kqueue_dir"
 else
 	make_define 'kqueue_CFLAGS' ''
 	make_define 'kqueue_LDADD' ''
@@ -52,14 +55,19 @@ if [ $check_header_ucl_h -eq 0 ] ; then
 		dwarf_options="-gdwarf-2 -gstrict-dwarf"
 	fi
 
-	make_define 'libucl_dir' "$TOPDIR/vendor/libucl-0.7.3"
+	ucldir="$TOPDIR/vendor/libucl-0.7.3"
+	make_define 'libucl_dir' "$ucldir"
 	make_define 'libucl_CFLAGS' "-I$libucl_dir/include"
 	make_define 'libucl_LDFLAGS' ""
 	make_define 'libucl_LDADD' "$libucl_dir/src/.libs/libucl.a"
 	make_define 'libucl_DEPENDS' "$libucl_dir/src/.libs/libucl.a"
 	tar -C $TOPDIR/vendor -zxf $TOPDIR/vendor/libucl-0.7.3.tar.gz
-	make_depend "$libucl_dir/src/.libs/libucl.a" \
-          "cd $libucl_dir && CFLAGS=\"$dwarf_options -g -O0\" ./configure && make"
+	( set -x ; cd $ucldir && test -e Makefile || CFLAGS="$dwarf_options -g -O2 -fPIC" ./configure )
+	wait
+
+	custom_target "$libucl_dir/src/.libs/libucl.a" " " \
+		"cd $libucl_dir && make"
+
 else
 	# KLUDGE: assumes libucl is installed in /usr/local, like on FreeBSD
 	make_define 'libucl_CFLAGS' '-I /usr/local/include'
