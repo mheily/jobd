@@ -38,19 +38,24 @@ static std::string get_user_datadir()
 {
 	const char *home = getenv("HOME");
 	if (!home) {
-		throw "Missing HOME directory environment variable";	
+		throw std::runtime_error("Missing HOME directory environment variable");
 	}
 
 #if TARGET_OS_MAC
 	std::string dir = std::string(home) + "/Library/Jobd";
 	return dir;
 #else
-	const char *xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
+	const char *xdg_config_home = getenv("XDG_CONFIG_HOME");
 
 	/* TODO: Per the XDG Base Directory Specification,
 	 * we should validate the ownership and permissions of this directory. */
-	if (xdg_runtime_dir != NULL) {
-		return xdg_runtime_dir;
+	if (xdg_config_home == NULL) {
+		xdg_config_home = home + "/.config";
+	}
+
+	return xdg_config_home + '/jobd';
+	//FIXME: see issue 81
+#if 0
 	} else if (home != NULL) {
 		std::string dir = std::string(home) + "/.jobd";
 		(void) mkdir(dir.c_str(), 0700);
@@ -60,6 +65,7 @@ static std::string get_user_datadir()
 	} else {
 		throw "unable to locate data dir: HOME or XDG_RUNTIME_DIR must be set";
 	}
+#endif
 #endif
 }
 
@@ -80,7 +86,7 @@ static std::string get_user_runtimedir()
 	/* TODO: Per the XDG Base Directory Specification,
 	 * we should validate the ownership and permissions of this directory. */
 	if (xdg_runtime_dir != NULL) {
-		return xdg_runtime_dir;
+		return xdg_runtime_dir + '/jobd';
 	} else if (home != NULL) {
 		std::string dir = std::string(home) + "/.jobd";
 		(void) mkdir(dir.c_str(), 0700);
