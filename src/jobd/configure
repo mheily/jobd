@@ -21,7 +21,7 @@
 sbin_PROGRAMS=jobd
 
 jobd_CXXFLAGS="-I../.. -I.. -I. -include ../../config.h -std=c++11 -Wall -Werror $VENDOR_CXXFLAGS"
-jobd_LDFLAGS="-L/usr/lib -L/usr/local/lib -L../libjob/"
+jobd_LDFLAGS="$VENDOR_LDFLAGS -L../libjob/"
 jobd_LDADD="../libjob/libjob.a $VENDOR_LDADD"
 jobd_SOURCES=`ls *.cpp *.c | tr '\n' ' '`
 jobd_DEPENDS="../libjob/libjob.a $VENDOR_DEPENDS"

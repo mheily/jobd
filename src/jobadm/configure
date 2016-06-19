@@ -21,7 +21,7 @@
 bin_PROGRAMS=jobadm
 
 jobadm_CXXFLAGS="-include ../../config.h -std=c++11 -Wall -Werror -I.. $VENDOR_CXXFLAGS"
-jobadm_LDFLAGS="-L ../libjob"
+jobadm_LDFLAGS="$VENDOR_LDFLAGS -L ../libjob"
 jobadm_LDADD="../libjob/libjob.a $VENDOR_LDADD"
 jobadm_SOURCES=`ls *.cpp | tr '\n' ' '`
 jobadm_DEPENDS="../libjob/libjob.a"
