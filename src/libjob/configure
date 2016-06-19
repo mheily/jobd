@@ -21,7 +21,7 @@
 LIBRARIES=libjob
 
 libjob_CXXFLAGS="-include ../../config.h -fPIC -std=c++11 -Wall -Werror $VENDOR_CXXFLAGS"
-libjob_LDFLAGS="-L/usr/local/lib -fPIC"
+libjob_LDFLAGS="$VENDOR_LDFLAGS -fPIC"
 libjob_LDADD="$VENDOR_LDADD"
 libjob_SOURCES=`ls *.cpp | tr '\n' ' '`
 libjob_SONAME="libjob.so.0"

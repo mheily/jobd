@@ -77,6 +77,7 @@ else
 fi
 
 make_define VENDOR_CXXFLAGS "-I${TOPDIR}/vendor $libucl_CFLAGS $kqueue_CFLAGS"
+make_define VENDOR_LDFLAGS "$libucl_LDFLAGS $kqueue_LDFLAGS"
 make_define VENDOR_LDADD "$libucl_LDADD $kqueue_LDADD"
 make_define VENDOR_DEPENDS "$libucl_DEPENDS $kqueue_DEPENDS"
 
