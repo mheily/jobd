@@ -120,6 +120,15 @@ You will need to build libucl, which means installing GNU Autotools:
 # pkg_add autoconf automake libtool pkg-config
 ```
 
+## Building under MacOS
+
+You will need the Homebrew versions of a number of autotools utilities.
+
+Run this:
+```
+$ brew install autoconf automake libtool shtool pkgconfig
+```
+
 ## Socket activation
 
 relaunchd uses a different mechanism for socket activation than the one that

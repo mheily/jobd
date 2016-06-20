@@ -55,15 +55,21 @@ if [ $check_header_ucl_h -eq 0 ] ; then
 		dwarf_options="-gdwarf-2 -gstrict-dwarf"
 	fi
 
-	ucldir="$TOPDIR/vendor/libucl-0.7.3"
+	ucldir="$TOPDIR/vendor/libucl-0.8.0"
 	make_define 'libucl_dir' "$ucldir"
 	make_define 'libucl_CFLAGS' "-I$libucl_dir/include"
 	make_define 'libucl_LDFLAGS' ""
 	make_define 'libucl_LDADD' "$libucl_dir/src/.libs/libucl.a"
 	make_define 'libucl_DEPENDS' "$libucl_dir/src/.libs/libucl.a"
-	tar -C $TOPDIR/vendor -zxf $TOPDIR/vendor/libucl-0.7.3.tar.gz
-	( set -x ; cd $ucldir && test -e Makefile || CFLAGS="$dwarf_options -g -O2 -fPIC" ./configure )
-	wait
+	tar -C $TOPDIR/vendor -zxf $TOPDIR/vendor/libucl-0.8.0.tar.gz
+	_savedir=`pwd`
+	set -x
+	cd $ucldir
+	test -e configure || autoreconf -fvi || err 'autogen failed'
+	test -e install-sh || libtoolize --force
+	test -e Makefile || CFLAGS="$dwarf_options -g -O2 -fPIC" ./configure || err 'configure failed'
+	set +x
+	cd $_savedir
 
 	custom_target "$libucl_dir/src/.libs/libucl.a" " " \
 		"cd $libucl_dir && make"
