@@ -30,6 +30,15 @@ $XDG_RUNTIME_DIR/jobd = runtimeDir - transient data storage
   ipc.sock = socketPath - IPC socket
   jobd.pid = pidfilePath - PID of running jobd
 
+## Autoloading
+
+Manifests in jobdConfig::getAutoloadDir() are loaded when
+the jobd process starts.
+
+DILEMMA: have a /usr/share/$manifest and /usr/local/etc/$manifest ??
+are the properties stored in the manifest editable after the job loads?
+
 ## Other
 
 Directories are created on demand, with appropriate permissions.
+
