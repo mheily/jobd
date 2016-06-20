@@ -34,6 +34,18 @@ extern "C" {
 #include "job.h"
 #include "jobStatus.hpp"
 
+static void mkdir_p(const std::string& path, mode_t mode)
+{
+	if (access(path.c_str(), X_OK) < 0) {
+		if (errno == ENOENT) {
+			if (mkdir(path.c_str(), mode) < 0) {
+					throw std::system_error(errno, std::system_category());
+			}
+		} else {
+			throw std::system_error(errno, std::system_category());
+		}
+	}
+}
 void libjob::jobdConfig::createDirectories() {
 	std::vector<std::string> paths;
 
@@ -48,21 +60,21 @@ void libjob::jobdConfig::createDirectories() {
 
 void libjob::jobdConfig::get_xdg_base_directory()
 {
-	const char *config_home, *runtime_dir;
+	const char *data_home, *runtime_dir;
 
 	if (getuid() == 0) {
-		config_home = "/usr/local/etc";
+		data_home = "/var/db";
 		runtime_dir = "/var/run";
 	} else {
-		config_home = getenv("XDG_CONFIG_HOME");
+		data_home = getenv("XDG_DATA_HOME");
 		runtime_dir = getenv("XDG_RUNTIME_DIR");
 	}
 
 	char *home = getenv("HOME");
 	char *logname = getenv("LOGNAME");
 
-	if (config_home) {
-			xdg_config_home = std::string(config_home);
+	if (data_home) {
+			xdg_data_home = std::string(data_home);
 	} else {
 		if (!home) {
 			throw std::runtime_error("HOME is not set");
@@ -70,16 +82,10 @@ void libjob::jobdConfig::get_xdg_base_directory()
 		if (access(home, W_OK) != 0) {
 			throw std::runtime_error("HOME does not exist or is not writable");
 		}
-		xdg_config_home = std::string(home) + "/.config";
-		if (access(xdg_config_home.c_str(), W_OK) < 0) {
-			if (errno == ENOENT) {
-				if (mkdir(xdg_config_home.c_str(), 0700) < 0) {
-					throw std::system_error(errno, std::system_category());
-				}
-			} else {
-				throw std::system_error(errno, std::system_category());
-			}
-		}
+		std::string home_s = std::string(home);
+		xdg_data_home = home_s + "/.local/share";
+		mkdir_p(home_s + "/.local", 0700);
+		mkdir_p(home_s + "/.local/share", 0700);
 	}
 
 	if (runtime_dir) {
@@ -115,7 +121,7 @@ void libjob::jobdConfig::get_xdg_base_directory()
 libjob::jobdConfig::jobdConfig() {
 	get_xdg_base_directory();
 	runtimeDir = xdg_runtime_dir + "/jobd";
-	dataDir = xdg_config_home + "/jobd";
+	dataDir = xdg_data_home + "/jobd";
 	createDirectories();
 	socketPath = getRuntimeDir() + "/jobd.sock";
 	pidfilePath = getRuntimeDir() + "/jobd.pid";

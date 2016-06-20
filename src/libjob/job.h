@@ -77,7 +77,7 @@ public:
 		void set_socketpath();
 
 		/* Directory management */
-		std::string xdg_config_home;
+		std::string xdg_data_home;
 		std::string xdg_runtime_dir;
 		void get_xdg_base_directory();
 		void createDirectories();
