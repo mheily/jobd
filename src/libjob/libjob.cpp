@@ -18,6 +18,7 @@
 #include <fstream>
 #include <string>
 #include <cstdlib>
+#include <system_error>
 
 extern "C" {
 	#include <sys/stat.h>
