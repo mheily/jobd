@@ -80,7 +80,7 @@ The basic commands to build and install the software are:
 ## Building under Linux
 
 You can check the current build status by visiting the 
-[Travis CI dashboard](https://travis-ci.org/mheily/relaunchd/builds)
+[Travis CI dashboard](https://travis-ci.org/mheily/jobd/builds)
 
 There are a few extra steps when building on Linux:
 
