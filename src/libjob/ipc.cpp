@@ -225,7 +225,7 @@ void ipcClient::dispatch(jsonRpcRequest request, jsonRpcResponse& response) {
 
 	char cbuf[9999]; // XXX-HORRIBLE HARDCODED BUFFER SIZE
 	ssize_t bytes = read(sockfd, &cbuf, sizeof(cbuf));
-	if (bytes < 0 || bytes >= (ssize_t)sizeof(cbuf))
+	if (bytes <= 0 || bytes >= (ssize_t)sizeof(cbuf))
 		throw std::system_error(errno, std::system_category());
 	cbuf[bytes] = '\0';
 	json j = json::parse(string(cbuf));
