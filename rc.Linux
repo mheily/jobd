@@ -1,0 +1,45 @@
+#!/bin/sh
+#
+### BEGIN INIT INFO
+# Provides:          jobd
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start the jobd(8) daemon at boot time
+# Description:       Enable the jobd(8) service manager.
+### END INIT INFO
+
+# TODO: use LSB, if this is still a thing?
+
+export PATH=/usr/local/sbin:/sbin:/usr/sbin:/usr/local/bin:/bin:/usr/bin
+PIDFILE=/var/run/jobd.pid
+
+case $1 in
+start)
+	printf "Starting jobd.. "
+	if [ -f $PIDFILE ] ; then
+		echo 'already running'
+		exit 1
+	else
+		/usr/bin/env jobd
+	fi
+	;;
+
+stop)
+	printf "Stopping jobd.. "
+	kill `cat $PIDFILE`
+	rm -f $PIDFILE
+	;;
+
+restart)
+	$0 stop && sleep 3 && $0 start
+	;;
+
+*)
+	echo "Usage: $0 {start|stop|restart}"
+	exit 2
+  	;;
+esac
+
+exit 0
