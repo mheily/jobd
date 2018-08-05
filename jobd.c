@@ -436,7 +436,13 @@ parse_array_of_strings(char ***result, toml_table_t *tab, const char *top_key)
 
 	arr = toml_array_in(tab, top_key);
 	if (!arr) {
-		return (0);
+		*result = calloc(1, sizeof(char *));
+		if (*result) {
+			return (0);
+		} else {
+			printlog(LOG_ERR, "calloc: %s", strerror(errno));
+			return (-1);
+		}
 	}
 
 	for (nelem = 0; (raw = toml_raw_at(arr, nelem)) != 0; nelem++) {}
@@ -456,7 +462,7 @@ parse_array_of_strings(char ***result, toml_table_t *tab, const char *top_key)
 			strarr[i] = val;
 		}
 	}
-	strarr[i] = NULL;
+
 	*result = strarr;
 
 	return (0);
