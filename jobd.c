@@ -66,7 +66,6 @@ static const void (*signal_handlers[NSIG])(int) = {
 
 enum job_state {
 	JOB_STATE_UNKNOWN,
-	JOB_STATE_WAITING,
 	JOB_STATE_STARTING,
 	JOB_STATE_RUNNING,
 	JOB_STATE_STOPPING,
@@ -124,6 +123,7 @@ struct job {
 	enum job_state state;
 	bool exited;
 	int last_exit_status, term_signal;
+	size_t incoming_edges;
 
 	/* Items below here are parsed from the manifest */
     char **before, **after;
@@ -147,10 +147,10 @@ struct job {
 };
 
 static int logfd = STDOUT_FILENO;
-static LIST_HEAD(, job) all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
+static LIST_HEAD(job_list, job) all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
 
 static void job_free(struct job *);
-static struct job *find_job_by_id(const char *id);
+static struct job *find_job_by_id(const struct job_list *jobs, const char *id);
 static void schedule(void);
 
 static void
@@ -597,11 +597,11 @@ err:
 }
 
 static struct job *
-find_job_by_id(const char *id)
+find_job_by_id(const struct job_list *jobs, const char *id)
 {
 	struct job *job;
 
-	LIST_FOREACH(job, &all_jobs, entries) {
+	LIST_FOREACH(job, jobs, entries) {
 		if (!strcmp(id, job->id)) {
 			return job;
 		}
@@ -609,13 +609,95 @@ find_job_by_id(const char *id)
 	return (NULL);
 }
 
+/* This sorting algorithm is not efficient, but is fairly simple. */
+static int
+topological_sort(struct job_list *dest, struct job_list *src)
+{
+	struct job *cur, *tmp, *tail;
+	char **id_p;
+
+	/* Find all incoming edges and keep track of how many each node has */
+	LIST_FOREACH(cur, src, entries) {
+		LIST_FOREACH(tmp, src, entries) {
+			if (cur != tmp && string_array_contains(cur->after, tmp->id)) {
+				printlog(LOG_DEBUG, "edge from %s to %s", tmp->id, cur->id);
+				cur->incoming_edges++;
+			}
+		}
+	}
+	LIST_FOREACH(cur, src, entries) {
+		LIST_FOREACH(tmp, src, entries) {
+			if (cur != tmp && string_array_contains(cur->before, tmp->id)) {
+				printlog(LOG_DEBUG, "edge from %s to %s", cur->id, tmp->id);
+				tmp->incoming_edges++;
+			}
+		}
+	}
+
+	/* Iteratively remove nodes with zero incoming edges */
+	tail = NULL;
+	while (!LIST_EMPTY(src)) {
+		cur = NULL;
+		LIST_FOREACH(tmp, src, entries) {
+			if (tmp->incoming_edges == 0) {
+				cur = tmp;
+				break;
+			}
+		}
+
+		if (cur) {
+			/* Update edge counts to reflect the removal of <cur> */
+			for (id_p = cur->before; *id_p; id_p++) {
+				tmp = find_job_by_id(src, *id_p);
+				if (tmp) {
+					printlog(LOG_DEBUG, "removing edge from %s to %s", cur->id, tmp->id);
+					tmp->incoming_edges--;
+				}
+			}
+			LIST_FOREACH(tmp, src, entries) {
+				if (cur != tmp && string_array_contains(tmp->after, cur->id)) {
+					printlog(LOG_DEBUG, "removing edge from %s to %s", cur->id, tmp->id);
+					tmp->incoming_edges--;
+				}
+			}
+
+			/* Remove <cur> and place it on the sorted destination list */
+			LIST_REMOVE(cur, entries);
+			if (tail) {
+				LIST_INSERT_AFTER(tail, cur, entries);
+			} else {
+				LIST_INSERT_HEAD(dest, cur, entries);
+			}
+			tail = cur;
+			continue;
+		} else {
+			/* Any leftover nodes are part of a cycle. */
+			if (!LIST_EMPTY(src)) {
+				printlog(LOG_WARNING, "cyclic jobs detected");
+				for (cur = LIST_FIRST(src); cur && (tmp = LIST_NEXT(cur, entries), 1); cur = tmp) {
+					LIST_REMOVE(cur, entries);
+					printlog(LOG_WARNING, "job %s is part of a cycle", cur->id);
+					cur->state = JOB_STATE_ERROR;
+					LIST_INSERT_AFTER(tail, cur, entries);
+					tail = cur;
+				}
+			}
+		}
+	}
+
+	return (0);
+}
+
 static int
 unspool(const char *configdir)
 {
+	struct job_list tmpjobs;
 	DIR	*dirp;
 	struct dirent *entry;
 	struct job *job;
 	char *path;
+
+	LIST_INIT(&tmpjobs);
 
 	if ((dirp = opendir(configdir)) == NULL)
 		err(1, "opendir(3) of %s", configdir);
@@ -639,11 +721,16 @@ unspool(const char *configdir)
 		}
 		free(path);
 
-		LIST_INSERT_HEAD(&all_jobs, job, entries);
+		LIST_INSERT_HEAD(&tmpjobs, job, entries);
 	}
 	if (closedir(dirp) < 0) {
 		err(1, "closedir(3)");
 	}
+
+	if (topological_sort(&all_jobs, &tmpjobs) < 0) {
+		errx(1, "topological_sort() failed");
+	}
+
 	return (0);
 }
 
@@ -802,43 +889,6 @@ stop(struct job *job)
 // 	return (start(job));
 // }
 
-static bool
-depsolve(const struct job *job)
-{
-	struct job *dep;
-	char **job_id;
-
-	if (!job->after)
-		return (true);
-
-	for (job_id = job->after; *job_id; job_id++) {
-		dep = find_job_by_id(*job_id);
-		if (dep && dep->state != JOB_STATE_RUNNING)
-			return (false);
-	}
-
-	return (true);
-}
-
-static void
-start_dependent_jobs(const struct job *job)
-{
-	struct job *cur;
-
-	LIST_FOREACH(cur, &all_jobs, entries) {
-		if (cur->state == JOB_STATE_WAITING && string_array_contains(cur->after, cur->id)) {
-			if (depsolve(cur))
-				start(cur);
-		}
-	}
-}
-
-static void
-sort_jobs(void)
-{
-	//TODO: use tsort
-}
-
 static void
 schedule(void)
 {
@@ -847,22 +897,9 @@ schedule(void)
 	LIST_FOREACH(job, &all_jobs, entries) {
 		switch (job->state) {
 			case JOB_STATE_UNKNOWN:
-				if (job->enable) {
-					if (!depsolve(job)) {
-						job->state = JOB_STATE_WAITING;
-					} else {
-						job->state = JOB_STATE_STOPPED;
-						start(job);
-						start_dependent_jobs(job);
-					}
-				} else {
-					job->state = JOB_STATE_STOPPED;
-				}
-				break;
-			case JOB_STATE_WAITING:
-				if (depsolve(job)) {
+				job->state = JOB_STATE_STOPPED;
+				if (job->enable)
 					start(job);
-				}
 				break;
 			case JOB_STATE_STOPPED:
 				break;
@@ -976,7 +1013,6 @@ static void
 reload_configuration(int signum __attribute__((unused)))
 {
 	unspool(config.configdir);
-	sort_jobs();
 	schedule();
 }
 
@@ -1075,7 +1111,7 @@ ipc_server_handler(event_t *ev __attribute__((unused)))
 
 	printlog(LOG_DEBUG, "got IPC request; opcode=%d job_id=%s", req.opcode, req.job_id);
 	if (req.opcode > 0 && req.opcode < IPC_REQUEST_MAX) {
-		struct job *job = find_job_by_id(req.job_id);
+		struct job *job = find_job_by_id(&all_jobs, req.job_id);
 		if (job) {
 			res.retcode = (*jump_table[req.opcode])(job);
 		} else {
