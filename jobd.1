@@ -1,0 +1,65 @@
+.\"
+.\" Copyright (c) 2018 Mark Heily <mark@heily.com>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd August 5, 2018
+.Dt JOBD 8
+.Os
+.Sh NAME
+.Nm jobd
+.Nd job management daemon
+.Sh SYNOPSIS
+.Nm jobd
+.Op Fl fv
+.Sh DESCRIPTION
+The
+.Nm
+manages jobs. The format of job
+configuration files is described in
+.Xr job 5 .
+.Pp
+The command line options are as follows:
+.Bl -tag -width Ds
+.It Fl f
+Run in the foreground, instead of daemonizing.
+.It Fl v
+Increase the verbosity of log messages.
+.El
+.\" .Sh ENVIRONMENT
+.Sh FILES
+.Bl -tag -width "/var/run/jobd.sock" -compact
+.It Pa /etc/jobd.conf
+Default configuration file.
+.It Pa /etc/job.d/*
+The directory containing all enabled jobs.
+.It Pa /var/run/jobd.sock
+.Ux Ns -domain
+socket used for communication between
+.Xr job 8 and
+.Xr jobd 8 .
+.El
+.\" .Sh EXAMPLES
+.\" This next request is for sections 1, 4, 6, and 8 only.
+.\" .Sh DIAGNOSTICS
+.\" The next request is for sections 2, 3, and 9
+.\"  error and signal handling only.
+.\" .Sh ERRORS
+.Sh SEE ALSO
+.Xr job 8
+.Xr job 5
+.\" .Sh STANDARDS
+.\" .Sh HISTORY
+.\" .Sh AUTHORS
+.\" .Sh CAVEATS
+.\" .Sh BUGS

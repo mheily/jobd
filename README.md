@@ -84,15 +84,9 @@ You can check the current build status by visiting the
 
 There are a few extra steps when building on Linux:
 
-1. Download and install libkqueue. For Debian-based distributions, you can
-   simply run:
+1. Install mandoc to generate HTML from manpages. Example:
 
-	sudo apt-get install libkqueue-dev
-
-   Other distributions will require you to build from source, which is 
-   available at:
-
-	https://github.com/mheily/libkqueue/
+	sudo apt-get install mandoc
 
 ## Building under OpenBSD
 
