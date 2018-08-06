@@ -909,13 +909,13 @@ schedule(void)
 }
 
 static void
-reaper(pid_t pid, int status)
+reaper(struct job_list *jobs, pid_t pid, int status)
 {
 	struct job *job;
 
 	printlog(LOG_DEBUG, "reaping PID %d", pid);
 
-	LIST_FOREACH(job, &all_jobs, entries) {
+	LIST_FOREACH(job, jobs, entries) {
 		if (job->pid == pid) {
 			if (job->state != JOB_STATE_STOPPING) {
 				printlog(LOG_NOTICE, "job %s terminated unexpectedly", job->id);
@@ -953,36 +953,30 @@ reaper(pid_t pid, int status)
 static void
 shutdown_handler(int signum)
 {
-	struct job *job;
-	size_t active_jobs = 0;
+	struct job_list shutdown_list;
+	struct job *job, *tmpjob;
+	pid_t pid;
+	int status;
 
 	printlog(LOG_NOTICE, "terminating due to signal %d", signum);
     
 	jobd_is_shutting_down = true;
 
-	LIST_FOREACH(job, &all_jobs, entries) {
+	LIST_INIT(&shutdown_list);
+	LIST_FOREACH_SAFE(job, &all_jobs, entries, tmpjob) {
+		LIST_REMOVE(job, entries);
 		if (job->state == JOB_STATE_RUNNING) {
-			stop(job);
-			active_jobs++;
-		}
+			LIST_INSERT_HEAD(&shutdown_list, job, entries);
+		} else {
+			job_free(job);
+		}	
  	}
 
-	struct sigaction sa;
-	sa.sa_handler = sigalrm_handler;
-  	sigemptyset (&sa.sa_mask);
-  	sa.sa_flags = 0;
-	if (sigaction(SIGALRM, &sa, NULL) < 0)
-		printlog(LOG_ERR, "sigaction(2): %s", strerror(errno));
-	alarm(config.shutdown_timeout);
-
-	while (active_jobs) {
-		pid_t pid;
-		int status;
-
+	LIST_FOREACH_SAFE(job, &shutdown_list, entries, tmpjob) {
+		stop(job);
 		pid = wait(&status);
 		if (pid > 0) {
-			reaper(pid, status);
-			active_jobs--;
+			reaper(&shutdown_list, pid, status);
 		} else {
 			if (errno == EINTR) {
 				if (sigalrm_flag) {
@@ -998,6 +992,8 @@ shutdown_handler(int signum)
 			}
 			exit(EXIT_FAILURE);
 		}
+		LIST_REMOVE(job, entries);
+		job_free(job);
 	}
 
 	if (signum == SIGINT) {
@@ -1196,6 +1192,15 @@ create_event_queue(void)
 static void
 register_signal_handlers(void)
 {
+	struct sigaction sa;
+
+	/* Special case: disable SA_RESTART on alarms */
+	sa.sa_handler = sigalrm_handler;
+  	sigemptyset (&sa.sa_mask);
+  	sa.sa_flags = 0;
+	if (sigaction(SIGALRM, &sa, NULL) < 0)
+		err(1, "sigaction(2)");
+
 #ifdef __linux__
 	sigset_t mask;
 
@@ -1296,7 +1301,7 @@ sigchld_handler(int signum __attribute__((unused)))
 	for (;;) {
 		pid = waitpid(-1, &status, WNOHANG);
 		if (pid > 0) {
-			reaper(pid, status);
+			reaper(&all_jobs, pid, status);
 		} else {
 			break;
 		}
