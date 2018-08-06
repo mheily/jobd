@@ -27,7 +27,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <syslog.h>
-#include <sys/queue.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -35,8 +34,10 @@
 #ifdef __linux__
 #include <sys/epoll.h>
 #include <sys/signalfd.h>
+#include "queue.h"
 #else
 #include <sys/event.h>
+#include <sys/queue.h>
 #endif /* __linux__ */
 #include <sys/wait.h>
 #include <unistd.h>
@@ -672,15 +673,12 @@ topological_sort(struct job_list *dest, struct job_list *src)
 			continue;
 		} else {
 			/* Any leftover nodes are part of a cycle. */
-			if (!LIST_EMPTY(src)) {
-				printlog(LOG_WARNING, "cyclic jobs detected");
-				for (cur = LIST_FIRST(src); cur && (tmp = LIST_NEXT(cur, entries), 1); cur = tmp) {
-					LIST_REMOVE(cur, entries);
-					printlog(LOG_WARNING, "job %s is part of a cycle", cur->id);
-					cur->state = JOB_STATE_ERROR;
-					LIST_INSERT_AFTER(tail, cur, entries);
-					tail = cur;
-				}
+			LIST_FOREACH_SAFE(cur, src, entries, tmp) {
+				LIST_REMOVE(cur, entries);
+				printlog(LOG_WARNING, "job %s is part of a cycle", cur->id);
+				cur->state = JOB_STATE_ERROR;
+				LIST_INSERT_AFTER(tail, cur, entries);
+				tail = cur;
 			}
 		}
 	}
