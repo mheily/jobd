@@ -58,11 +58,15 @@ static int dequeue_signal();
 level, __func__, __FILE__, __LINE__, ## __VA_ARGS__); \
 } while (0)
 
-static const void (*signal_handlers[NSIG])(int) = {
-	[SIGCHLD] = &sigchld_handler,
-	[SIGHUP] = &reload_configuration,
-	[SIGINT] = &shutdown_handler,
-	[SIGTERM] = &shutdown_handler,
+const struct signal_handler {
+	int signum;
+	void (*handler)(int);
+} signal_handlers[] = {
+	{ SIGCHLD, &sigchld_handler },
+	{ SIGHUP, &reload_configuration },
+	{ SIGINT, &shutdown_handler },
+	{ SIGTERM, &shutdown_handler },
+	{ 0, NULL}
 };
 
 enum job_state {
@@ -519,7 +523,7 @@ parse_job_file(struct job **result, const char *path, const char *id)
 {
 	FILE *fh;
 	char errbuf[256];
-	toml_table_t *tab;
+	toml_table_t *tab = NULL;
 	char *buf;
 	struct job *j;
 
@@ -755,23 +759,6 @@ redirect_file_descriptor(int oldfd, const char *path, int flags, mode_t mode)
 	return (0);
 }
 
-static void
-register_process_event(pid_t pid)
-{
-#ifdef __linux__
-
-#else
-	struct kevent kev;
-	
-	EV_SET(&kev, job->pid, EVFILT_PROC, EV_ADD, NOTE_EXIT, 0, NULL);
-	if (kevent(kqfd, &kev, 1, NULL, 0, NULL) < 0) {
-		printlog(LOG_ERR, "kevent(2): %s", strerror(errno));
-		//TODO: probably want to crash, or kill the job, or do something
-		// more useful here.
-	}
-#endif
-}
-
 static int
 start(struct job *job)
 {
@@ -859,8 +846,6 @@ start(struct job *job)
 
 		//TODO: manager
 		printlog(LOG_DEBUG, "job %s started with pid %d", job->id, job->pid);
-	
-		register_process_event(job->pid);
 	}
 
 	return (0);
@@ -1182,21 +1167,29 @@ create_event_queue(void)
 	if (epoll_ctl(eventfds.epfd, EPOLL_CTL_ADD, ipc_sockfd, &ev) < 0)
 		err(1, "epoll_ctl(2)");
 #else
+	struct kevent kev;
+
 	if ((kqfd = kqueue()) < 0)
 		err(1, "kqueue(2)");
 	if (fcntl(kqfd, F_SETFD, FD_CLOEXEC) < 0)
 		err(1, "fcntl(2)");
+
+	EV_SET(&kev, ipc_sockfd, EVFILT_READ, EV_ADD, 0, 0,
+			(void *)&ipc_server_handler);
+	if (kevent(kqfd, &kev, 1, NULL, 0, NULL) < 0)
+		err(1, "kevent(2)");
 #endif
 }
 
 static void
 register_signal_handlers(void)
 {
+	const struct signal_handler *sh;
 	struct sigaction sa;
 
 	/* Special case: disable SA_RESTART on alarms */
 	sa.sa_handler = sigalrm_handler;
-  	sigemptyset (&sa.sa_mask);
+  	sigemptyset(&sa.sa_mask);
   	sa.sa_flags = 0;
 	if (sigaction(SIGALRM, &sa, NULL) < 0)
 		err(1, "sigaction(2)");
@@ -1205,10 +1198,8 @@ register_signal_handlers(void)
 	sigset_t mask;
 
 	sigemptyset(&mask);
-	for (int i = 0; i < NSIG; i++) {
-		if (signal_handlers[i]) {
-			sigaddset(&mask, i);
-		}
+	for (sh = &signal_handlers[0]; sh->signum; sh++) {
+		sigaddset(&mask, sh->signum);
 	}
 	if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
 		err(1, "sigprocmask(2)");
@@ -1220,12 +1211,12 @@ register_signal_handlers(void)
 #else
 	struct kevent kev;
 
-    /* Setup signal handlers */
-	for (int i = 0; handle_signals[i] != 0; i++) {
-		if (signal(handle_signals[i], SIG_IGN) == SIG_ERR)
-			err(1, "signal(2): %d", handle_signals[i]);
-		EV_SET(&kev, handle_signals[i], EVFILT_SIGNAL, EV_ADD, 0, 0,
-				(void *)&handle_signals);
+	for (sh = &signal_handlers[0]; sh->signum; sh++) {
+		if (signal(sh->signum, (sh->signum == SIGCHLD ? SIG_DFL : SIG_IGN)) == SIG_ERR)
+			err(1, "signal(2): %d", sh->signum);
+
+		EV_SET(&kev, sh->signum, EVFILT_SIGNAL, EV_ADD, 0, 0,
+				(void *)&dequeue_signal);
 		if (kevent(kqfd, &kev, 1, NULL, 0, NULL) < 0)
 			err(1, "kevent(2)");
 	}
@@ -1235,6 +1226,9 @@ register_signal_handlers(void)
 static int
 dequeue_signal(event_t *ev)
 {
+	const struct signal_handler *sh;
+	int signum;
+
 #ifdef __linux__
 	struct signalfd_siginfo fdsi;
 	ssize_t sz;
@@ -1243,17 +1237,26 @@ dequeue_signal(event_t *ev)
 	if (sz != sizeof(fdsi))
 		err(1, "invalid read");
 
-	(*signal_handlers[fdsi.ssi_signo])(fdsi.ssi_signo);
+	signum = fdsi.ssi_signo;
 #else
-	if ((void *)ev->udata == &handle_signals)
-		return (ev->ident);
+	signum = ev->ident;
 #endif
-	return (0);
+
+	for (sh = &signal_handlers[0]; sh->signum; sh++) {
+		if (sh->signum == signum) {
+			printlog(LOG_DEBUG, "caught signal %d", signum);
+			sh->handler(signum);
+			return (0);
+		}
+	}
+	printlog(LOG_ERR, "caught unhandled signal: %d", signum);
+	return (-1);
 }
 
 static void
 dispatch_event(void)
 {
+	void (*cb)(event_t *);
 	event_t ev;
 	int rv;
 
@@ -1261,8 +1264,9 @@ dispatch_event(void)
 #ifdef __linux__
 		rv = epoll_wait(eventfds.epfd, &ev, 1, -1);
 #else
-		rv = kevent(kqfd, NULL, 0, result, 1, NULL);
+		rv = kevent(kqfd, NULL, 0, &ev, 1, NULL);
 #endif
+	puts("got event");
 		if (rv < 0) {
 			if (errno == EINTR) {
 				printlog(LOG_ERR, "unexpected wakeup from unhandled signal");
@@ -1272,15 +1276,17 @@ dispatch_event(void)
 				//crash? return (-1);				
 			}
 		} else if (rv == 0) {
+				puts("fuckt");
+
 			continue;
 		} else {
+							puts("yay");
 #ifdef __linux__
-		typedef void (*event_handler)(event_t *);
-		event_handler fp = (event_handler) ev.data.ptr;
-		(*fp)(&ev);
+		cb = (void (*)(event_t *)) ev.data.ptr;
 #else
-		//FIXME
+		cb = (void (*)(event_t *)) ev.udata;
 #endif
+		(*cb)(&ev);
 		}
 	}
 }
@@ -1397,6 +1403,7 @@ main(int argc, char *argv[])
 
 		if (!strcmp(command, "help")) {
 			puts("no help yet");
+			rv = -1;
 		// } else if (!strcmp(command, "list")) {
 		// 	ipc_client_request();
 		} else if (!strcmp(command, "start")) {
