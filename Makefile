@@ -15,3 +15,6 @@ CFLAGS+=-g -O0
 
 jobd: jobd.c toml.c Makefile
 	$(CC) $(CFLAGS) -Wall -Werror -o jobd jobd.c toml.c -lrt
+
+clean:
+	rm -f jobd
