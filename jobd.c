@@ -48,7 +48,6 @@ static void sigchld_handler(int);
 static void sigalrm_handler(int);
 static void shutdown_handler(int);
 static void reload_configuration(int);
-static int dequeue_signal();
 
 /* Max length of a job ID. Equivalent to FILE_MAX */
 #define JOB_ID_MAX 255
@@ -58,7 +57,7 @@ static int dequeue_signal();
 level, __func__, __FILE__, __LINE__, ## __VA_ARGS__); \
 } while (0)
 
-const struct signal_handler {
+const static struct signal_handler {
 	int signum;
 	void (*handler)(int);
 } signal_handlers[] = {
@@ -95,6 +94,8 @@ typedef struct epoll_event event_t;
 static int kqfd = -1;
 typedef struct kevent event_t;
 #endif
+
+static int dequeue_signal(event_t *);
 
 struct ipc_request {
 	enum {
@@ -256,6 +257,7 @@ static int
 parse_bool(bool *result, toml_table_t *tab, const char *key, bool default_value)
 {
 	const char *raw;
+	int rv;
 
 	raw = toml_raw_in(tab, key);
 	if (!raw) {
@@ -263,7 +265,8 @@ parse_bool(bool *result, toml_table_t *tab, const char *key, bool default_value)
 		return (0);
 	}
 	
-	if (toml_rtob(raw, (int *)result)) {
+	if (toml_rtob(raw, &rv)) {
+		*result = rv;
 		return (0);	
 	} else {
  		return (-1);
@@ -1363,7 +1366,7 @@ main(int argc, char *argv[])
     }
 
     verbose = 0;
-    daemon = 0; //XXX-FIXME TEMP FOR TESTING
+    daemon = 1;
 	while ((c = getopt(argc, argv, "fv")) != -1) {
 			switch (c) {
 			case 'f':

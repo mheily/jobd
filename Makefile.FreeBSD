@@ -1,0 +1,10 @@
+# $FreeBSD$
+
+PROG=	jobd
+SRCS=   toml.c jobd.c
+LINKS=	${BINDIR}/jobd ${BINDIR}/job
+MAN=	jobd.8 job.8 job.5
+
+CFLAGS+= -D_WITH_DPRINTF
+
+.include <bsd.prog.mk>

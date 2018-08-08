@@ -16,5 +16,11 @@ CFLAGS+=-g -O0
 jobd: jobd.c toml.c Makefile
 	$(CC) $(CFLAGS) -Wall -Werror -o jobd jobd.c toml.c -lrt
 
+copy-to-freebsd-base:
+	mkdir -p /usr/src/sbin/jobd
+	cp Makefile.FreeBSD /usr/src/sbin/jobd/Makefile
+	cp *.c *.h *.8 *.5 /usr/src/sbin/jobd
+	cd /usr/src/sbin/jobd && make
+
 clean:
 	rm -f jobd
