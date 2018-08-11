@@ -4,7 +4,7 @@ CFLAGS+=-D_GNU_SOURCE
 # for libbsd
 #CFLAGS+=-isystem /usr/include/bsd -DLIBBSD_OVERLAY
 
-all: jobd
+all: jobd job
 
 # for debug
 CFLAGS+=-g -O0
@@ -12,6 +12,9 @@ CFLAGS+=-g -O0
 #install:
 #	install -d -m 755 -o 0 -g 0 /var/spool/job
 #	install -d -m 700 -o 0 -g 0 /var/spool/job/system
+
+job: jobd
+	ln -s jobd job
 
 jobd: jobd.c toml.c Makefile
 	$(CC) $(CFLAGS) -Wall -Werror -o jobd jobd.c toml.c -lrt
@@ -23,4 +26,4 @@ copy-to-freebsd-base:
 	cd /usr/src/sbin/jobd && make
 
 clean:
-	rm -f jobd
+	rm -f jobd job

@@ -19,6 +19,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <libgen.h>
 #include <pwd.h>
 #include <signal.h>
 #include <string.h>
@@ -1356,75 +1357,90 @@ create_ipc_socket(const char *socketpath, int is_server)
 	return (sd);
 }
 
-int
-main(int argc, char *argv[])
+void
+server_main(int argc, char *argv[])
 {
-    int c, daemon, verbose, is_server;
+	int c, daemon, verbose;
 
-    if (parse_jobd_conf(NULL) < 0) {
-	    err(1, "bad configuration file");
-    }
-
-    verbose = 0;
+	verbose = 0;
     daemon = 1;
 	while ((c = getopt(argc, argv, "fv")) != -1) {
-			switch (c) {
-			case 'f':
-					daemon = 0;
-					break;
-			case 'v':
-					verbose = 1;
-					break;
-			default:
-					usage();
-					break;
-			}
+		switch (c) {
+		case 'f':
+				daemon = 0;
+				break;
+		case 'v':
+				verbose = 1;
+				break;
+		default:
+				usage();
+				break;
+		}
 	}
 
-	is_server = (argc == 1); //KLUDGE; should look at argv[0]
-
-    if (daemon)
+	if (daemon)
         daemonize();
 
     if (verbose)
 		errx(1, "TODO");
 
-	ipc_sockfd = create_ipc_socket(config.socketpath, is_server);
+	create_event_queue();
+	register_signal_handlers();
+	(void)kill(getpid(), SIGHUP);
 
-	if (is_server) {
-		create_event_queue();
-		register_signal_handlers();
-		(void)kill(getpid(), SIGHUP);
+	for (;;) {
+		dispatch_event();
+	}
+	/* NOTREACHED */
+}
 
-		for (;;) {
-			dispatch_event();
-		}
-		/* NOTREACHED */
+void
+client_main(int argc, char *argv[])
+{
+	char *command = argv[1];
+	int rv;
+
+	if (!command)
+		errx(1, "command expected");
+		
+	if (!strcmp(command, "help")) {
+		puts("no help yet");
+		rv = -1;
+	// } else if (!strcmp(command, "list")) {
+	// 	ipc_client_request();
+	} else if (!strcmp(command, "start")) {
+		rv = ipc_client_request(IPC_REQUEST_START, argv[2]);
+	} else if (!strcmp(command, "stop")) {
+		rv = ipc_client_request(IPC_REQUEST_STOP, argv[2]);
+	} else if (!strcmp(command, "restart")) {
+		ipc_client_request(IPC_REQUEST_STOP, argv[2]);//ERRCHECK
+		rv = ipc_client_request(IPC_REQUEST_START, argv[2]);
 	} else {
-		char *command = argv[1];
-		int rv;
-
-		if (!strcmp(command, "help")) {
-			puts("no help yet");
-			rv = -1;
-		// } else if (!strcmp(command, "list")) {
-		// 	ipc_client_request();
-		} else if (!strcmp(command, "start")) {
-			rv = ipc_client_request(IPC_REQUEST_START, argv[2]);
-		} else if (!strcmp(command, "stop")) {
-			rv = ipc_client_request(IPC_REQUEST_STOP, argv[2]);
-		} else if (!strcmp(command, "restart")) {
-			ipc_client_request(IPC_REQUEST_STOP, argv[2]);//ERRCHECK
-			rv = ipc_client_request(IPC_REQUEST_START, argv[2]);
-		} else {
-			printlog(LOG_ERR, "unrecognized command: %s", command);
-			errx(1, "invalid command");
-		}
-		if (rv != IPC_RESPONSE_OK) {
-			fprintf(stderr, "ERROR: Request failed with retcode %d\n", rv);
-			exit(EXIT_FAILURE);
-		}
+		printlog(LOG_ERR, "unrecognized command: %s", command);
+		errx(1, "invalid command");
+	}
+	if (rv != IPC_RESPONSE_OK) {
+		fprintf(stderr, "ERROR: Request failed with retcode %d\n", rv);
+		exit(EXIT_FAILURE);
 	}
 
-    exit(EXIT_SUCCESS);
+	exit(EXIT_SUCCESS);
+}
+
+int
+main(int argc, char *argv[])
+{
+    int is_server;
+
+    if (parse_jobd_conf(NULL) < 0)
+	    err(1, "bad configuration file");
+
+	is_server = !strcmp(basename(argv[0]), "jobd");
+
+	ipc_sockfd = create_ipc_socket(config.socketpath, is_server);
+
+	if (is_server)
+		server_main(argc, argv);
+	else 
+		client_main(argc, argv);
 }
