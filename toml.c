@@ -226,13 +226,13 @@ int toml_ucs_to_utf8(int64_t code, char buf[6])
  */
 typedef struct toml_keyval_t toml_keyval_t;
 struct toml_keyval_t {
-    const char* key;		/* key to this value */
-    const char* val;		/* the raw value */
+    char* key;		/* key to this value */
+    char* val;		/* the raw value */
 };
 
 
 struct toml_array_t {
-    const char* key;		/* key to this array */
+    char* key;		/* key to this array */
     int kind; /* element kind: 'v'alue, 'a'rray, or 't'able */
     int type; /* for value kind: 'i'nt, 'd'ouble, 'b'ool, 's'tring, 't'ime, 'D'ate, 'T'imestamp */
     
@@ -246,7 +246,7 @@ struct toml_array_t {
     
 
 struct toml_table_t {
-    const char* key;		/* key to this table */
+    char* key;		/* key to this table */
     int implicit;		/* table was created implicitly */
 
     /* key-values in the table */
@@ -261,10 +261,6 @@ struct toml_table_t {
     int            ntab;
     toml_table_t** tab;
 };
-
-
-static inline void xfree(const void* x) { if (x) free((void*)x); }
-
 
 enum tokentype_t {
     INVALID,
@@ -392,7 +388,7 @@ static char* normalize_string(const char* src, int srclen,
 	if (off >=  max - 10) { /* have some slack for misc stuff */
 	    char* x = realloc(dst, max += 100);
 	    if (!x) {
-		xfree(dst);
+		free(dst);
 		snprintf(errbuf, errbufsz, "out of memory");
 		return 0;
 	    }
@@ -998,7 +994,7 @@ static void fill_tabpath(context_t* ctx)
     /* clear tpath */
     for (i = 0; i < ctx->tpath.top; i++) {
 	char** p = &ctx->tpath.key[i];
-	xfree(*p);
+	free(*p);
 	*p = 0;
     }
     ctx->tpath.top = 0;
@@ -1237,7 +1233,7 @@ toml_table_t* toml_parse(char* conf,
     if (0 != setjmp(ctx.jmp)) {
 	// Got here from a long_jmp. Something bad has happened.
 	// Free resources and return error.
-	for (int i = 0; i < ctx.tpath.top; i++) xfree(ctx.tpath.key[i]);
+	for (int i = 0; i < ctx.tpath.top; i++) free(ctx.tpath.key[i]);
 	toml_free(ctx.root);
 	return 0;
     }
@@ -1271,7 +1267,7 @@ toml_table_t* toml_parse(char* conf,
     }
 
     /* success */
-    for (int i = 0; i < ctx.tpath.top; i++) xfree(ctx.tpath.key[i]);
+    for (int i = 0; i < ctx.tpath.top; i++) free(ctx.tpath.key[i]);
     return ctx.root;
 }
 
@@ -1299,7 +1295,7 @@ toml_table_t* toml_parse_file(FILE* fp,
 	char* x = realloc(buf, bufsz + 1);
 	if (!x) {
 	    snprintf(errbuf, errbufsz, "out of memory");
-	    xfree(buf);
+	    free(buf);
 	    return 0;
 	}
 	buf = x;
@@ -1325,66 +1321,66 @@ toml_table_t* toml_parse_file(FILE* fp,
 }
 
 
-static void xfree_kval(toml_keyval_t* p)
+static void free_kval(toml_keyval_t* p)
 {
     if (!p) return;
-    xfree(p->key);
-    xfree(p->val);
-    xfree(p);
+    free(p->key);
+    free(p->val);
+    free(p);
 }
 
-static void xfree_tab(toml_table_t* p);
+static void free_tab(toml_table_t* p);
 
-static void xfree_arr(toml_array_t* p)
+static void free_arr(toml_array_t* p)
 {
     if (!p) return;
 
-    xfree(p->key);
+    free(p->key);
     switch (p->kind) {
     case 'v':
-	for (int i = 0; i < p->nelem; i++) xfree(p->u.val[i]);
-	xfree(p->u.val);
+	for (int i = 0; i < p->nelem; i++) free(p->u.val[i]);
+	free(p->u.val);
 	break;
 
     case 'a':
-	for (int i = 0; i < p->nelem; i++) xfree_arr(p->u.arr[i]);
-	xfree(p->u.arr);
+	for (int i = 0; i < p->nelem; i++) free_arr(p->u.arr[i]);
+	free(p->u.arr);
 	break;
 
     case 't':
-	for (int i = 0; i < p->nelem; i++) xfree_tab(p->u.tab[i]);
-	xfree(p->u.tab);
+	for (int i = 0; i < p->nelem; i++) free_tab(p->u.tab[i]);
+	free(p->u.tab);
 	break;
     }
 
-    xfree(p);
+    free(p);
 }
 
 
-static void xfree_tab(toml_table_t* p)
+static void free_tab(toml_table_t* p)
 {
     int i;
     
     if (!p) return;
     
-    xfree(p->key);
+    free(p->key);
     
-    for (i = 0; i < p->nkval; i++) xfree_kval(p->kval[i]);
-    xfree(p->kval);
+    for (i = 0; i < p->nkval; i++) free_kval(p->kval[i]);
+    free(p->kval);
 
-    for (i = 0; i < p->narr; i++) xfree_arr(p->arr[i]);
-    xfree(p->arr);
+    for (i = 0; i < p->narr; i++) free_arr(p->arr[i]);
+    free(p->arr);
 
-    for (i = 0; i < p->ntab; i++) xfree_tab(p->tab[i]);
-    xfree(p->tab);
+    for (i = 0; i < p->ntab; i++) free_tab(p->tab[i]);
+    free(p->tab);
 
-    xfree(p);
+    free(p);
 }
 
 
 void toml_free(toml_table_t* tab)
 {
-    xfree_tab(tab);
+    free_tab(tab);
 }
 
 
