@@ -1373,7 +1373,9 @@ server_main(int argc, char *argv[])
 				verbose = 1;
 				break;
 		default:
+				fputs("unrecognized command option", stderr);
 				usage();
+				exit(EXIT_FAILURE);
 				break;
 		}
 	}
@@ -1402,7 +1404,7 @@ client_main(int argc, char *argv[])
 
 	if (!command)
 		errx(1, "command expected");
-		
+
 	if (!strcmp(command, "help")) {
 		puts("no help yet");
 		rv = -1;
