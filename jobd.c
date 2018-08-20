@@ -55,7 +55,7 @@ static void reload_configuration(int);
 /* Max length of a job ID. Equivalent to FILE_MAX */
 #define JOB_ID_MAX 255
 
-const static struct signal_handler {
+static const struct signal_handler {
 	int signum;
 	void (*handler)(int);
 } signal_handlers[] = {
@@ -680,6 +680,7 @@ dequeue_signal(event_t *ev)
 	struct signalfd_siginfo fdsi;
 	ssize_t sz;
 
+	(void) ev;
 	sz = read(eventfds.signalfd, &fdsi, sizeof(fdsi));
 	if (sz != sizeof(fdsi))
 		err(1, "invalid read");
@@ -841,6 +842,7 @@ client_main(int argc, char *argv[])
 	char *command = argv[1];
 	int rv;
 
+	(void) argc;
 	if (!command)
 		errx(1, "command expected");
 
