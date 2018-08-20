@@ -43,7 +43,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "toml.h"
+#include "array.h"
+#include "logger.h"
+#include "job.h"
 
 static void sigchld_handler(int);
 static void sigalrm_handler(int);
@@ -52,11 +54,6 @@ static void reload_configuration(int);
 
 /* Max length of a job ID. Equivalent to FILE_MAX */
 #define JOB_ID_MAX 255
-
-#define printlog(level, format,...) do {				\
-	dprintf(logfd, "%d %s(%s:%d): "format"\n",		\
-level, __func__, __FILE__, __LINE__, ## __VA_ARGS__); \
-} while (0)
 
 const static struct signal_handler {
 	int signum;
@@ -67,15 +64,6 @@ const static struct signal_handler {
 	{ SIGINT, &shutdown_handler },
 	{ SIGTERM, &shutdown_handler },
 	{ 0, NULL}
-};
-
-enum job_state {
-	JOB_STATE_UNKNOWN,
-	JOB_STATE_STARTING,
-	JOB_STATE_RUNNING,
-	JOB_STATE_STOPPING,
-	JOB_STATE_STOPPED,
-	JOB_STATE_ERROR
 };
 
 static struct config {
@@ -124,39 +112,8 @@ static volatile sig_atomic_t sigalrm_flag = 0;
 
 static void daemonize(void);
 
-struct job {
-	LIST_ENTRY(job) entries;
-	pid_t pid;
-	enum job_state state;
-	bool exited;
-	int last_exit_status, term_signal;
-	size_t incoming_edges;
-
-	/* Items below here are parsed from the manifest */
-    char **before, **after;
-    char *id;
-    char *description;
-    bool enable, enable_globbing;
-    char **environment_variables;
-    gid_t gid;
-    bool init_groups;
-    bool keep_alive;
-    char *title;
-    char **argv;
-    char *root_directory;
-    char *standard_error_path;
-    char *standard_in_path;
-    char *standard_out_path;
-    mode_t umask;
-    uid_t uid;
-	char *user_name;
-    char *working_directory;
-};
-
-static int logfd = STDOUT_FILENO;
 static LIST_HEAD(job_list, job) all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
 
-static void job_free(struct job *);
 static struct job *find_job_by_id(const struct job_list *jobs, const char *id);
 static void schedule(void);
 
@@ -204,405 +161,6 @@ static void
 usage(void) 
 {
 	printf("todo\n");
-}
-
-static bool
-string_array_contains(char **haystack, const char *needle)
-{
-	char **p;
-	if (haystack) {
-		for (p = haystack; *p; p++) {
-			if (!strcmp(*p, needle))
-				return (true);
-		}
-	}
-	return (false);
-}
-
-static void
-string_array_free(char **strarr)
-{
-	char **p;
-
-	if (strarr) {
-		for (p = strarr; *p; p++) {
-			free(*p);
-		}
-		free(strarr);
-	}
-}
-
-static void 
-job_free(struct job *job)
-{
-
-	if (job) {
-		string_array_free(job->after);
-		string_array_free(job->before);
-		free(job->description);
-		string_array_free(job->environment_variables);
-		free(job->id);
-		free(job->title);
-		string_array_free(job->argv);
-		free(job->root_directory);
-		free(job->standard_error_path);
-		free(job->standard_in_path);
-		free(job->standard_out_path);
-		free(job->working_directory);
-		free(job->user_name);
-		free(job);
-	}
-}
-
-static int
-parse_bool(bool *result, toml_table_t *tab, const char *key, bool default_value)
-{
-	const char *raw;
-	int rv;
-
-	raw = toml_raw_in(tab, key);
-	if (!raw) {
-		*result = default_value;
-		return (0);
-	}
-	
-	if (toml_rtob(raw, &rv)) {
-		*result = rv;
-		return (0);	
-	} else {
- 		return (-1);
-	}
-}
-
-static int
-parse_string(char **result, toml_table_t *tab, const char *key, const char *default_value)
-{
-	const char *raw;
-
-	raw = toml_raw_in(tab, key);
-	if (!raw) {
-		if (default_value) {
-			*result = strdup(default_value);
-			if (!*result) {
-				printlog(LOG_ERR, "strdup(3): %s", strerror(errno));
-				goto err;
-			}
-			return (0);
-		} else {
-			printlog(LOG_ERR, "no value provided for %s and no default", key);
-			goto err;
-		}
-	}
-	
-	if (toml_rtos(raw, result)) {
-		printlog(LOG_ERR, "invalid value for %s", key);
-		*result = NULL;
-		return (-1);
-	}
-
-	return (0);
-
-err:
-	*result = NULL;
-	return (-1);
-}
-
-static int
-parse_gid(gid_t *result, toml_table_t *tab, const char *key, const gid_t default_value)
-{
-	struct group *grp;
-	const char *raw;
-	char *buf;
-
-	raw = toml_raw_in(tab, key);
-	if (!raw) {
-		*result = default_value;
-		return (0);
-	}
-	
-	if (toml_rtos(raw, &buf)) {
-		printlog(LOG_ERR, "invalid value for %s", key);
-		*result = -1;
-		return (-1);
-	}
-
-	grp = getgrnam(buf);
-	if (grp) {
-		*result = grp->gr_gid;
-		free(buf);
-		return (0);
-	} else {
-		printlog(LOG_ERR, "group not found: %s", buf);
-		free(buf);
-		return (-1);
-	}
-}
-
-static int
-parse_uid(uid_t *result, toml_table_t *tab, const char *key, const uid_t default_value)
-{
-	struct passwd *pwd;
-	const char *raw;
-	char *buf;
-
-	raw = toml_raw_in(tab, key);
-	if (!raw) {
-		*result = default_value;
-		return (0);
-	}
-	
-	if (toml_rtos(raw, &buf)) {
-		printlog(LOG_ERR, "invalid value for %s", key);
-		*result = -1;
-		return (-1);
-	}
-
-	pwd = getpwnam(buf);
-	if (pwd) {
-		*result = pwd->pw_uid;
-		free(buf);
-		return (0);
-	} else {
-		printlog(LOG_ERR, "user not found: %s", buf);
-		free(buf);
-		return (-1);
-	}
-}
-
-static int
-uid_to_name(char **name, uid_t uid)
-{
-	struct passwd *pwd;
-
-	pwd = getpwuid(uid);
-	if (pwd) {
-		*name = strdup(pwd->pw_name);
-		if (*name == NULL) {
-			printlog(LOG_ERR, "strdup(3): %s", strerror(errno));
-			return (-1);	
-		} else {
-			return (0);
-		}
-	} else {
-		printlog(LOG_ERR, "user not found for uid %d", uid);
-		return (-1);
-	}
-}
-
-static int
-parse_program(struct job *j, toml_table_t *tab)
-{
-	toml_array_t* arr;
-	char *val;
-	const char *raw;
-	size_t nelem;
-	int i;
-
-	arr = toml_array_in(tab, "Program");
-	if (!arr) {
-		return (0);
-	}
-
-	for (nelem = 0; (raw = toml_raw_at(arr, nelem)) != 0; nelem++) {}
-
-	j->argv = calloc(nelem + 1, sizeof(char *));
-	if (!j->argv) {
-		printlog(LOG_ERR, "calloc: %s", strerror(errno));
-		return (-1);
-	}
-
-	raw = toml_raw_at(arr, 0);
-	if (!raw) {
-		printlog(LOG_ERR, "empty Program array");
-		return (-1);
-	}
-	if (toml_rtos(raw, &j->argv[0])) {
-		printlog(LOG_ERR, "parse error parsing Program element 0");
-	}
-	for (i = 0; (raw = toml_raw_at(arr, i)) != 0; i++) {
-		if (!raw || toml_rtos(raw, &val)) {
-			printlog(LOG_ERR, "error parsing Program element %d", i);
-			return (-1);
-		} else {
-			j->argv[i] = val;
-		}
-	}
-	j->argv[i] = NULL;
-
-	return (0);
-}
-
-//TODO: refactor parse_program to use the func below
-static int
-parse_array_of_strings(char ***result, toml_table_t *tab, const char *top_key)
-{
-	toml_array_t* arr;
-	char *val;
-	const char *raw;
-	size_t nelem;
-	int i;
-	char **strarr;
-
-	arr = toml_array_in(tab, top_key);
-	if (!arr) {
-		*result = calloc(1, sizeof(char *));
-		if (*result) {
-			return (0);
-		} else {
-			printlog(LOG_ERR, "calloc: %s", strerror(errno));
-			return (-1);
-		}
-	}
-
-	for (nelem = 0; (raw = toml_raw_at(arr, nelem)) != 0; nelem++) {}
-
-	strarr = calloc(nelem + 1, sizeof(char *));
-	if (!strarr) {
-		printlog(LOG_ERR, "calloc: %s", strerror(errno));
-		return (-1);
-	}
-
-	for (i = 0; (raw = toml_raw_at(arr, i)) != 0; i++) {
-		if (!raw || toml_rtos(raw, &val)) {
-			printlog(LOG_ERR, "error parsing %s element %d", top_key, i);
-			//FIXME: free strarr
-			return (-1);
-		} else {
-			strarr[i] = val;
-		}
-	}
-
-	*result = strarr;
-
-	return (0);
-}
-
-static int
-parse_environment_variables(struct job *j, toml_table_t *tab)
-{
-	toml_table_t* subtab;
-	const char *key;
-	char *val, *keyval;
-	const char *raw;
-	size_t nkeys;
-	int i;
-
-	subtab = toml_table_in(tab, "EnvironmentVariables");
-	if (!subtab) {
-		j->environment_variables = malloc(sizeof(char *));
-		j->environment_variables[0] = NULL;
-		return (0);
-	}
-
-	for (nkeys = 0; (key = toml_key_in(subtab, nkeys)) != 0; nkeys++) {}
-
-	j->environment_variables = calloc(nkeys + 1, sizeof(char *));
-	if (!j->environment_variables) {
-		printlog(LOG_ERR, "calloc: %s", strerror(errno));
-		return (-1);
-	}
-		
-	for (i = 0; (key = toml_key_in(subtab, i)) != 0; i++) {
-		raw = toml_raw_in(subtab, key);
-		if (!raw || toml_rtos(raw, &val)) {
-			printlog(LOG_ERR, "error parsing %s", key);
-			j->environment_variables[i] = NULL;
-			return (-1);
-		}
-		if (asprintf(&keyval, "%s=%s", key, val) < 0) {
-			printlog(LOG_ERR, "asprintf: %s", strerror(errno));
-			free(val);
-		}
-		free(val);
-
-		j->environment_variables[i] = keyval;
-	}
-	j->environment_variables[i] = NULL;
-
-	return (0);
-}
-
-static int
-parse_job_file(struct job **result, const char *path, const char *id)
-{
-	FILE *fh;
-	char errbuf[256];
-	toml_table_t *tab = NULL;
-	char *buf;
-	struct job *j;
-
-	j = calloc(1, sizeof(*j));
-	if (!j) {
-		printlog(LOG_ERR, "calloc: %s", strerror(errno));
-		return (-1);
-	}
-		
-	fh = fopen(path, "r");
-	if (!fh) {
-		printlog(LOG_ERR, "fopen(3) of %s: %s", path, strerror(errno));
-		goto err;
-	}
-
-	tab = toml_parse_file(fh, errbuf, sizeof(errbuf));
-	(void) fclose(fh);
-	if (!tab) {
-		printlog(LOG_ERR, "failed to parse %s", path);
-		goto err;
-	}
-
-	j->id = strdup(id);
-	if (parse_string(&j->description, tab, "Description", ""))
-		goto err;
-	if (parse_array_of_strings(&j->after, tab, "After"))
-		goto err;
-	if (parse_array_of_strings(&j->before, tab, "Before"))
-		goto err;
-	if (parse_bool(&j->enable, tab, "Enable", true))
-		goto err;
-	if (parse_bool(&j->enable_globbing, tab, "EnableGlobbing", false))
-		goto err;
-	if (parse_environment_variables(j, tab))
-		goto err;
-	if (parse_gid(&j->gid, tab, "Group", getgid()))
-		goto err;
-	if (parse_bool(&j->init_groups, tab, "InitGroups", true))
-		goto err;
-	if (parse_bool(&j->keep_alive, tab, "KeepAlive", false))
-		goto err;
-	if (parse_string(&j->title, tab, "Title", id))
-		goto err;
-	if (parse_program(j, tab))
-		goto err;
-	if (parse_string(&j->root_directory, tab, "RootDirectory", "/"))
-		goto err;
-	if (parse_string(&j->standard_error_path, tab, "StandardErrorPath", "/dev/null"))
-		goto err;
-	if (parse_string(&j->standard_in_path, tab, "StandardInPath", "/dev/null"))
-		goto err;
-	if (parse_string(&j->standard_out_path, tab, "StandardOutPath", "/dev/null"))
-		goto err;
-	
-	if (parse_string(&buf, tab, "Umask", "0077"))
-		goto err;
-	sscanf(buf, "%hi", (unsigned short *) &j->umask);
-	free(buf);
-
-	if (parse_uid(&j->uid, tab, "User", getuid()))
-		goto err;
-	if (uid_to_name(&j->user_name, j->uid))
-		goto err;
-
-	if (parse_string(&j->working_directory, tab, "WorkingDirectory", "/"))
-		goto err;
-
-	toml_free(tab);
-	*result = j;
-	return (0);
-
-err:
-	toml_free(tab);
-	job_free(j);
-	return (-1);
 }
 
 static struct job *
@@ -741,121 +299,6 @@ unspool(const char *configdir)
 }
 
 static int
-redirect_file_descriptor(int oldfd, const char *path, int flags, mode_t mode)
-{
-	int newfd;
-
-	newfd = open(path, flags, mode);
-	if (newfd < 0) {
-		printlog(LOG_ERR, "open(2) of %s: %s", path, strerror(errno));
-		return (-1);
-	}
-	if (dup2(newfd, oldfd) < 0) {
-		printlog(LOG_ERR, "dup2(2): %s", strerror(errno));
-		(void) close(newfd);
-		return (-1);
-	}
-	if (close(newfd) < 0) {
-		printlog(LOG_ERR, "close(2): %s", strerror(errno));
-		return (-1);
-	}
-
-	return (0);
-}
-
-static int
-start(struct job *job)
-{
-	sigset_t mask;
-
-	if (job->state != JOB_STATE_STOPPED)
-		return (-IPC_RESPONSE_INVALID_STATE);
-
-	job->pid = fork();
-	if (job->pid < 0) {
-		printlog(LOG_ERR, "fork(2): %s", strerror(errno));
-		return (-1);
-	} else if (job->pid == 0) {
-		(void)setsid();
-
-		sigfillset(&mask);
-		(void) sigprocmask(SIG_UNBLOCK, &mask, NULL);
-
-		//TODO: setrlimit
-		if (chdir(job->working_directory) < 0) {
-			printlog(LOG_ERR, "chdir(2) to %s: %s", job->working_directory, strerror(errno));
-			exit(EXIT_FAILURE);
-		}
-		if (getuid() == 0) {
-			if (strcmp(job->root_directory, "/") && (chroot(job->root_directory) < 0)) {
-				printlog(LOG_ERR, "chroot(2) to %s: %s", job->root_directory, strerror(errno));
-				exit(EXIT_FAILURE);
-			}
-			if (job->init_groups && (initgroups(job->user_name, job->gid) < 0)) {
-				printlog(LOG_ERR, "initgroups(3): %s", strerror(errno));
-				exit(EXIT_FAILURE);
-			}
-			if (setgid(job->gid) < 0) {
-				printlog(LOG_ERR, "setgid(2): %s", strerror(errno));
-				exit(EXIT_FAILURE);
-			}
-#ifndef __GLIBC__
-			/* KLUDGE: above is actually a test for BSD */
-			if (setlogin(job->user_name) < 0) {
-				printlog(LOG_ERR, "setlogin(2): %s", strerror(errno));
-				exit(EXIT_FAILURE);
-			}
-#endif
-			if (setuid(job->uid) < 0) {
-				printlog(LOG_ERR, "setuid(2): %s", strerror(errno));
-				exit(EXIT_FAILURE);
-			}
-		}
-		(void) umask(job->umask);
-
-		//TODO this->setup_environment();
-		//this->createDescriptors();
-
-		// TODO: deal with globbing
-
-		if (logfd == STDOUT_FILENO) {
-			logfd = dup(logfd);
-			if (fcntl(logfd, F_SETFD, FD_CLOEXEC) < 0)
-				err(1, "fcntl(2)");
-		}
-		if (redirect_file_descriptor(STDIN_FILENO, job->standard_in_path, O_RDONLY, 0600) < 0) {
-			printlog(LOG_ERR, "unable to redirect STDIN");
-			exit(EXIT_FAILURE);
-		}
-		if (redirect_file_descriptor(STDOUT_FILENO, job->standard_out_path, O_CREAT | O_WRONLY, 0600) < 0) {
-			printlog(LOG_ERR, "unable to redirect STDOUT");
-			exit(EXIT_FAILURE);
-		}
-		if (redirect_file_descriptor(STDERR_FILENO, job->standard_error_path, O_CREAT | O_WRONLY, 0600) < 0) {
-			printlog(LOG_ERR, "unable to redirect STDERR");
-			exit(EXIT_FAILURE);
-		}
-		if (execve(job->argv[0], job->argv, job->environment_variables) < 0) {
-			printlog(LOG_ERR, "execve(2): %s", strerror(errno));
-			exit(EXIT_FAILURE);
-    	}
-		/* NOTREACHED */
-	} else {
-		/*
-		job->state = JOB_STATE_STARTING;
-		
-		TODO: allow the use of a check script that waits for the service to finish initializing.
-		*/
-		job->state = JOB_STATE_RUNNING;
-
-		//TODO: manager
-		printlog(LOG_DEBUG, "job %s started with pid %d", job->id, job->pid);
-	}
-
-	return (0);
-}
-
-static int
 stop(struct job *job)
 {
 	if (job->state != JOB_STATE_RUNNING)
@@ -886,7 +329,7 @@ schedule(void)
 			case JOB_STATE_UNKNOWN:
 				job->state = JOB_STATE_STOPPED;
 				if (job->enable)
-					start(job);
+					job_start(job);
 				break;
 			case JOB_STATE_STOPPED:
 				break;
@@ -1082,7 +525,7 @@ ipc_server_handler(event_t *ev __attribute__((unused)))
 	struct ipc_response res;
 	int (*jump_table[IPC_REQUEST_MAX])(struct job *) = {
 		NULL,
-		&start,
+		&job_start,
 		&stop
 	};
 	
@@ -1270,7 +713,6 @@ dispatch_event(void)
 #else
 		rv = kevent(kqfd, NULL, 0, &ev, 1, NULL);
 #endif
-	puts("got event");
 		if (rv < 0) {
 			if (errno == EINTR) {
 				printlog(LOG_ERR, "unexpected wakeup from unhandled signal");
@@ -1280,11 +722,9 @@ dispatch_event(void)
 				//crash? return (-1);				
 			}
 		} else if (rv == 0) {
-				puts("fuckt");
-
+			printlog(LOG_DEBUG, "spurious wakeup");
 			continue;
 		} else {
-							puts("yay");
 #ifdef __linux__
 		cb = (void (*)(event_t *)) ev.data.ptr;
 #else
@@ -1383,8 +823,7 @@ server_main(int argc, char *argv[])
 	if (daemon)
         daemonize();
 
-    if (verbose)
-		errx(1, "TODO");
+	logger_set_verbose(verbose);
 
 	create_event_queue();
 	register_signal_handlers();
@@ -1432,7 +871,10 @@ client_main(int argc, char *argv[])
 int
 main(int argc, char *argv[])
 {
-    int is_server;
+	int is_server;
+
+	if (logger_init() < 0)
+		errx(1, "logger_init");
 
     if (parse_jobd_conf(NULL) < 0)
 	    err(1, "bad configuration file");
