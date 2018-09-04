@@ -35,7 +35,6 @@
 #ifdef __linux__
 #include <sys/epoll.h>
 #include <sys/signalfd.h>
-#include "queue.h"
 #else
 #include <sys/event.h>
 #include <sys/queue.h>
@@ -44,8 +43,11 @@
 #include <unistd.h>
 
 #include "array.h"
+#include "database.h"
 #include "logger.h"
 #include "job.h"
+#include "ipc.h"
+#include "tsort.h"
 
 static void sigchld_handler(int);
 static void sigalrm_handler(int);
@@ -86,35 +88,12 @@ typedef struct kevent event_t;
 
 static int dequeue_signal(event_t *);
 
-struct ipc_request {
-	enum {
-		IPC_REQUEST_UNDEFINED,
-		IPC_REQUEST_START,
-		IPC_REQUEST_STOP,
-		IPC_REQUEST_MAX, /* Not a real opcode, just setting the maximum number of codes */
-	} opcode;
-	char job_id[JOB_ID_MAX + 1];
-};
-
-struct ipc_response {
-	enum {
-		IPC_RESPONSE_OK,
-		IPC_RESPONSE_ERROR,
-		IPC_RESPONSE_NOT_FOUND,
-		IPC_RESPONSE_INVALID_STATE,
-	} retcode;
-};
-
-static struct sockaddr_un ipc_server_addr;
-static int ipc_sockfd = -1;
 static bool jobd_is_shutting_down = false;
 static volatile sig_atomic_t sigalrm_flag = 0;
 
 static void daemonize(void);
+static struct job_list all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
 
-static LIST_HEAD(job_list, job) all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
-
-static struct job *find_job_by_id(const struct job_list *jobs, const char *id);
 static void schedule(void);
 
 static void
@@ -163,136 +142,18 @@ usage(void)
 	printf("todo\n");
 }
 
-static struct job *
-find_job_by_id(const struct job_list *jobs, const char *id)
-{
-	struct job *job;
-
-	LIST_FOREACH(job, jobs, entries) {
-		if (!strcmp(id, job->id)) {
-			return job;
-		}
-	}
-	return (NULL);
-}
-
-/* This sorting algorithm is not efficient, but is fairly simple. */
 static int
-topological_sort(struct job_list *dest, struct job_list *src)
-{
-	struct job *cur, *tmp, *tail;
-	char **id_p;
-
-	/* Find all incoming edges and keep track of how many each node has */
-	LIST_FOREACH(cur, src, entries) {
-		LIST_FOREACH(tmp, src, entries) {
-			if (cur != tmp && string_array_contains(cur->after, tmp->id)) {
-				printlog(LOG_DEBUG, "edge from %s to %s", tmp->id, cur->id);
-				cur->incoming_edges++;
-			}
-		}
-	}
-	LIST_FOREACH(cur, src, entries) {
-		LIST_FOREACH(tmp, src, entries) {
-			if (cur != tmp && string_array_contains(cur->before, tmp->id)) {
-				printlog(LOG_DEBUG, "edge from %s to %s", cur->id, tmp->id);
-				tmp->incoming_edges++;
-			}
-		}
-	}
-
-	/* Iteratively remove nodes with zero incoming edges */
-	tail = NULL;
-	while (!LIST_EMPTY(src)) {
-		cur = NULL;
-		LIST_FOREACH(tmp, src, entries) {
-			if (tmp->incoming_edges == 0) {
-				cur = tmp;
-				break;
-			}
-		}
-
-		if (cur) {
-			/* Update edge counts to reflect the removal of <cur> */
-			for (id_p = cur->before; *id_p; id_p++) {
-				tmp = find_job_by_id(src, *id_p);
-				if (tmp) {
-					printlog(LOG_DEBUG, "removing edge from %s to %s", cur->id, tmp->id);
-					tmp->incoming_edges--;
-				}
-			}
-			LIST_FOREACH(tmp, src, entries) {
-				if (cur != tmp && string_array_contains(tmp->after, cur->id)) {
-					printlog(LOG_DEBUG, "removing edge from %s to %s", cur->id, tmp->id);
-					tmp->incoming_edges--;
-				}
-			}
-
-			/* Remove <cur> and place it on the sorted destination list */
-			LIST_REMOVE(cur, entries);
-			if (tail) {
-				LIST_INSERT_AFTER(tail, cur, entries);
-			} else {
-				LIST_INSERT_HEAD(dest, cur, entries);
-			}
-			tail = cur;
-			continue;
-		} else {
-			/* Any leftover nodes are part of a cycle. */
-			LIST_FOREACH_SAFE(cur, src, entries, tmp) {
-				LIST_REMOVE(cur, entries);
-				printlog(LOG_WARNING, "job %s is part of a cycle", cur->id);
-				cur->state = JOB_STATE_ERROR;
-				LIST_INSERT_AFTER(tail, cur, entries);
-				tail = cur;
-			}
-		}
-	}
-
-	return (0);
-}
-
-static int
-unspool(const char *configdir)
+unspool(void)
 {
 	struct job_list tmpjobs;
-	DIR	*dirp;
-	struct dirent *entry;
-	struct job *job;
-	char *path;
 
 	LIST_INIT(&tmpjobs);
 
-	if ((dirp = opendir(configdir)) == NULL)
-		err(1, "opendir(3) of %s", configdir);
-
-	while (dirp) {
-        errno = 0;
-        entry = readdir(dirp);
-        if (errno != 0)
-            err(1, "readdir(3)");
-		if (!entry)
-            break;
-		if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, ".."))
-			continue;
-		if (asprintf(&path, "%s/%s", configdir, entry->d_name) < 0)
-			err(1, "asprintf");
-		printlog(LOG_DEBUG, "parsing %s", path);
-		if (parse_job_file(&job, path, entry->d_name) != 0) {
-			printlog(LOG_ERR, "error parsing %s", path);
-			free(path);
-			continue;
-		}
-		free(path);
-
-		LIST_INSERT_HEAD(&tmpjobs, job, entries);
-	}
-	if (closedir(dirp) < 0) {
-		err(1, "closedir(3)");
-	}
-
+	if (job_db_select_all(&tmpjobs) < 0)
+		return (-1);
+	
 	if (topological_sort(&all_jobs, &tmpjobs) < 0) {
-		errx(1, "topological_sort() failed");
+		return (-1);
 	}
 
 	return (0);
@@ -324,6 +185,8 @@ schedule(void)
 {
 	struct job *job;
 
+	printlog(LOG_DEBUG, "scheduling jobs");
+	
 	LIST_FOREACH(job, &all_jobs, entries) {
 		switch (job->state) {
 			case JOB_STATE_UNKNOWN:
@@ -438,7 +301,7 @@ shutdown_handler(int signum)
 static void
 reload_configuration(int signum __attribute__((unused)))
 {
-	unspool(config.configdir);
+	unspool();
 	schedule();
 }
 
@@ -458,6 +321,14 @@ reload_configuration(int signum __attribute__((unused)))
 // 	res->status = 0;
 // 	res->message[0] = "\0";
 // }
+
+static int
+update_status(struct job *unused)
+{
+	(void) unused;
+	puts("wheeeeee");
+	return (0);
+}
 
 static int
 parse_jobd_conf(const char *user_provided_path)
@@ -489,11 +360,8 @@ parse_jobd_conf(const char *user_provided_path)
 		config.shutdown_timeout = 300;
 		if (getuid() == 0) {
 			config.configdir = strdup("/etc/job.d");
-			config.socketpath = strdup("/var/run/jobd.sock");
 		} else {
 			if (asprintf(&config.configdir, "%s/.config/job.d", getenv("HOME")) < 0)
-				goto enomem;
-			if (asprintf(&config.socketpath, "%s/.jobd.sock", getenv("HOME")) < 0)
 				goto enomem;
 		}
 		if (!config.configdir) {
@@ -521,71 +389,41 @@ ipc_server_handler(event_t *ev __attribute__((unused)))
 	ssize_t bytes;
 	struct sockaddr_un client_addr;
 	socklen_t len;
+	int sfd;
 	struct ipc_request req;
 	struct ipc_response res;
 	int (*jump_table[IPC_REQUEST_MAX])(struct job *) = {
 		NULL,
 		&job_start,
-		&stop
+		&stop,
+		&update_status,
 	};
 	
+	sfd = ipc_get_sockfd();
 	len = sizeof(struct sockaddr_un);
-	bytes = recvfrom(ipc_sockfd, &req, sizeof(req), 0, (struct sockaddr *) &client_addr, &len);
+	bytes = recvfrom(sfd, &req, sizeof(req), 0, (struct sockaddr *) &client_addr, &len);
     if (bytes < 0) {
 		err(1, "recvfrom(2)");
 	}
 
 	printlog(LOG_DEBUG, "got IPC request; opcode=%d job_id=%s", req.opcode, req.job_id);
 	if (req.opcode > 0 && req.opcode < IPC_REQUEST_MAX) {
-		struct job *job = find_job_by_id(&all_jobs, req.job_id);
-		if (job) {
-			res.retcode = (*jump_table[req.opcode])(job);
+		if (req.job_id[0] == '\0') {
+			res.retcode = (*jump_table[req.opcode])(NULL);
 		} else {
-			res.retcode = IPC_RESPONSE_NOT_FOUND;
+			struct job *job = job_list_lookup(&all_jobs, req.job_id);
+			if (job) {
+				res.retcode = (*jump_table[req.opcode])(job);
+			} else {
+				res.retcode = IPC_RESPONSE_NOT_FOUND;
+			}
 		}
 	}
     
 	printlog(LOG_DEBUG, "sending IPC response; retcode=%d", res.retcode);
-	if (sendto(ipc_sockfd, &res, sizeof(res), 0, (struct sockaddr*) &client_addr, len) < 0) {
+	if (sendto(sfd, &res, sizeof(res), 0, (struct sockaddr*) &client_addr, len) < 0) {
 		err(1, "sendto(2)");
 	}
-}
-
-static int
-ipc_client_request(int opcode, char *job_id)
-{
-	ssize_t bytes;
-	struct sockaddr_un sa_to, sa_from;
-	socklen_t len;
-	struct ipc_request req;
-	struct ipc_response res;
-
-	memset(&sa_to, 0, sizeof(struct sockaddr_un));
-    sa_to.sun_family = AF_UNIX;
-	if (strlen(config.socketpath) > sizeof(sa_to.sun_path) - 1)
-		errx(1, "socket path is too long");
-    strncpy(sa_to.sun_path, config.socketpath, sizeof(sa_to.sun_path) - 1);
-
-	req.opcode = opcode;
-	if (job_id) {
-		strncpy((char*)&req.job_id, job_id, JOB_ID_MAX);
-		req.job_id[JOB_ID_MAX] = '\0';
-	} else {
-		req.job_id[0] = '\0';
-	}
-	len = (socklen_t) sizeof(struct sockaddr_un);
-	if (sendto(ipc_sockfd, &req, sizeof(req), 0, (struct sockaddr*) &sa_to, len) < 0) {
-		err(1, "sendto(2)");
-	}
-	printlog(LOG_DEBUG, "sent IPC request; opcode=%d job_id=%s", req.opcode, req.job_id);
-
-	len = sizeof(struct sockaddr_un);
-	bytes = recvfrom(ipc_sockfd, &res, sizeof(res), 0, (struct sockaddr *) &sa_from, &len);
-    if (bytes < 0) {
-		err(1, "recvfrom(2)");
-	}
-	printlog(LOG_DEBUG, "got IPC response; retcode=%d", res.retcode);
-	return (res.retcode);
 }
 
 static void
@@ -611,7 +449,7 @@ create_event_queue(void)
 	
 	ev.events = EPOLLIN;
 	ev.data.ptr = &ipc_server_handler;
-	if (epoll_ctl(eventfds.epfd, EPOLL_CTL_ADD, ipc_sockfd, &ev) < 0)
+	if (epoll_ctl(eventfds.epfd, EPOLL_CTL_ADD, ipc_get_sockfd(), &ev) < 0)
 		err(1, "epoll_ctl(2)");
 #else
 	struct kevent kev;
@@ -759,45 +597,6 @@ sigchld_handler(int signum __attribute__((unused)))
 	}
 }
 
-static int
-create_ipc_socket(const char *socketpath, int is_server)
-{
-	int sd;
-	struct sockaddr_un saun;
-
-    sd = socket(AF_UNIX, SOCK_DGRAM, 0);
-	if (sd < 0)
-		err(1, "socket(2)");
-
-	memset(&saun, 0, sizeof(saun));
-	saun.sun_family = AF_UNIX;
-	if (strlen(socketpath) > sizeof(saun.sun_path) - 1)
-		errx(1, "socket path is too long");
-	strncpy(saun.sun_path, socketpath, sizeof(saun.sun_path) - 1);
-		
-	if (is_server) {
-		memcpy(&ipc_server_addr, &saun, sizeof(ipc_server_addr));
-
-		if (bind(sd, (struct sockaddr *) &saun, sizeof(saun)) < 0) {
-			if (errno == EADDRINUSE) {
-				//TODO: check for multiple jobd instances
-				unlink(socketpath);
-				if (bind(sd, (struct sockaddr *) &saun, sizeof(saun)) < 0)
-					err(1, "bind(2)");
-			} else {
-				err(1, "bind(2)");
-			}
-		}
-	} else {
-		memset(&saun, 0, sizeof(saun));
-    	saun.sun_family = AF_UNIX;
-		if (bind(sd, (struct sockaddr *) &saun, sizeof(saun)) < 0)
-			err(1, "connect(2)");
-	}
-
-	return (sd);
-}
-
 void
 server_main(int argc, char *argv[])
 {
@@ -825,7 +624,8 @@ server_main(int argc, char *argv[])
         daemonize();
 
 	logger_set_verbose(verbose);
-
+	if (ipc_bind() < 0)
+		errx(1, "ipc_connect");
 	create_event_queue();
 	register_signal_handlers();
 	(void)kill(getpid(), SIGHUP);
@@ -842,6 +642,9 @@ client_main(int argc, char *argv[])
 	char *command = argv[1];
 	int rv;
 
+	if (ipc_connect() < 0)
+		errx(1, "ipc_connect");
+
 	(void) argc;
 	if (!command)
 		errx(1, "command expected");
@@ -855,6 +658,8 @@ client_main(int argc, char *argv[])
 		rv = ipc_client_request(IPC_REQUEST_START, argv[2]);
 	} else if (!strcmp(command, "stop")) {
 		rv = ipc_client_request(IPC_REQUEST_STOP, argv[2]);
+	} else if (!strcmp(command, "status")) {
+		rv = ipc_client_request(IPC_REQUEST_STATUS, NULL);
 	} else if (!strcmp(command, "restart")) {
 		ipc_client_request(IPC_REQUEST_STOP, argv[2]);//ERRCHECK
 		rv = ipc_client_request(IPC_REQUEST_START, argv[2]);
@@ -878,12 +683,19 @@ main(int argc, char *argv[])
 	if (logger_init() < 0)
 		errx(1, "logger_init");
 
+	if (db_init() < 0)
+		errx(1, "unable to initialize the database routines");
+
+	if (db_open(NULL, false) < 0)
+		errx(1, "unable to open the database");
+
     if (parse_jobd_conf(NULL) < 0)
 	    err(1, "bad configuration file");
 
 	is_server = !strcmp(basename(argv[0]), "jobd");
 
-	ipc_sockfd = create_ipc_socket(config.socketpath, is_server);
+	if (ipc_init(NULL) < 0)
+		errx(1, "ipc_init");
 
 	if (is_server)
 		server_main(argc, argv);

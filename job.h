@@ -27,6 +27,8 @@
 #include <sys/queue.h>
 #endif /* <sys/queue.h> */
 
+#include "array.h"
+
 /* Max length of a job ID. Equivalent to FILE_MAX */
 #define JOB_ID_MAX 255
 
@@ -39,6 +41,8 @@ enum job_state {
 	JOB_STATE_ERROR
 };
 
+struct job_parser;
+
 struct job {
 	LIST_ENTRY(job) entries;
 	pid_t pid;
@@ -46,33 +50,38 @@ struct job {
 	bool exited;
 	int last_exit_status, term_signal;
 	size_t incoming_edges;
+    int64_t row_id;
 
 	/* Items below here are parsed from the manifest */
-    char **before, **after;
+    struct string_array *before, *after;
     char *id;
     char *description;
-    bool enable, enable_globbing;
-    char **environment_variables;
+    bool enable;
+    struct string_array *environment_variables;
     gid_t gid;
+    char *group_name;
     bool init_groups;
     bool keep_alive;
     char *title;
-    char **argv;
     char *root_directory;
     char *standard_error_path;
     char *standard_in_path;
     char *standard_out_path;
     mode_t umask;
+    char *umask_str;
     uid_t uid;
 	char *user_name;
     char *working_directory;
     char **options;
 };
 
-int job_start(struct job *);
-void job_free(struct job *);
+LIST_HEAD(job_list, job);
 
-//TODO: move to parser.h
-int parse_job_file(struct job **, const char *, const char *);
+int job_start(struct job *);
+struct job *job_new(void);
+void job_free(struct job *);
+int job_db_select_all(struct job_list *dest);
+struct job * job_list_lookup(const struct job_list *jobs, const char *id);
+char * job_get_method(const struct job *job, const char *method_name);
 
 #endif /* _JOB_H */

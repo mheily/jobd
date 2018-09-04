@@ -1,43 +1,34 @@
+CONFDIR=/etc
+SBINDIR=/sbin
+#TODO: DBPATH=/etc/jobs.db
+
 CFLAGS+=-Wall -Wextra -Werror
 CFLAGS+=-g -O0
 
 # for asprintf()
 CFLAGS+=-D_GNU_SOURCE
 
-LIBADD=-lrt
+jobd_OBJS=database.o ipc.o job.o logger.o parser.o toml.o tsort.o
+jobcfg_OBJS=database.o ipc.o job.o logger.o parser.o toml.o
+jobstat_OBJS=database.o ipc.o logger.o
 
-jobd_OBJS=toml.o job.c logger.o parser.o
+all: jobcfg jobd jobstat
 
-all: jobd job
-
-install:
-	test `id -u` = "0" && $(MAKE) install-as-system || $(MAKE) install-as-user
-
-install-as-system: all
-	install -d -m 755 -o 0 -g 0 /etc/job.d
-	install -m 755 jobd /sbin/jobd
-	install -m 755 job /sbin/job
-
-install-as-user: all
-	install -d -m 755 $$HOME/.config/job.d $$HOME/bin
-	install -m 755 jobd job rc $$HOME/bin
-	test -e $$HOME/.config/job.d/jobd || sed -e "s,@@HOME@@,$$HOME," < ./job.d/jobd-user > \
-		$$HOME/.config/job.d/jobd
+install: all
+	$(INSTALL) -d -m 755 $$DESTDIR$(CONFDIR)/etc/job.d
+	$(INSTALL) -m 755 jobd job $$DESTDIR$(SBINDIR)/jobd
 
 %.o: %.c %.h
-	$(CC) -c $(CFLAGS) $< -o $@
+	$(CC) -c $(CFLAGS) -DCONFDIR=$(CONFDIR) $< -o $@
 
-job: jobd
-	ln -s jobd job
+jobstat: jobstat.o $(jobcfg_OBJS)
+	$(CC) $(CFLAGS) -o $@ $< $(jobstat_OBJS) -lsqlite3
+
+jobcfg: jobcfg.o $(jobcfg_OBJS)
+	$(CC) $(CFLAGS) -o $@ $< $(jobcfg_OBJS) -lsqlite3
 
 jobd: jobd.o $(jobd_OBJS)
-	$(CC) $(CFLAGS) -o $@ $< $(jobd_OBJS) $(LIBADD)
-
-#copy-to-freebsd-base:
-#	mkdir -p /usr/src/sbin/jobd
-#	cp Makefile.FreeBSD /usr/src/sbin/jobd/Makefile
-#	cp *.c *.h *.8 *.5 /usr/src/sbin/jobd
-#	cd /usr/src/sbin/jobd && make
+	$(CC) $(CFLAGS) -o $@ $< $(jobd_OBJS) -lrt -lsqlite3
 
 clean:
-	rm -f jobd job
+	rm -f *.o jobd jobcfg jobstat

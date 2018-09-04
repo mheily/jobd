@@ -22,10 +22,17 @@
 #include <syslog.h>
 #include <unistd.h>
 
+#include "database.h"
 #include "logger.h"
 #include "toml.h"
 #include "array.h"
 #include "job.h"
+#include "parser.h"
+
+struct job_parser {
+    struct job *job;
+    toml_table_t *tab;
+};
 
 static int
 parse_bool(bool *result, toml_table_t *tab, const char *key, bool default_value)
@@ -81,32 +88,21 @@ err:
 }
 
 static int
-parse_gid(gid_t *result, toml_table_t *tab, const char *key, const gid_t default_value)
+parse_gid(gid_t *result, const char *group_name)
 {
 	struct group *grp;
-	const char *raw;
-	char *buf;
 
-	raw = toml_raw_in(tab, key);
-	if (!raw) {
-		*result = default_value;
+	if (!group_name || group_name[0] == '\0') {
+		*result = getgid();
 		return (0);
 	}
-	
-	if (toml_rtos(raw, &buf)) {
-		printlog(LOG_ERR, "invalid value for %s", key);
-		*result = -1;
-		return (-1);
-	}
 
-	grp = getgrnam(buf);
+	grp = getgrnam(group_name);
 	if (grp) {
 		*result = grp->gr_gid;
-		free(buf);
 		return (0);
 	} else {
-		printlog(LOG_ERR, "group not found: %s", buf);
-		free(buf);
+		printlog(LOG_ERR, "group not found: %s", group_name);
 		return (-1);
 	}
 }
@@ -163,123 +159,49 @@ uid_to_name(char **name, uid_t uid)
 }
 
 static int
-parse_program(struct job *j, toml_table_t *tab)
+parse_array_of_strings(struct string_array *result, toml_table_t *tab, const char *top_key)
 {
 	toml_array_t* arr;
 	char *val;
 	const char *raw;
-	size_t nelem;
 	int i;
-
-	arr = toml_array_in(tab, "Program");
-	if (!arr) {
-		return (0);
-	}
-
-	for (nelem = 0; (raw = toml_raw_at(arr, nelem)) != 0; nelem++) {}
-
-	j->argv = calloc(nelem + 1, sizeof(char *));
-	if (!j->argv) {
-		printlog(LOG_ERR, "calloc: %s", strerror(errno));
-		return (-1);
-	}
-
-	raw = toml_raw_at(arr, 0);
-	if (!raw) {
-		printlog(LOG_ERR, "empty Program array");
-		return (-1);
-	}
-	if (toml_rtos(raw, &j->argv[0])) {
-		printlog(LOG_ERR, "parse error parsing Program element 0");
-	}
-	for (i = 0; (raw = toml_raw_at(arr, i)) != 0; i++) {
-		if (!raw || toml_rtos(raw, &val)) {
-			printlog(LOG_ERR, "error parsing Program element %d", i);
-			return (-1);
-		} else {
-			j->argv[i] = val;
-		}
-	}
-	j->argv[i] = NULL;
-
-	return (0);
-}
-
-//TODO: refactor parse_program to use the func below
-static int
-parse_array_of_strings(char ***result, toml_table_t *tab, const char *top_key)
-{
-	toml_array_t* arr;
-	char *val;
-	const char *raw;
-	size_t nelem;
-	int i;
-	char **strarr;
 
 	arr = toml_array_in(tab, top_key);
 	if (!arr) {
-		*result = calloc(1, sizeof(char *));
-		if (*result) {
-			return (0);
-		} else {
-			printlog(LOG_ERR, "calloc: %s", strerror(errno));
-			return (-1);
-		}
-	}
-
-	for (nelem = 0; (raw = toml_raw_at(arr, nelem)) != 0; nelem++) {}
-
-	strarr = calloc(nelem + 1, sizeof(char *));
-	if (!strarr) {
-		printlog(LOG_ERR, "calloc: %s", strerror(errno));
-		return (-1);
+		return (0);
 	}
 
 	for (i = 0; (raw = toml_raw_at(arr, i)) != 0; i++) {
 		if (!raw || toml_rtos(raw, &val)) {
 			printlog(LOG_ERR, "error parsing %s element %d", top_key, i);
-			//FIXME: free strarr
 			return (-1);
 		} else {
-			strarr[i] = val;
+			if (string_array_push_back(result, strdup(val)) < 0)
+				return (-1);
 		}
 	}
-
-	*result = strarr;
 
 	return (0);
 }
 
 static int
-parse_environment_variables(struct job *j, toml_table_t *tab)
+parse_environment_variables(struct job *job, toml_table_t *tab)
 {
 	toml_table_t* subtab;
 	const char *key;
 	char *val, *keyval;
 	const char *raw;
-	size_t nkeys;
 	int i;
 
 	subtab = toml_table_in(tab, "EnvironmentVariables");
 	if (!subtab) {
-		j->environment_variables = malloc(sizeof(char *));
-		j->environment_variables[0] = NULL;
 		return (0);
-	}
-
-	for (nkeys = 0; (key = toml_key_in(subtab, nkeys)) != 0; nkeys++) {}
-
-	j->environment_variables = calloc(nkeys + 1, sizeof(char *));
-	if (!j->environment_variables) {
-		printlog(LOG_ERR, "calloc: %s", strerror(errno));
-		return (-1);
 	}
 		
 	for (i = 0; (key = toml_key_in(subtab, i)) != 0; i++) {
 		raw = toml_raw_in(subtab, key);
 		if (!raw || toml_rtos(raw, &val)) {
 			printlog(LOG_ERR, "error parsing %s", key);
-			j->environment_variables[i] = NULL;
 			return (-1);
 		}
 		if (asprintf(&keyval, "%s=%s", key, val) < 0) {
@@ -288,63 +210,40 @@ parse_environment_variables(struct job *j, toml_table_t *tab)
 		}
 		free(val);
 
-		j->environment_variables[i] = keyval;
+		if (string_array_push_back(job->environment_variables, keyval) < 0)
+			return (-1);
 	}
-	j->environment_variables[i] = NULL;
 
 	return (0);
 }
 
 int
-parse_job_file(struct job **result, const char *path, const char *id)
+parse_job(struct job_parser *jpr)
 {
-	FILE *fh;
-	char errbuf[256];
-	toml_table_t *tab = NULL;
-	char *buf;
-	struct job *j;
+	struct job * const j = jpr->job;
+	toml_table_t * const tab = jpr->tab;
 
-	j = calloc(1, sizeof(*j));
-	if (!j) {
-		printlog(LOG_ERR, "calloc: %s", strerror(errno));
-		return (-1);
-	}
-		
-	fh = fopen(path, "r");
-	if (!fh) {
-		printlog(LOG_ERR, "fopen(3) of %s: %s", path, strerror(errno));
+	if (parse_string(&j->id, tab, "ID", ""))
 		goto err;
-	}
-
-	tab = toml_parse_file(fh, errbuf, sizeof(errbuf));
-	(void) fclose(fh);
-	if (!tab) {
-		printlog(LOG_ERR, "failed to parse %s", path);
-		goto err;
-	}
-
-	j->id = strdup(id);
 	if (parse_string(&j->description, tab, "Description", ""))
 		goto err;
-	if (parse_array_of_strings(&j->after, tab, "After"))
+	if (parse_array_of_strings(j->after, tab, "After"))
 		goto err;
-	if (parse_array_of_strings(&j->before, tab, "Before"))
+	if (parse_array_of_strings(j->before, tab, "Before"))
 		goto err;
 	if (parse_bool(&j->enable, tab, "Enable", true))
 		goto err;
-	if (parse_bool(&j->enable_globbing, tab, "EnableGlobbing", false))
-		goto err;
 	if (parse_environment_variables(j, tab))
 		goto err;
-	if (parse_gid(&j->gid, tab, "Group", getgid()))
+	if (parse_string(&j->group_name, tab, "Group", ""))
+		goto err;		
+	if (parse_gid(&j->gid, j->group_name))
 		goto err;
 	if (parse_bool(&j->init_groups, tab, "InitGroups", true))
 		goto err;
 	if (parse_bool(&j->keep_alive, tab, "KeepAlive", false))
 		goto err;
-	if (parse_string(&j->title, tab, "Title", id))
-		goto err;
-	if (parse_program(j, tab))
+	if (parse_string(&j->title, tab, "Title", j->id))
 		goto err;
 	if (parse_string(&j->root_directory, tab, "RootDirectory", "/"))
 		goto err;
@@ -355,10 +254,9 @@ parse_job_file(struct job **result, const char *path, const char *id)
 	if (parse_string(&j->standard_out_path, tab, "StandardOutPath", "/dev/null"))
 		goto err;
 	
-	if (parse_string(&buf, tab, "Umask", "0077"))
+	if (parse_string(&j->umask_str, tab, "Umask", "0077"))
 		goto err;
-	sscanf(buf, "%hi", (unsigned short *) &j->umask);
-	free(buf);
+	sscanf(j->umask_str, "%hi", (unsigned short *) &j->umask);
 
 	if (parse_uid(&j->uid, tab, "User", getuid()))
 		goto err;
@@ -368,12 +266,185 @@ parse_job_file(struct job **result, const char *path, const char *id)
 	if (parse_string(&j->working_directory, tab, "WorkingDirectory", "/"))
 		goto err;
 
-	toml_free(tab);
-	*result = j;
 	return (0);
 
 err:
-	toml_free(tab);
-	job_free(j);
 	return (-1);
+}
+
+int
+parse_job_file(struct job_parser *jpr, const char *path)
+{
+	FILE *fh;
+	char errbuf[256];
+
+	jpr->job = job_new();
+	if (!jpr->job) {
+		printlog(LOG_ERR, "calloc: %s", strerror(errno));
+		return (-1);
+	}
+		
+	fh = fopen(path, "r");
+	if (!fh) {
+		printlog(LOG_ERR, "fopen(3) of %s: %s", path, strerror(errno));
+		goto err;
+	}
+
+	jpr->tab = toml_parse_file(fh, errbuf, sizeof(errbuf));
+	if (!jpr->tab) {
+		printlog(LOG_ERR, "error parsing %s: %s", path, (char*) &errbuf);
+		goto err;
+	}
+	(void) fclose(fh);
+
+	if (parse_job(jpr) < 0)
+		goto err;
+
+	return (0);
+
+err:
+	job_parser_free(jpr);
+	return (-1);
+}
+
+struct job_parser * job_parser_new(void)
+{
+	return calloc(1, sizeof(struct job_parser));
+}
+
+void job_parser_free(struct job_parser *jpr)
+{
+	if (jpr) {
+		toml_free(jpr->tab);
+		job_free(jpr->job);
+		free(jpr);
+	}
+}
+
+static int
+job_db_insert_depends(const struct job *job)
+{
+	const char *sql = "INSERT INTO job_depends "
+					  "  (before_job_id, after_job_id) "
+					  "VALUES "
+					  "  (?,?)";
+	uint32_t i;
+	sqlite3_stmt *stmt;
+	int rv;
+
+	for (i = 0; i < string_array_len(job->before); i++) {
+		stmt = NULL;
+		rv = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
+			 sqlite3_bind_text(stmt, 1, job->id, -1, SQLITE_STATIC) == SQLITE_OK &&
+			 sqlite3_bind_text(stmt, 2, string_array_data(job->before)[i], -1, SQLITE_STATIC) == SQLITE_OK &&
+			 sqlite3_step(stmt) == SQLITE_DONE;
+		sqlite3_finalize(stmt);
+		if (!rv)
+			return (-1);
+	}
+
+	for (i = 0; i < string_array_len(job->after); i++) {
+		stmt = NULL;
+		rv = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
+			 sqlite3_bind_text(stmt, 1, string_array_data(job->after)[i], -1, SQLITE_STATIC) == SQLITE_OK &&
+			 sqlite3_bind_text(stmt, 2, job->id, -1, SQLITE_STATIC) == SQLITE_OK &&
+			 sqlite3_step(stmt) == SQLITE_DONE;
+		sqlite3_finalize(stmt);
+		if (!rv)
+			return (-1);
+	}
+	
+	return (0);
+}
+
+static int
+job_db_insert_methods(struct job_parser *jpr)
+{
+	toml_table_t* subtab;
+	const char *key;
+	char *val;
+	const char *raw;
+	int i;
+
+	subtab = toml_table_in(jpr->tab, "methods");
+	if (!subtab) {
+		return (0);
+	}
+		
+	for (i = 0; (key = toml_key_in(subtab, i)) != 0; i++) {
+		raw = toml_raw_in(subtab, key);
+		if (!raw || toml_rtos(raw, &val)) {
+			printlog(LOG_ERR, "error parsing %s", key);
+			return (-1);
+		}
+
+		int success;
+		sqlite3_stmt *stmt;
+		const char *sql =
+			"INSERT INTO job_methods "
+			"(job_id, name, script) "
+			"VALUES (?, ?, ?)";
+
+        success = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
+                sqlite3_bind_int64(stmt, 1, jpr->job->row_id) == SQLITE_OK &&
+                sqlite3_bind_text(stmt, 2, key, -1, SQLITE_STATIC) == SQLITE_OK &&
+				sqlite3_bind_text(stmt, 3, val, -1, SQLITE_STATIC) == SQLITE_OK &&
+            	sqlite3_step(stmt) == SQLITE_DONE;
+
+        sqlite3_finalize(stmt);
+		free(val);
+
+		if (!success)
+			return (-1);
+	}
+
+	return (0);
+}
+
+int
+job_db_insert(struct job_parser *jpr)
+{
+	int rv;
+	sqlite3_stmt *stmt;
+	struct job *job = jpr->job;
+
+	const char *sql = "INSERT INTO jobs (job_id, description, gid, init_groups,"
+		"keep_alive, root_directory, standard_error_path,"
+		"standard_in_path, standard_out_path, umask, user_name,"
+		"working_directory, enable) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
+
+	rv = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
+		 sqlite3_bind_text(stmt, 1, job->id, -1, SQLITE_STATIC) == SQLITE_OK &&
+		 sqlite3_bind_text(stmt, 2, job->description, -1, SQLITE_STATIC) == SQLITE_OK &&
+		 sqlite3_bind_text(stmt, 3, job->group_name, -1, SQLITE_STATIC) == SQLITE_OK &&
+		 sqlite3_bind_int(stmt, 4, job->init_groups) == SQLITE_OK &&
+		 sqlite3_bind_int(stmt, 5, job->keep_alive) == SQLITE_OK &&
+		 sqlite3_bind_text(stmt, 6, job->root_directory, -1, SQLITE_STATIC) == SQLITE_OK &&
+		 sqlite3_bind_text(stmt, 7, job->standard_error_path, -1, SQLITE_STATIC) == SQLITE_OK &&
+		 sqlite3_bind_text(stmt, 8, job->standard_in_path, -1, SQLITE_STATIC) == SQLITE_OK &&
+		 sqlite3_bind_text(stmt, 9, job->standard_out_path, -1, SQLITE_STATIC) == SQLITE_OK &&
+		 sqlite3_bind_text(stmt, 10, job->umask_str, -1, SQLITE_STATIC) == SQLITE_OK &&
+		 sqlite3_bind_text(stmt, 11, job->user_name, -1, SQLITE_STATIC) == SQLITE_OK &&
+		 sqlite3_bind_text(stmt, 12, job->working_directory, -1, SQLITE_STATIC) == SQLITE_OK &&
+		 sqlite3_bind_int(stmt, 13, job->enable) == SQLITE_OK;
+
+	if (!rv || sqlite3_step(stmt) != SQLITE_DONE) {
+		printlog(LOG_ERR, "error importing %s", job->id);
+		sqlite3_finalize(stmt);
+		return (-1);
+  	}
+	jpr->job->row_id = sqlite3_last_insert_rowid(dbh);
+	sqlite3_finalize(stmt);
+
+	if (job_db_insert_depends(job) < 0) {
+		printlog(LOG_ERR, "error importing %s dependencies", job->id);
+		return (-1);
+	}
+
+	if (job_db_insert_methods(jpr) < 0) {
+		printlog(LOG_ERR, "error importing %s methods", job->id);
+		return (-1);
+	}
+
+	return (0);
 }

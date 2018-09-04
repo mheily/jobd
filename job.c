@@ -24,21 +24,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "database.h"
 #include "logger.h"
 #include "job.h"
-
-static void
-string_array_free(char **strarr)
-{
-	char **p;
-
-	if (strarr) {
-		for (p = strarr; *p; p++) {
-			free(*p);
-		}
-		free(strarr);
-	}
-}
+#include "parser.h"
 
 static int
 redirect_file_descriptor(int oldfd, const char *path, int flags, mode_t mode)
@@ -67,9 +56,24 @@ int
 job_start(struct job *job)
 {
 	sigset_t mask;
+	char *filename, *script;
+	char *argv[4];
+	char **envp;
 
 	if (job->state != JOB_STATE_STOPPED)
 		return (-1); //TODO: want -IPC_RESPONSE_INVALID_STATE
+
+	if (!(script = job_get_method(job, "start"))) {
+		printlog(LOG_ERR, "tried to start a job with no start method defined");
+		return (-1);
+	}
+
+	filename = "/bin/sh";
+	argv[0] = "/bin/sh";
+	argv[1] = "-c";
+	argv[2] = script;
+	argv[3] = '\0';
+	envp = string_array_data(job->environment_variables);
 
 	job->pid = fork();
 	if (job->pid < 0) {
@@ -116,8 +120,6 @@ job_start(struct job *job)
 		//TODO this->setup_environment();
 		//this->createDescriptors();
 
-		// TODO: deal with globbing
-
 		if (redirect_file_descriptor(STDIN_FILENO, job->standard_in_path, O_RDONLY, 0600) < 0) {
 			printlog(LOG_ERR, "unable to redirect STDIN");
 			exit(EXIT_FAILURE);
@@ -130,12 +132,13 @@ job_start(struct job *job)
 			printlog(LOG_ERR, "unable to redirect STDERR");
 			exit(EXIT_FAILURE);
 		}
-		if (execve(job->argv[0], job->argv, job->environment_variables) < 0) {
+		if (execve(filename, argv, envp) < 0) {
 			printlog(LOG_ERR, "execve(2): %s", strerror(errno));
 			exit(EXIT_FAILURE);
     	}
 		/* NOTREACHED */
 	} else {
+		free(script);
 		/*
 		job->state = JOB_STATE_STARTING;
 		
@@ -150,6 +153,30 @@ job_start(struct job *job)
 	return (0);
 }
 
+struct job *
+job_new(void)
+{
+	struct job *j;
+
+	j = calloc(1, sizeof(*j));
+	if (!j)
+		return (NULL);
+	
+	j->enable = 1;
+	if (!(j->after = string_array_new()))
+		goto err_out;
+	if (!(j->before = string_array_new()))
+		goto err_out;
+	if (!(j->environment_variables = string_array_new()))
+		goto err_out;
+
+	return (j);
+
+err_out:
+	job_free(j);
+	return (NULL);
+}
+
 void 
 job_free(struct job *job)
 {
@@ -160,13 +187,166 @@ job_free(struct job *job)
 		string_array_free(job->environment_variables);
 		free(job->id);
 		free(job->title);
-		string_array_free(job->argv);
 		free(job->root_directory);
 		free(job->standard_error_path);
 		free(job->standard_in_path);
 		free(job->standard_out_path);
 		free(job->working_directory);
 		free(job->user_name);
+		free(job->group_name);
+		free(job->umask_str);
 		free(job);
 	}
+}
+
+struct job *
+job_list_lookup(const struct job_list *jobs, const char *id)
+{
+	struct job *job;
+
+	LIST_FOREACH(job, jobs, entries) {
+		if (!strcmp(id, job->id)) {
+			return job;
+		}
+	}
+	return (NULL);
+}
+
+static int
+job_get_depends(struct job *job)
+{
+	sqlite3_stmt *stmt;
+	char *sql;
+	int rv;
+
+	/* Get the job->after deps */
+	sql = "SELECT before_job_id FROM job_depends WHERE after_job_id = ?";
+	if ((rv = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK))
+		goto db_err;
+	if ((rv = sqlite3_bind_text(stmt, 1, job->id, -1, SQLITE_STATIC) != SQLITE_OK))
+		goto db_err;
+	if (db_select_into_string_array(job->after, stmt) < 0)
+		goto err_out;
+	sqlite3_finalize(stmt);
+
+	/* Get the job->before deps */
+	sql = "SELECT after_job_id FROM job_depends WHERE before_job_id = ?";
+	if ((rv = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK))
+		goto db_err;
+	if ((rv = sqlite3_bind_text(stmt, 1, job->id, -1, SQLITE_STATIC) != SQLITE_OK))
+		goto db_err;
+	if (db_select_into_string_array(job->before, stmt) < 0)
+		goto err_out;
+	sqlite3_finalize(stmt);
+
+	return (0);
+
+db_err:
+	db_log_error(rv);
+
+err_out:
+	sqlite3_finalize(stmt);
+	return (-1);
+}
+
+int
+job_db_select_all(struct job_list *dest)
+{
+	const char *sql = "SELECT job_id, description, gid, init_groups,"
+					  "keep_alive, root_directory, standard_error_path,"
+					  "standard_in_path, standard_out_path, umask, user_name,"
+					  "working_directory, id, enable "
+					  "FROM jobs ";
+
+	sqlite3_stmt *stmt = NULL;
+	struct job *job;
+	int id;
+	int rv;
+
+	rv = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0);
+	if (rv != SQLITE_OK)
+		goto db_err;
+	
+	for (;;) {
+		rv = sqlite3_step(stmt);
+		if (rv == SQLITE_DONE)
+			break;
+		if (rv != SQLITE_ROW)
+			goto db_err;
+
+		job = job_new();
+		if (!job)
+			goto os_err;
+
+		if (!(job->id = strdup((char *)sqlite3_column_text(stmt, 0))))
+			goto os_err;
+		if (!(job->description = strdup((char *)sqlite3_column_text(stmt, 1))))
+			goto os_err;
+		if (!(job->group_name = strdup((char *)sqlite3_column_text(stmt, 2))))
+			goto os_err;
+		job->init_groups = sqlite3_column_int(stmt, 3);
+		job->keep_alive = sqlite3_column_int(stmt, 4);
+		if (!(job->root_directory = strdup((char *)sqlite3_column_text(stmt, 5))))
+			goto os_err;
+		if (!(job->standard_error_path = strdup((char *)sqlite3_column_text(stmt, 6))))
+			goto os_err;
+		if (!(job->standard_in_path = strdup((char *)sqlite3_column_text(stmt, 7))))
+			goto os_err;
+		if (!(job->standard_out_path = strdup((char *)sqlite3_column_text(stmt, 8))))
+			goto os_err;
+		if (!(job->umask_str = strdup((char *)sqlite3_column_text(stmt, 9))))
+			goto os_err;
+		if (!(job->user_name = strdup((char *)sqlite3_column_text(stmt, 10))))
+			goto os_err;
+		if (!(job->working_directory = strdup((char *)sqlite3_column_text(stmt, 11))))
+			goto os_err;
+		job->row_id = sqlite3_column_int64(stmt, 12);
+		job->enable = sqlite3_column_int(stmt, 13);
+
+		(void)id; //KLUDGE
+
+		//FIXME - need to deal w/ gid, umask parsing
+
+		if (job_get_depends(job) < 0)
+			goto err_out;
+
+		LIST_INSERT_HEAD(dest, job, entries);
+	}
+
+	sqlite3_finalize(stmt);
+	return (0);
+
+os_err:
+	printlog(LOG_ERR, "OS error: %s", strerror(errno));
+	goto err_out;
+
+db_err:
+	db_log_error(rv);
+
+err_out:
+	sqlite3_finalize(stmt);
+	job_free(job);
+	return (-1);
+}
+
+char *
+job_get_method(const struct job *job, const char *method_name)
+{
+	sqlite3_stmt *stmt;
+	int success;
+	char *result;
+
+	if (!job)
+		return (NULL);
+	
+	const char *sql = "SELECT script FROM job_methods WHERE job_id = ? AND name = ?";
+	success = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
+		sqlite3_bind_int64(stmt, 1, job->row_id) == SQLITE_OK &&
+		sqlite3_bind_text(stmt, 2, method_name, -1, SQLITE_STATIC) == SQLITE_OK &&
+  	    sqlite3_step(stmt) == SQLITE_ROW &&
+		(result = strdup((char *)sqlite3_column_text(stmt, 0)));
+
+	sqlite3_finalize(stmt);
+
+	return (success ? result : NULL);
 }
