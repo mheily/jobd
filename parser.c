@@ -15,6 +15,7 @@
  */
 
 #include <errno.h>
+#include <libgen.h>
 #include <grp.h>
 #include <pwd.h>
 #include <stdio.h>
@@ -272,6 +273,39 @@ err:
 	return (-1);
 }
 
+static int
+generate_job_name(struct job *job, const char *path)
+{
+	char *buf, *res;
+
+	if (!strcmp(path, "/dev/stdin"))
+		return (-1);
+	// TODO: generate a random name instead
+
+	buf = res = NULL;
+	buf = strdup(path);
+	if (!buf)
+		goto os_err;
+	res = strdup(basename(buf));
+	if (!res)
+		goto os_err;
+	char *c = strrchr(res, '.');
+	if (c)
+		*c = '\0';
+
+	free(buf);
+	free(job->id);
+	job->id = res;
+
+	return (0);
+
+os_err:
+	free(buf);
+	free(res);
+	printlog(LOG_ERR, "OS error: %s", strerror(errno));
+	return (-1);
+}
+
 int
 parse_job_file(struct job_parser *jpr, const char *path)
 {
@@ -299,6 +333,11 @@ parse_job_file(struct job_parser *jpr, const char *path)
 
 	if (parse_job(jpr) < 0)
 		goto err;
+
+	if (jpr->job->id[0] == '\0') {
+		if (generate_job_name(jpr->job, path) < 0)
+			goto err;
+	}
 
 	return (0);
 
