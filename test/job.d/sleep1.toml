@@ -1,0 +1,4 @@
+name = 'sleep1'
+
+[methods]
+start = 'sleep 1' 

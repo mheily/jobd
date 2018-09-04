@@ -193,7 +193,7 @@ parse_environment_variables(struct job *job, toml_table_t *tab)
 	const char *raw;
 	int i;
 
-	subtab = toml_table_in(tab, "EnvironmentVariables");
+	subtab = toml_table_in(tab, "environment");
 	if (!subtab) {
 		return (0);
 	}
@@ -223,47 +223,47 @@ parse_job(struct job_parser *jpr)
 	struct job * const j = jpr->job;
 	toml_table_t * const tab = jpr->tab;
 
-	if (parse_string(&j->id, tab, "ID", ""))
+	if (parse_string(&j->id, tab, "name", ""))
 		goto err;
-	if (parse_string(&j->description, tab, "Description", ""))
+	if (parse_string(&j->description, tab, "description", ""))
 		goto err;
-	if (parse_array_of_strings(j->after, tab, "After"))
+	if (parse_array_of_strings(j->after, tab, "after"))
 		goto err;
-	if (parse_array_of_strings(j->before, tab, "Before"))
+	if (parse_array_of_strings(j->before, tab, "before"))
 		goto err;
-	if (parse_bool(&j->enable, tab, "Enable", true))
+	if (parse_bool(&j->enable, tab, "enable", true))
 		goto err;
 	if (parse_environment_variables(j, tab))
 		goto err;
-	if (parse_string(&j->group_name, tab, "Group", ""))
+	if (parse_string(&j->group_name, tab, "group", ""))
 		goto err;		
 	if (parse_gid(&j->gid, j->group_name))
 		goto err;
-	if (parse_bool(&j->init_groups, tab, "InitGroups", true))
+	if (parse_bool(&j->init_groups, tab, "init_groups", true))
 		goto err;
-	if (parse_bool(&j->keep_alive, tab, "KeepAlive", false))
+	if (parse_bool(&j->keep_alive, tab, "keep_alive", false))
 		goto err;
-	if (parse_string(&j->title, tab, "Title", j->id))
+	if (parse_string(&j->title, tab, "title", j->id))
 		goto err;
-	if (parse_string(&j->root_directory, tab, "RootDirectory", "/"))
+	if (parse_string(&j->root_directory, tab, "root_directory", "/"))
 		goto err;
-	if (parse_string(&j->standard_error_path, tab, "StandardErrorPath", "/dev/null"))
+	if (parse_string(&j->standard_error_path, tab, "stderr", "/dev/null"))
 		goto err;
-	if (parse_string(&j->standard_in_path, tab, "StandardInPath", "/dev/null"))
+	if (parse_string(&j->standard_in_path, tab, "stdin", "/dev/null"))
 		goto err;
-	if (parse_string(&j->standard_out_path, tab, "StandardOutPath", "/dev/null"))
+	if (parse_string(&j->standard_out_path, tab, "stdout", "/dev/null"))
 		goto err;
 	
-	if (parse_string(&j->umask_str, tab, "Umask", "0077"))
+	if (parse_string(&j->umask_str, tab, "umask", "0077"))
 		goto err;
 	sscanf(j->umask_str, "%hi", (unsigned short *) &j->umask);
 
-	if (parse_uid(&j->uid, tab, "User", getuid()))
+	if (parse_uid(&j->uid, tab, "user", getuid()))
 		goto err;
 	if (uid_to_name(&j->user_name, j->uid))
 		goto err;
 
-	if (parse_string(&j->working_directory, tab, "WorkingDirectory", "/"))
+	if (parse_string(&j->working_directory, tab, "cwd", "/"))
 		goto err;
 
 	return (0);
