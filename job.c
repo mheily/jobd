@@ -259,7 +259,6 @@ job_db_select_all(struct job_list *dest)
 
 	sqlite3_stmt *stmt = NULL;
 	struct job *job;
-	int id;
 	int rv;
 
 	rv = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0);
@@ -303,8 +302,6 @@ job_db_select_all(struct job_list *dest)
 		job->enable = sqlite3_column_int(stmt, 13);
 		if (!(job->command = strdup((char *)sqlite3_column_text(stmt, 14))))
 			goto os_err;
-
-		(void)id; //KLUDGE
 
 		//FIXME - need to deal w/ gid, umask parsing
 

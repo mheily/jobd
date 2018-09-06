@@ -151,7 +151,7 @@ main(int argc, char *argv[])
 
 	if (!strcmp(command, "init")) {
 		//FIXME: harcdoded for testing
-		char *schemapath = "./db/schema.sql";
+		char *schemapath = "./schema.sql";
 		if (db_create(NULL, schemapath) < 0)
 			errx(1, "unable to create the database");
 		exit(EXIT_SUCCESS);
