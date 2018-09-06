@@ -57,16 +57,14 @@ job_start(struct job *job)
 {
 	sigset_t mask;
 	char *filename, *script;
-	char *argv[4];
+	char *argv[5];
 	char **envp;
 
 	if (job->state != JOB_STATE_STOPPED)
 		return (-1); //TODO: want -IPC_RESPONSE_INVALID_STATE
 
-	if (!(script = job_get_method(job, "start"))) {
-		printlog(LOG_ERR, "tried to start a job with no start method defined");
+	if (asprintf(&script, "exec %s", job->command) < 0)
 		return (-1);
-	}
 
 	filename = "/bin/sh";
 	argv[0] = "/bin/sh";
@@ -138,7 +136,6 @@ job_start(struct job *job)
     	}
 		/* NOTREACHED */
 	} else {
-		free(script);
 		/*
 		job->state = JOB_STATE_STARTING;
 		
@@ -147,7 +144,8 @@ job_start(struct job *job)
 		job->state = JOB_STATE_RUNNING;
 
 		//TODO: manager
-		printlog(LOG_DEBUG, "job %s started with pid %d", job->id, job->pid);
+		printlog(LOG_DEBUG, "job %s started with pid %d: %s", job->id, job->pid, script);
+		free(script);
 	}
 
 	return (0);
@@ -183,6 +181,7 @@ job_free(struct job *job)
 	if (job) {
 		string_array_free(job->after);
 		string_array_free(job->before);
+		free(job->command);
 		free(job->description);
 		string_array_free(job->environment_variables);
 		free(job->id);
@@ -255,7 +254,7 @@ job_db_select_all(struct job_list *dest)
 	const char *sql = "SELECT job_id, description, gid, init_groups,"
 					  "keep_alive, root_directory, standard_error_path,"
 					  "standard_in_path, standard_out_path, umask, user_name,"
-					  "working_directory, id, enable "
+					  "working_directory, id, enable,command "
 					  "FROM jobs ";
 
 	sqlite3_stmt *stmt = NULL;
@@ -302,6 +301,8 @@ job_db_select_all(struct job_list *dest)
 			goto os_err;
 		job->row_id = sqlite3_column_int64(stmt, 12);
 		job->enable = sqlite3_column_int(stmt, 13);
+		if (!(job->command = strdup((char *)sqlite3_column_text(stmt, 14))))
+			goto os_err;
 
 		(void)id; //KLUDGE
 

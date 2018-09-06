@@ -1,2 +1,1 @@
-[methods]
-start = 'sleep 1' 
+command = 'sleep 1' 

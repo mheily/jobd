@@ -55,6 +55,7 @@ struct job {
 	/* Items below here are parsed from the manifest */
     struct string_array *before, *after;
     char *id;
+    char *command;
     char *description;
     bool enable;
     struct string_array *environment_variables;
