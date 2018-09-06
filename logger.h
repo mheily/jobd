@@ -21,9 +21,11 @@
 #include <syslog.h>
 
 #define printlog(level, format,...) do {				\
-	if (logger_verbose || level != LOG_DEBUG)			\
+	if (logger_verbose || level != LOG_DEBUG) {			\
 		fprintf(logger_fh, "%d %s(%s:%d): "format"\n",	\
-level, __func__, __FILE__, __LINE__, ## __VA_ARGS__); \
+level, __func__, __FILE__, __LINE__, ## __VA_ARGS__); 	\
+		fflush(logger_fh);								\
+	}													\
 } while (0)
 
 extern FILE *logger_fh;
