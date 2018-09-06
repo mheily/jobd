@@ -11,7 +11,7 @@ ulimit -S -c unlimited >/dev/null
 
 test -e jobcfg
 rm -f ~/.local/share/jmf/repository.db
-./jobcfg init
+./jobcfg init -f schema.sql
 ./jobcfg import -f test/job.d
 #sqlite3 ~/.local/share/jmf/repository.db .schema
 #sqlite3 ~/.local/share/jmf/repository.db .dump
