@@ -70,7 +70,7 @@ job_start(struct job *job)
 	argv[0] = "/bin/sh";
 	argv[1] = "-c";
 	argv[2] = script;
-	argv[3] = '\0';
+	argv[3] = NULL;
 	envp = string_array_data(job->environment_variables);
 
 	job->pid = fork();
@@ -258,7 +258,7 @@ job_db_select_all(struct job_list *dest)
 					  "FROM jobs ";
 
 	sqlite3_stmt *stmt = NULL;
-	struct job *job;
+	struct job *job = NULL;
 	int rv;
 
 	rv = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0);

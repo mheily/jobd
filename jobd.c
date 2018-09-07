@@ -459,7 +459,7 @@ create_event_queue(void)
 	if (fcntl(kqfd, F_SETFD, FD_CLOEXEC) < 0)
 		err(1, "fcntl(2)");
 
-	EV_SET(&kev, ipc_sockfd, EVFILT_READ, EV_ADD, 0, 0,
+	EV_SET(&kev, ipc_get_sockfd(), EVFILT_READ, EV_ADD, 0, 0,
 			(void *)&ipc_server_handler);
 	if (kevent(kqfd, &kev, 1, NULL, 0, NULL) < 0)
 		err(1, "kevent(2)");

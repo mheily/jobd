@@ -96,7 +96,8 @@ import_action(const char *path)
 	if (rv < 0)
 		err(1, "stat of %s", path);
 
-	if (!(rv = sqlite3_exec(dbh, "BEGIN TRANSACTION", NULL, NULL, NULL)) == SQLITE_OK) {
+	rv = sqlite3_exec(dbh, "BEGIN TRANSACTION", NULL, NULL, NULL);
+	if (rv != SQLITE_OK) {
 		db_log_error(rv);
 		return (-1);
 	}
@@ -112,7 +113,8 @@ import_action(const char *path)
 		return (-1);
 	}
 
-	if (!(rv = sqlite3_exec(dbh, "COMMIT", NULL, NULL, NULL)) == SQLITE_OK) {
+	rv = sqlite3_exec(dbh, "COMMIT", NULL, NULL, NULL);
+	if (rv != SQLITE_OK) {
 		db_log_error(rv);
 		return (-1);
 	}
@@ -135,6 +137,7 @@ main(int argc, char *argv[])
   	while ((c = getopt (argc, argv, "f:v")) != -1) {
 		switch (c) {
 			case 'f':
+				puts(optarg);puts("shit");
 				f_flag = strdup(optarg);
 				if (!f_flag)
 					err(1, "strdup");
@@ -146,10 +149,15 @@ main(int argc, char *argv[])
 				errx(1, "unsupported option");
 		}
 	}
+	argc -= optind;
+	argv += optind;
+	command = argv[0];
 
-	command = argv[optind];
-
+	printlog(LOG_DEBUG, "command=%s", command);
 	if (!strcmp(command, "init")) {
+		if (!f_flag)
+			errx(1, "must pass -f option");
+		printlog(LOG_INFO, "creating database at %s", f_flag);
 		if (db_create(NULL, f_flag) < 0)
 			errx(1, "unable to create the database");
 		exit(EXIT_SUCCESS);

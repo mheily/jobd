@@ -10,9 +10,10 @@ ulimit -H -c unlimited >/dev/null
 ulimit -S -c unlimited >/dev/null
 
 test -e jobcfg
+mkdir -p ~/.local/share/jmf
 rm -f ~/.local/share/jmf/repository.db
-./jobcfg init -f schema.sql
-./jobcfg import -f test/job.d
+./jobcfg -f schema.sql -v init
+./jobcfg -f test/job.d -v import
 #sqlite3 ~/.local/share/jmf/repository.db .schema
 #sqlite3 ~/.local/share/jmf/repository.db .dump
 sqlite3 -header ~/.local/share/jmf/repository.db 'select * from jobs'
