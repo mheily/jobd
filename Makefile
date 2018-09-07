@@ -1,16 +1,22 @@
+.POSIX:
+
 CONFDIR=/etc
 SBINDIR=/sbin
-#TODO: DBPATH=/etc/jobs.db
 
-CFLAGS+=-Wall -Wextra -Werror
+SQLITE_SRCDIR := vendor/sqlite-amalgamation-3240000
+SQLITE_CFLAGS := -I$(SQLITE_SRCDIR) -DSQLITE_THREADSAFE=0 \
+					-DSQLITE_OMIT_LOAD_EXTENSION
+SQLITE_OBJ := $(SQLITE_SRCDIR)/sqlite3.o
+
+CFLAGS+=-Wall -Wextra -Werror -I$(SQLITE_SRCDIR)
 CFLAGS+=-g -O0
 
 # for asprintf()
 CFLAGS+=-D_GNU_SOURCE
 
-jobd_OBJS=database.o ipc.o job.o logger.o parser.o toml.o tsort.o
-jobcfg_OBJS=database.o ipc.o job.o logger.o parser.o toml.o
-jobstat_OBJS=database.o ipc.o logger.o
+jobd_OBJS=jobd.o database.o ipc.o job.o logger.o parser.o toml.o tsort.o $(SQLITE_OBJ)
+jobcfg_OBJS=jobcfg.o database.o ipc.o job.o logger.o parser.o toml.o $(SQLITE_OBJ)
+jobstat_OBJS=jobstat.o database.o ipc.o logger.o $(SQLITE_OBJ)
 
 all: jobcfg jobd jobstat
 
@@ -21,14 +27,20 @@ install: all
 %.o: %.c %.h
 	$(CC) -c $(CFLAGS) -DCONFDIR=$(CONFDIR) $< -o $@
 
-jobstat: jobstat.o $(jobcfg_OBJS)
-	$(CC) $(CFLAGS) -o $@ $< $(jobstat_OBJS) -lsqlite3
+$(SQLITE_OBJ):
+	$(CC) -c $(SQLITE_CFLAGS) -o $@ $(SQLITE_SRCDIR)/sqlite3.c
 
-jobcfg: jobcfg.o $(jobcfg_OBJS)
-	$(CC) $(CFLAGS) -o $@ $< $(jobcfg_OBJS) -lsqlite3
+jobstat: $(jobstat_OBJS)
+	$(CC) $(CFLAGS) -o $@ $(jobstat_OBJS)
 
-jobd: jobd.o $(jobd_OBJS)
-	$(CC) $(CFLAGS) -o $@ $< $(jobd_OBJS) -lrt -lsqlite3
+jobcfg: $(jobcfg_OBJS)
+	$(CC) $(CFLAGS) -o $@ $(jobcfg_OBJS)
+
+jobd: $(jobd_OBJS)
+	$(CC) $(CFLAGS) -o $@ $(jobd_OBJS) -lrt
 
 clean:
 	rm -f *.o jobd jobcfg jobstat
+
+distclean: clean
+	rm -f $(SQLITE_OBJ)
