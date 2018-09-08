@@ -23,6 +23,7 @@
 #include <sys/un.h>
 #include <stdlib.h>
 
+#include "config.h"
 #include "logger.h"
 #include "ipc.h"
 
@@ -40,12 +41,8 @@ ipc_init(const char *_socketpath)
 	if (_socketpath) {
 		socketpath = strdup(_socketpath);
 	} else {
-		if (getuid() == 0) {
-			socketpath = strdup("/var/run/jobd.sock");
-		} else {
-			if (asprintf(&socketpath, "%s/.jobd.sock", getenv("HOME")) < 0)
-				socketpath = NULL;
-		}
+		if (asprintf(&socketpath, "%s/.jobd.sock", compile_time_option.runstatedir) < 0)
+			socketpath = NULL;
 	}
 	if (!socketpath)
 		return (-1);
@@ -117,7 +114,7 @@ create_ipc_socket(void)
 	strncpy(saun.sun_path, socketpath, sizeof(saun.sun_path) - 1);
 	memcpy(&ipc_server_addr, &saun, sizeof(ipc_server_addr));//FIXME: is this used?
 	ipc_sockfd = sd;
-
+	printlog(LOG_DEBUG, "bound to %s", socketpath);
 	return (0);
 }
 

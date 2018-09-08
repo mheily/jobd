@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "config.h"
 #include "job.h"
 #include "logger.h"
 #include "parser.h"
@@ -137,7 +138,6 @@ main(int argc, char *argv[])
   	while ((c = getopt (argc, argv, "f:v")) != -1) {
 		switch (c) {
 			case 'f':
-				puts(optarg);puts("shit");
 				f_flag = strdup(optarg);
 				if (!f_flag)
 					err(1, "strdup");
@@ -155,11 +155,20 @@ main(int argc, char *argv[])
 
 	printlog(LOG_DEBUG, "command=%s", command);
 	if (!strcmp(command, "init")) {
-		if (!f_flag)
-			errx(1, "must pass -f option");
-		printlog(LOG_INFO, "creating database at %s", f_flag);
-		if (db_create(NULL, f_flag) < 0)
+		char *schemapath;
+		if (f_flag) {
+			schemapath = strdup(f_flag);
+		} else {
+			if (asprintf(&schemapath, "%s/jmf/schema.sql", compile_time_option.datarootdir) < 0)
+				schemapath = NULL;
+		}
+		if (!schemapath)
+			err(1, "memory error");
+
+		printlog(LOG_INFO, "creating database at %s", schemapath);
+		if (db_create(NULL, schemapath) < 0)
 			errx(1, "unable to create the database");
+		free(schemapath);
 		exit(EXIT_SUCCESS);
 	}
 

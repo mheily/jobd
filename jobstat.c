@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "config.h"
 #include "database.h"
 #include "job.h"
 #include "logger.h"

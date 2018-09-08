@@ -23,8 +23,14 @@ install: all config.mk
 	$(MAKE) -f Makefile -f config.mk install-stage2
 
 install-stage2:
-	$(INSTALL) -d -m 755 $(DESTDIR)$(PKGCONFIGDIR) $(DESTDIR)$(SBINDIR)
+	$(INSTALL) -d -m 755 $(DESTDIR)$(PKGCONFIGDIR) \
+		$(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) \
+		$(DESTDIR)$(DATAROOTDIR)/jmf \
+		$(DESTDIR)$(LOCALSTATEDIR)/jmf \
+		$(DESTDIR)$(RUNSTATEDIR)/jmf
 	$(INSTALL) -m 755 jobd $(DESTDIR)$(SBINDIR)/jobd
+	$(INSTALL) -m 755 jobcfg $(DESTDIR)$(BINDIR)
+	$(INSTALL) -m 644 schema.sql $(DESTDIR)$(DATAROOTDIR)/jmf
 
 %.o: %.c *.h config.h
 	$(CC) -c $(CFLAGS) $< -o $@

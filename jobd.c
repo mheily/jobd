@@ -43,6 +43,7 @@
 #include <unistd.h>
 
 #include "array.h"
+#include "config.h"
 #include "database.h"
 #include "logger.h"
 #include "job.h"

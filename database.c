@@ -23,8 +23,8 @@
 #include <string.h>
 #include <unistd.h>
 
-
 #include "array.h"
+#include "config.h"
 #include "logger.h"
 #include "database.h"
 
@@ -41,23 +41,8 @@ _db_log_callback(void *unused, int error_code, const char *msg)
 int
 db_init(void)
 {
-	char *repodir;
-
-	if (getuid() == 0) {
-		dbpath = strdup("/etc/jobs.db");
-	} else {
-		// TODO: use $XDG_DATA_HOME instead of hardcoding ~/.local/share
-		if (asprintf(&repodir, "%s/.local/share/jmf", getenv("HOME")) < 0)
-			repodir = NULL;
-		if (repodir && asprintf(&dbpath, "%s/.local/share/jmf/repository.db", getenv("HOME")) < 0)
-			dbpath = NULL;
-		if (access(repodir, F_OK) < 0 && errno == ENOENT) {
-			if (mkdir(repodir, 0700) < 0) {
-				printlog(LOG_ERR, "mkdir: %s: %s", repodir, strerror(errno));
-				return (-1);	
-			}
-		}
-	}
+	if (asprintf(&dbpath, "%s/jmf/repository.db", compile_time_option.localstatedir) < 0)
+		dbpath = NULL;
 	if (!dbpath) {
 		printlog(LOG_ERR, "dbpath: %s", strerror(errno));
 		return (-1);

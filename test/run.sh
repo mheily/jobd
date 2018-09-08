@@ -1,29 +1,42 @@
 #!/bin/sh -ex
 
+cleanup() {
+    [ -z "$tail_pid" ] || kill $tail_pid
+    [ -z "$jobd_pid" ] || kill $jobd_pid
+}
+
 err() {
     echo "ERROR: $*"
     exit 1
 }
 
+trap cleanup EXIT
+
 #on linux: echo '/tmp/core_%e.%p' | sudo tee /proc/sys/kernel/core_pattern
 ulimit -H -c unlimited >/dev/null
 ulimit -S -c unlimited >/dev/null
 
-test -e jobcfg
-mkdir -p ~/.local/share/jmf
-rm -f ~/.local/share/jmf/repository.db
-./jobcfg -f schema.sql -v init
-./jobcfg -f test/job.d -v import
+objdir="./test/obj"
+rm -rf $objdir
+mkdir -p $objdir
+PREFIX=$objdir ./configure
+make all install -j6
+
+$objdir/bin/jobcfg -v init
+$objdir/bin/jobcfg -f test/job.d -v import
 #sqlite3 ~/.local/share/jmf/repository.db .schema
 #sqlite3 ~/.local/share/jmf/repository.db .dump
-sqlite3 -header ~/.local/share/jmf/repository.db 'select * from jobs'
-sqlite3 -header ~/.local/share/jmf/repository.db 'select * from job_methods'
+#sqlite3 -header ~/.local/share/jmf/repository.db 'select * from jobs'
+#sqlite3 -header ~/.local/share/jmf/repository.db 'select * from job_methods'
 
-./jobd -fv >test.log 2>&1 &
-pid=$!
+set +x
+echo "# Test log started on $(date)" > test.log
+tail -f test.log &
+tail_pid=$!
+$objdir/sbin/jobd -fv >>test.log 2>&1 &
+jobd_pid=$!
 for x in $(seq 1 10) ; do
     grep -q 'job sleep1 .* exited' test.log && break || true
     sleep 1
 done
 grep -q 'job sleep1 .* exited' test.log || err "unexpected response"
-kill $pid
