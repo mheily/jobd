@@ -19,8 +19,10 @@ ulimit -S -c unlimited >/dev/null
 objdir="./test/obj"
 rm -rf $objdir
 mkdir -p $objdir
+make distclean
 PREFIX=$objdir ./configure
-make all install -j6
+make all -j6
+make install
 
 $objdir/bin/jobcfg -v init
 $objdir/bin/jobcfg -f test/job.d -v import
