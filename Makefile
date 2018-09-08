@@ -1,7 +1,6 @@
 .POSIX:
 
-CONFDIR=/etc
-SBINDIR=/sbin
+INSTALL ?= /usr/bin/install
 
 SQLITE_SRCDIR := vendor/sqlite-amalgamation-3240000
 SQLITE_CFLAGS := -I$(SQLITE_SRCDIR) -DSQLITE_THREADSAFE=0 \
@@ -20,12 +19,18 @@ jobstat_OBJS=jobstat.o database.o ipc.o logger.o $(SQLITE_OBJ)
 
 all: jobcfg jobd jobstat
 
-install: all
-	$(INSTALL) -d -m 755 $$DESTDIR$(CONFDIR)/etc/job.d
-	$(INSTALL) -m 755 jobd job $$DESTDIR$(SBINDIR)/jobd
+install: all config.mk
+	$(MAKE) -f Makefile -f config.mk install-stage2
 
-%.o: %.c %.h
-	$(CC) -c $(CFLAGS) -DCONFDIR=$(CONFDIR) $< -o $@
+install-stage2:
+	$(INSTALL) -d -m 755 $(DESTDIR)$(PKGCONFIGDIR) $(DESTDIR)$(SBINDIR)
+	$(INSTALL) -m 755 jobd $(DESTDIR)$(SBINDIR)/jobd
+
+%.o: %.c *.h config.h
+	$(CC) -c $(CFLAGS) $< -o $@
+
+config.h config.mk:
+	./configure
 
 $(SQLITE_OBJ):
 	$(CC) -c $(SQLITE_CFLAGS) -o $@ $(SQLITE_SRCDIR)/sqlite3.c
@@ -43,4 +48,4 @@ clean:
 	rm -f *.o jobd jobcfg jobstat
 
 distclean: clean
-	rm -f $(SQLITE_OBJ)
+	rm -f $(SQLITE_OBJ) config.mk config.h

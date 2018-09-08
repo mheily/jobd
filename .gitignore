@@ -7,3 +7,5 @@
 /Attic/
 test.log
 /.vagrant/
+/config.h
+/config.mk
