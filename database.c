@@ -130,6 +130,15 @@ db_create(const char *path, const char *schemapath)
 	return (0);
 }
 
+bool
+db_exists(void)
+{
+	if (access(db_default.dbpath, F_OK) < 0)
+		return (false);
+	else
+		return (true);
+}
+
 int 
 db_exec_path(const char *path)
 {

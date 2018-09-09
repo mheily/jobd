@@ -37,6 +37,7 @@ extern sqlite3 *dbh;
 int db_init(void);
 int db_create(const char *, const char *);
 int db_open(const char *, bool);
+bool db_exists(void);
 int db_exec_path(const char *);
 
 int db_select_into_string_array(struct string_array *strarr, sqlite3_stmt *stmt);
