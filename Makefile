@@ -27,6 +27,7 @@ install-stage2:
 	$(INSTALL) -d -m 755 $(DESTDIR)$(PKGCONFIGDIR) \
 		$(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) \
 		$(DESTDIR)$(DATAROOTDIR)/jmf \
+		$(DESTDIR)$(DATAROOTDIR)/jmf/manifests \
 		$(DESTDIR)$(LOCALSTATEDIR)/jmf \
 		$(DESTDIR)$(RUNSTATEDIR)/jmf
 	$(INSTALL) -m 755 jobd $(DESTDIR)$(SBINDIR)/jobd
