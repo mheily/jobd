@@ -69,12 +69,6 @@ static const struct signal_handler {
 	{ 0, NULL}
 };
 
-static struct config {
-	char *configdir;
-	char *socketpath;
-	uint32_t shutdown_timeout;
-} config;
-
 #ifdef __linux__
 static struct {
 	int epfd;
@@ -306,82 +300,12 @@ reload_configuration(int signum __attribute__((unused)))
 	schedule();
 }
 
-// static void
-// list_jobs(struct ipc_response_header *res)
-// {
-// 	struct job *job;
-// 	char *p;
-// 	size_t len;
-
-// 	p = ipc_buf;
-// 	LIST_FOREACH(job, &all_jobs, entries) {
-// 		len = strlen(job->id);
-// 		sprintf(p, "%s\n", job->id);
-// 		len += 2; //BOUNDS
-// 	}
-// 	res->status = 0;
-// 	res->message[0] = "\0";
-// }
-
 static int
 update_status(struct job *unused)
 {
 	(void) unused;
 	puts("wheeeeee");
 	return (0);
-}
-
-static int
-parse_jobd_conf(const char *user_provided_path)
-{
-	char *path;
-	FILE *fh;
-
-	if (user_provided_path) {
-		if ((path = strdup(user_provided_path)) == NULL)
-			goto enomem;
-	} else if (getuid() == 0) {
-		if ((path = strdup("/etc/jobd.conf")) == NULL)
-			goto enomem;
-	} else {
-		if (asprintf(&path, "%s/.config/jobd.conf", getenv("HOME")) < 0)
-			goto enomem;
-	}
-
-	fh = fopen(path, "r");
-	if (fh) {
-		err(1, "TODO");
-	} else {
-		if (errno != ENOENT) {
-			printlog(LOG_ERR, "fopen(3) of %s: %s", path, strerror(errno));
-			goto err;
-		}
-
-		/* Apply default configuration settings */
-		config.shutdown_timeout = 300;
-		if (getuid() == 0) {
-			config.configdir = strdup("/etc/job.d");
-		} else {
-			if (asprintf(&config.configdir, "%s/.config/job.d", getenv("HOME")) < 0)
-				goto enomem;
-		}
-		if (!config.configdir) {
-			printlog(LOG_ERR, "allocation failed: %s", strerror(errno));
-			goto err;
-		}
-	}
-
-	free(path);
-	return (0);
-
-enomem:
-	free(path);
-	printlog(LOG_ERR, "allocation failed: %s", strerror(errno));
-	return (-1);
-
-err:
-	free(path);
-	return (-1);
 }
 
 static void
@@ -689,9 +613,6 @@ main(int argc, char *argv[])
 
 	if (db_open(NULL, false) < 0)
 		errx(1, "unable to open the database");
-
-    if (parse_jobd_conf(NULL) < 0)
-	    err(1, "bad configuration file");
 
 	is_server = !strcmp(basename(argv[0]), "jobd");
 
