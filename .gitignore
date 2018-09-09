@@ -1,6 +1,7 @@
 /jobd
 /job
 *.o
+/jobadm
 /jobcfg
 /jobstat
 /.vscode/

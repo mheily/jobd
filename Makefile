@@ -15,9 +15,10 @@ CFLAGS+=-D_GNU_SOURCE
 
 jobd_OBJS=jobd.o database.o ipc.o job.o logger.o parser.o toml.o tsort.o $(SQLITE_OBJ)
 jobcfg_OBJS=jobcfg.o database.o ipc.o job.o logger.o parser.o toml.o $(SQLITE_OBJ)
+jobadm_OBJS=jobadm.o database.o ipc.o logger.o $(SQLITE_OBJ)
 jobstat_OBJS=jobstat.o database.o ipc.o logger.o $(SQLITE_OBJ)
 
-all: jobcfg jobd jobstat
+all: jobcfg jobd jobstat jobadm
 
 install: all config.mk
 	$(MAKE) -f Makefile -f config.mk install-stage2
@@ -29,7 +30,7 @@ install-stage2:
 		$(DESTDIR)$(LOCALSTATEDIR)/jmf \
 		$(DESTDIR)$(RUNSTATEDIR)/jmf
 	$(INSTALL) -m 755 jobd $(DESTDIR)$(SBINDIR)/jobd
-	$(INSTALL) -m 755 jobcfg $(DESTDIR)$(BINDIR)
+	$(INSTALL) -m 755 jobadm jobcfg jobstat $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 644 schema.sql $(DESTDIR)$(DATAROOTDIR)/jmf
 
 %.o: %.c *.h config.h
@@ -40,6 +41,9 @@ config.h config.mk:
 
 $(SQLITE_OBJ):
 	$(CC) -c $(SQLITE_CFLAGS) -o $@ $(SQLITE_SRCDIR)/sqlite3.c
+
+jobadm: $(jobadm_OBJS)
+	$(CC) $(CFLAGS) -o $@ $(jobadm_OBJS)
 
 jobstat: $(jobstat_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(jobstat_OBJS)

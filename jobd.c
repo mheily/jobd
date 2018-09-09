@@ -522,10 +522,22 @@ sigchld_handler(int signum __attribute__((unused)))
 	}
 }
 
-void
-server_main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
 	int c, daemon, verbose;
+
+	if (logger_init() < 0)
+		errx(1, "logger_init");
+
+	if (db_init() < 0)
+		errx(1, "unable to initialize the database routines");
+
+	if (db_open(NULL, false) < 0)
+		errx(1, "unable to open the database");
+
+	if (ipc_init(NULL) < 0)
+		errx(1, "ipc_init");
 
 	verbose = 0;
     daemon = 1;
@@ -559,68 +571,4 @@ server_main(int argc, char *argv[])
 		dispatch_event();
 	}
 	/* NOTREACHED */
-}
-
-void
-client_main(int argc, char *argv[])
-{
-	char *command = argv[1];
-	int rv;
-
-	if (ipc_connect() < 0)
-		errx(1, "ipc_connect");
-
-	(void) argc;
-	if (!command)
-		errx(1, "command expected");
-
-	if (!strcmp(command, "help")) {
-		puts("no help yet");
-		rv = -1;
-	// } else if (!strcmp(command, "list")) {
-	// 	ipc_client_request();
-	} else if (!strcmp(command, "start")) {
-		rv = ipc_client_request(IPC_REQUEST_START, argv[2]);
-	} else if (!strcmp(command, "stop")) {
-		rv = ipc_client_request(IPC_REQUEST_STOP, argv[2]);
-	} else if (!strcmp(command, "status")) {
-		rv = ipc_client_request(IPC_REQUEST_STATUS, NULL);
-	} else if (!strcmp(command, "restart")) {
-		ipc_client_request(IPC_REQUEST_STOP, argv[2]);//ERRCHECK
-		rv = ipc_client_request(IPC_REQUEST_START, argv[2]);
-	} else {
-		printlog(LOG_ERR, "unrecognized command: %s", command);
-		errx(1, "invalid command");
-	}
-	if (rv != IPC_RESPONSE_OK) {
-		fprintf(stderr, "ERROR: Request failed with retcode %d\n", rv);
-		exit(EXIT_FAILURE);
-	}
-
-	exit(EXIT_SUCCESS);
-}
-
-int
-main(int argc, char *argv[])
-{
-	int is_server;
-
-	if (logger_init() < 0)
-		errx(1, "logger_init");
-
-	if (db_init() < 0)
-		errx(1, "unable to initialize the database routines");
-
-	if (db_open(NULL, false) < 0)
-		errx(1, "unable to open the database");
-
-	is_server = !strcmp(basename(argv[0]), "jobd");
-
-	if (ipc_init(NULL) < 0)
-		errx(1, "ipc_init");
-
-	if (is_server)
-		server_main(argc, argv);
-	else 
-		client_main(argc, argv);
 }
