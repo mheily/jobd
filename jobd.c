@@ -553,9 +553,13 @@ main(int argc, char *argv[])
 
 	if (db_init() < 0)
 		errx(1, "unable to initialize the database routines");
-
+	if (db_exists()) { 
 	if (db_open(NULL, false) < 0)
 		errx(1, "unable to open the database");
+	} else {
+		if (db_create(NULL, NULL) < 0)
+			errx(1, "unable to create the database");
+	}
 
 	if (ipc_init(NULL) < 0)
 		errx(1, "ipc_init");
