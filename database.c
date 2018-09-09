@@ -28,7 +28,11 @@
 #include "logger.h"
 #include "database.h"
 
-static char *dbpath;
+static struct {
+	char *dbpath;
+	char *schemapath;
+} db_default;
+
 sqlite3 *dbh = NULL;
 
 static void
@@ -41,10 +45,19 @@ _db_log_callback(void *unused, int error_code, const char *msg)
 int
 db_init(void)
 {
-	if (asprintf(&dbpath, "%s/jmf/repository.db", compile_time_option.localstatedir) < 0)
-		dbpath = NULL;
-	if (!dbpath) {
-		printlog(LOG_ERR, "dbpath: %s", strerror(errno));
+	memset(&db_default, 0, sizeof(db_default));
+
+	if (asprintf(&db_default.dbpath, "%s/jmf/repository.db", compile_time_option.localstatedir) < 0)
+		db_default.dbpath = NULL;
+	if (!db_default.dbpath) {
+		printlog(LOG_ERR, "asprintf: %s", strerror(errno));
+		return (-1);
+	}
+
+	if (asprintf(&db_default.schemapath, "%s/jmf/schema.sql", compile_time_option.datarootdir) < 0)
+		db_default.schemapath = NULL;
+	if (!db_default.schemapath) {
+		printlog(LOG_ERR, "asprintf: %s", strerror(errno));
 		return (-1);
 	}
 
@@ -67,7 +80,7 @@ db_open(const char *path, bool readonly)
 	}
 
 	if (!path)
-		path = dbpath;
+		path = db_default.dbpath;
 	
 	if (readonly)
 		flags = SQLITE_OPEN_READONLY;
@@ -94,7 +107,9 @@ db_create(const char *path, const char *schemapath)
 	}
 
 	if (!path)
-		path = dbpath;
+		path = db_default.dbpath;
+	if (!schemapath)
+		schemapath = db_default.schemapath;
 	
 	flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
 
