@@ -32,8 +32,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
+#ifdef __FreeBSD__
+#include <sys/procctl.h>
+#endif /* __FreeBSD__ */
 #ifdef __linux__
 #include <sys/epoll.h>
+#include <sys/prctl.h>
 #include <sys/signalfd.h>
 #else
 #include <sys/event.h>
@@ -522,6 +526,23 @@ sigchld_handler(int signum __attribute__((unused)))
 	}
 }
 
+/* TODO: for each job, spawn a dedicated subreaper process.
+   Right now, this only serves the purpose of documenting orphan
+   processes in the logs */
+static void
+become_a_subreaper(void)
+{
+#if defined(__FreeBSD__)
+	if (procctl(P_PID, getpid(), PROC_REAP_ACQUIRE, 0) < 0)
+		printlog(LOG_ERR, "system call failed: %s", strerror(errno));
+#elif defined(__linux__)
+	if (prctl(PR_SET_CHILD_SUBREAPER, 1) < 0)
+		printlog(LOG_ERR, "system call failed: %s", strerror(errno));
+#else
+	printlog(LOG_WARNING, "subreaper feature is not implemented");
+#endif
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -563,6 +584,7 @@ main(int argc, char *argv[])
 	logger_set_verbose(verbose);
 	if (ipc_bind() < 0)
 		errx(1, "ipc_connect");
+	become_a_subreaper();
 	create_event_queue();
 	register_signal_handlers();
 	(void)kill(getpid(), SIGHUP);
