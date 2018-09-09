@@ -47,7 +47,7 @@ parse_bool(bool *result, toml_table_t *tab, const char *key, bool default_value)
 		return (0);
 	}
 	
-	if (toml_rtob(raw, &rv)) {
+	if (!toml_rtob(raw, &rv)) {
 		*result = rv;
 		return (0);	
 	} else {
