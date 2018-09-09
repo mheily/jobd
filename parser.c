@@ -224,52 +224,58 @@ parse_job(struct job_parser *jpr)
 	struct job * const j = jpr->job;
 	toml_table_t * const tab = jpr->tab;
 
+#define goto_err(why) do { printlog(LOG_ERR, "error parsing "#why); goto err; } while (0)
+
 	if (parse_string(&j->id, tab, "name", ""))
-		goto err;
+		goto_err("name");
 	if (parse_string(&j->command, tab, "command", "/bin/true"))
-		goto err;
+		goto_err("command");
 	if (parse_string(&j->description, tab, "description", ""))
-		goto err;
+		goto_err("description");
 	if (parse_array_of_strings(j->after, tab, "after"))
-		goto err;
+		goto_err("after");
 	if (parse_array_of_strings(j->before, tab, "before"))
-		goto err;
+		goto_err("before");
 	if (parse_bool(&j->enable, tab, "enable", true))
-		goto err;
+		goto_err("enable");
+	if (parse_bool(&j->exclusive, tab, "exclusive", true))
+		goto_err("exclusive");
 	if (parse_environment_variables(j, tab))
-		goto err;
+		goto_err("environment");
 	if (parse_string(&j->group_name, tab, "group", ""))
-		goto err;		
+		goto_err("group");
 	if (parse_gid(&j->gid, j->group_name))
-		goto err;
+		goto_err("gid");
 	if (parse_bool(&j->init_groups, tab, "init_groups", true))
-		goto err;
+		goto_err("init_groups");
 	if (parse_bool(&j->keep_alive, tab, "keep_alive", false))
-		goto err;
+		goto_err("keep_alive");
 	if (parse_string(&j->title, tab, "title", j->id))
-		goto err;
+		goto_err("title");
 	if (parse_string(&j->root_directory, tab, "root_directory", "/"))
-		goto err;
+		goto_err("root_directory");
 	if (parse_string(&j->standard_error_path, tab, "stderr", "/dev/null"))
-		goto err;
+		goto_err("standard_error_path");
 	if (parse_string(&j->standard_in_path, tab, "stdin", "/dev/null"))
-		goto err;
+		goto_err("standard_in_path");
 	if (parse_string(&j->standard_out_path, tab, "stdout", "/dev/null"))
-		goto err;
+		goto_err("standard_out_path");
 	
 	if (parse_string(&j->umask_str, tab, "umask", "0077"))
-		goto err;
+		goto_err("umask");
 	sscanf(j->umask_str, "%hi", (unsigned short *) &j->umask);
 
 	if (parse_uid(&j->uid, tab, "user", getuid()))
-		goto err;
+		goto_err("user");
 	if (uid_to_name(&j->user_name, j->uid))
-		goto err;
+		goto_err("user_name");
 
 	if (parse_string(&j->working_directory, tab, "cwd", "/"))
-		goto err;
+		goto_err("working_directory");
 
 	return (0);
+
+#undef goto_err
 
 err:
 	return (-1);
@@ -333,8 +339,10 @@ parse_job_file(struct job_parser *jpr, const char *path)
 	}
 	(void) fclose(fh);
 
-	if (parse_job(jpr) < 0)
+	if (parse_job(jpr) < 0) {
+		printlog(LOG_ERR, "parse_job() failed");
 		goto err;
+	}
 
 	if (jpr->job->id[0] == '\0') {
 		if (generate_job_name(jpr->job, path) < 0)
@@ -452,7 +460,7 @@ job_db_insert(struct job_parser *jpr)
 	const char *sql = "INSERT INTO jobs (job_id, description, gid, init_groups,"
 		"keep_alive, root_directory, standard_error_path,"
 		"standard_in_path, standard_out_path, umask, user_name,"
-		"working_directory, enable, command) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+		"working_directory, enable, command, exclusive) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
 	rv = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
 		 sqlite3_bind_text(stmt, 1, job->id, -1, SQLITE_STATIC) == SQLITE_OK &&
@@ -468,7 +476,8 @@ job_db_insert(struct job_parser *jpr)
 		 sqlite3_bind_text(stmt, 11, job->user_name, -1, SQLITE_STATIC) == SQLITE_OK &&
 		 sqlite3_bind_text(stmt, 12, job->working_directory, -1, SQLITE_STATIC) == SQLITE_OK &&
 		 sqlite3_bind_int(stmt, 13, job->enable) == SQLITE_OK &&
-		 sqlite3_bind_text(stmt, 14, job->command, -1, SQLITE_STATIC) == SQLITE_OK;
+		 sqlite3_bind_text(stmt, 14, job->command, -1, SQLITE_STATIC) == SQLITE_OK &&
+		 sqlite3_bind_int(stmt, 15, job->exclusive) == SQLITE_OK;
 
 	if (!rv || sqlite3_step(stmt) != SQLITE_DONE) {
 		printlog(LOG_ERR, "error importing %s", job->id);
