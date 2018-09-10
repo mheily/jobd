@@ -56,6 +56,7 @@ import_from_directory(const char *configdir)
 	DIR	*dirp;
 	struct dirent *entry;
 	char *path;
+	int rv = 0;
 
 	printlog(LOG_DEBUG, "importing all jobs in directory: %s", configdir);
 	if ((dirp = opendir(configdir)) == NULL)
@@ -76,6 +77,7 @@ import_from_directory(const char *configdir)
 		if (import_from_file(path) < 0) {
 			printlog(LOG_ERR, "error parsing %s", path);
 			free(path);
+			rv = -1;
 			continue;
 		}
 		free(path);
@@ -84,7 +86,7 @@ import_from_directory(const char *configdir)
 		err(1, "closedir(3)");
 	}
 
-	return (0);
+	return (rv);
 }
 
 int

@@ -254,7 +254,7 @@ job_db_select_all(struct job_list *dest)
 	const char *sql = "SELECT job_id, description, gid, init_groups,"
 					  "keep_alive, root_directory, standard_error_path,"
 					  "standard_in_path, standard_out_path, umask, user_name,"
-					  "working_directory, id, enable,command "
+					  "working_directory, id, enable, command, exclusive "
 					  "FROM jobs ";
 
 	sqlite3_stmt *stmt = NULL;
@@ -302,6 +302,7 @@ job_db_select_all(struct job_list *dest)
 		job->enable = sqlite3_column_int(stmt, 13);
 		if (!(job->command = strdup((char *)sqlite3_column_text(stmt, 14))))
 			goto os_err;
+		job->exclusive = sqlite3_column_int(stmt, 15);
 
 		//FIXME - need to deal w/ gid, umask parsing
 

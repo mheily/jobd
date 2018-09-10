@@ -57,7 +57,7 @@ struct job {
     char *id;
     char *command;
     char *description;
-    bool enable;
+    bool enable, exclusive;
     struct string_array *environment_variables;
     gid_t gid;
     char *group_name;

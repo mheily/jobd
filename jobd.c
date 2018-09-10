@@ -62,6 +62,8 @@ static void reload_configuration(int);
 /* Max length of a job ID. Equivalent to FILE_MAX */
 #define JOB_ID_MAX 255
 
+static struct job *scheduler_lock = NULL;
+
 static const struct signal_handler {
 	int signum;
 	void (*handler)(int);
@@ -186,12 +188,23 @@ schedule(void)
 
 	printlog(LOG_DEBUG, "scheduling jobs");
 	
+	if (scheduler_lock) {
+		printlog(LOG_DEBUG, "will not run scheduler; an exclusive job is in progress");
+		return;
+	}
+
 	LIST_FOREACH(job, &all_jobs, entries) {
 		switch (job->state) {
 			case JOB_STATE_UNKNOWN:
 				job->state = JOB_STATE_STOPPED;
-				if (job->enable)
+				if (job->enable) {
 					job_start(job);
+					if (job->exclusive && job->state == JOB_STATE_RUNNING) {
+						printlog(LOG_DEBUG, "scheduler locked by %s", job->id);
+						scheduler_lock = job;
+						return;
+					}
+				}
 				break;
 			case JOB_STATE_STOPPED:
 				break;
@@ -235,7 +248,11 @@ reaper(struct job_list *jobs, pid_t pid, int status)
 			if (jobd_is_shutting_down) {
 				// Do not reschedule. 
 			} else {
-				// TODO: reschedule
+				if (scheduler_lock == job) {
+					printlog(LOG_DEBUG, "unlocking the scheduler");
+					scheduler_lock = NULL;
+					schedule();
+				}
 			}
 
 			return;
@@ -554,8 +571,8 @@ main(int argc, char *argv[])
 	if (db_init() < 0)
 		errx(1, "unable to initialize the database routines");
 	if (db_exists()) { 
-	if (db_open(NULL, false) < 0)
-		errx(1, "unable to open the database");
+		if (db_open(NULL, false) < 0)
+			errx(1, "unable to open the database");
 	} else {
 		if (db_create(NULL, NULL) < 0)
 			errx(1, "unable to create the database");

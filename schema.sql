@@ -7,6 +7,7 @@ CREATE TABLE jobs (
     command TEXT NOT NULL,
     description VARCHAR,
     enable BOOLEAN NOT NULL DEFAULT 1 CHECK (enable IN (0,1)),
+    exclusive BOOLEAN NOT NULL DEFAULT 0 CHECK (exclusive IN (0,1)),
     gid VARCHAR,
     init_groups BOOLEAN NOT NULL DEFAULT 1 CHECK (init_groups IN (0,1)),
     keep_alive BOOLEAN NOT NULL DEFAULT 0 CHECK (keep_alive IN (0,1)),

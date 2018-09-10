@@ -24,6 +24,7 @@ PREFIX=$objdir ./configure
 make all -j6
 make install
 
+install test/job.d/* ./test/obj/share/jmf/manifests
 $objdir/bin/jobcfg -v init
 $objdir/bin/jobcfg -f test/job.d -v import
 #sqlite3 ~/.local/share/jmf/repository.db .schema

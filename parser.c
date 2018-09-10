@@ -238,7 +238,7 @@ parse_job(struct job_parser *jpr)
 		goto_err("before");
 	if (parse_bool(&j->enable, tab, "enable", true))
 		goto_err("enable");
-	if (parse_bool(&j->exclusive, tab, "exclusive", true))
+	if (parse_bool(&j->exclusive, tab, "exclusive", false))
 		goto_err("exclusive");
 	if (parse_environment_variables(j, tab))
 		goto_err("environment");
