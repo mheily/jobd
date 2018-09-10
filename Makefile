@@ -2,6 +2,10 @@
 
 INSTALL ?= /usr/bin/install
 
+INIT_SRCDIR := vendor/freebsd-init-r338454
+INIT_CFLAGS := -DDEBUGSHELL -DSECURE -DLOGIN_CAP -DCOMPAT_SYSV_INIT
+INIT_LDADD := -lutil -lcrypt
+
 SQLITE_SRCDIR := vendor/sqlite-amalgamation-3240000
 SQLITE_CFLAGS := -I$(SQLITE_SRCDIR) -DSQLITE_THREADSAFE=0 \
 					-DSQLITE_OMIT_LOAD_EXTENSION
@@ -31,6 +35,7 @@ install-stage2:
 		$(DESTDIR)$(LOCALSTATEDIR)/jmf \
 		$(DESTDIR)$(RUNSTATEDIR)/jmf
 	$(INSTALL) -m 755 jobd $(DESTDIR)$(SBINDIR)/jobd
+	test ! -e init || $(INSTALL) -m 755 init $(DESTDIR)$(SBINDIR)
 	$(INSTALL) -m 755 jobadm jobcfg jobstat $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 644 schema.sql $(DESTDIR)$(DATAROOTDIR)/jmf
 
@@ -55,8 +60,11 @@ jobcfg: $(jobcfg_OBJS)
 jobd: $(jobd_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(jobd_OBJS) -lrt
 
+init:
+	cd $(INIT_SRCDIR) && $(CC) $(INIT_CFLAGS) -o ../../init -I. init.c getmntopts.c $(INIT_LDADD)
+
 clean:
-	rm -f *.o jobd jobcfg jobstat
+	rm -f *.o jobd jobcfg jobstat init
 
 distclean: clean
 	rm -f $(SQLITE_OBJ) config.mk config.h
