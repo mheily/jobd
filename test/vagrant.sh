@@ -7,13 +7,6 @@ if [ "$1" = "inside-the-box" ] ; then
     set -ex
     cd /vagrant
 
-    # To install systemwide
-    # make distclean
-    # ./configure
-    # make
-    # sudo make install
-    # sudo rm -f /usr/local/var/jmf/repository.db
-
     ./test/run.sh
 
     exit
