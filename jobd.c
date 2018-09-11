@@ -581,29 +581,28 @@ main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (getppid() == 1) {
+	if (getppid() == 1)
 		verbose = 1;		/* TEMPORARY: for debugging */
-    	daemon = 0;
-	} else {
+	else
 		verbose = 0;
-		daemon = 1;
-
-		while ((c = getopt(argc, argv, "fv")) != -1) {
-			switch (c) {
-			case 'f':
-					daemon = 0;
-					break;
-			case 'v':
-					verbose = 1;
-					break;
-			default:
-					fputs("unrecognized command option", stderr);
-					usage();
-					exit(EXIT_FAILURE);
-					break;
-			}
+	daemon = 1;
+	
+	while ((c = getopt(argc, argv, "fv")) != -1) {
+		switch (c) {
+		case 'f':
+				daemon = 0;
+				break;
+		case 'v':
+				verbose = 1;
+				break;
+		default:
+				fputs("unrecognized command option", stderr);
+				usage();
+				exit(EXIT_FAILURE);
+				break;
 		}
 	}
+
 
 	if (daemon)
         daemonize();
