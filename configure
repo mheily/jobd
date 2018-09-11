@@ -23,7 +23,7 @@ fi
 prefix=${PREFIX:-/usr/local}
 bindir=${BINDIR:-${prefix}/bin}
 sbindir=${SBINDIR:-${prefix}/sbin}
-pkgconfigdir=${PKGCONFIGDIR:-/etc/jmf}
+pkgconfigdir=${PKGCONFIGDIR:-${prefix}/etc/jmf}
 datarootdir=${DATAROOTDIR:-${prefix}/share}
 localstatedir=${LOCALSTATEDIR:-${prefix}/var}
 runstatedir=${RUNSTATEDIR:-${prefix}/var/run}
