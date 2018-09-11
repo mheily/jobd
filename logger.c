@@ -15,11 +15,13 @@
  */
 
 #include <fcntl.h>
+#include <syslog.h>
 #include <unistd.h>
 
 #include "logger.h"
 
 FILE *logger_fh;
+int logger_use_syslog;
 
 int
 logger_open(const char *path)
@@ -48,17 +50,23 @@ logger_init(void)
 {
 	int fd;
 
-	fd = dup(STDERR_FILENO);
-	if (fd < 0)
-		return (-1);
-	if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) {
-		//TODO: printlog(LOG_ERR, "fcntl(2): %s", strerror(errno));
-		return (-1);
-	}
-	logger_fh = fdopen(fd, "w");
-	if (!logger_fh) {
-		close(fd);
-		return (-1);
+	if (getuid() == 0) {
+		logger_use_syslog = 1;
+		openlog("jobd", LOG_CONS, LOG_AUTH);
+	} else {
+		logger_use_syslog = 0;
+		fd = dup(STDERR_FILENO);
+		if (fd < 0)
+			return (-1);
+		if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) {
+			//TODO: printlog(LOG_ERR, "fcntl(2): %s", strerror(errno));
+			return (-1);
+		}
+		logger_fh = fdopen(fd, "w");
+		if (!logger_fh) {
+			close(fd);
+			return (-1);
+		}
 	}
 
 	return (0);
