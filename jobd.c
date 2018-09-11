@@ -568,34 +568,40 @@ main(int argc, char *argv[])
 	if (logger_init() < 0)
 		errx(1, "logger_init");
 
-	if (db_init() < 0)
-		errx(1, "unable to initialize the database routines");
-	if (db_exists()) { 
-		if (db_open(NULL, false) < 0)
-			errx(1, "unable to open the database");
-	} else {
-		if (db_create(NULL, NULL) < 0)
-			errx(1, "unable to create the database");
+	if (db_init() < 0) {
+		printlog(LOG_ERR, "unable to initialize the database routines");
+		exit(EXIT_FAILURE);
+	}
+	if (db_open(NULL, false) < 0) { 
+		printlog(LOG_ERR, "unable to open the database");
+		exit(EXIT_FAILURE);
+	}
+	if (ipc_init(NULL) < 0) {
+		printlog(LOG_ERR, "ipc_init() failed");
+		exit(EXIT_FAILURE);
 	}
 
-	if (ipc_init(NULL) < 0)
-		errx(1, "ipc_init");
+	if (getppid() == 1) {
+		verbose = 1;		/* TEMPORARY: for debugging */
+    	daemon = 0;
+	} else {
+		verbose = 0;
+		daemon = 1;
 
-	verbose = 0;
-    daemon = 1;
-	while ((c = getopt(argc, argv, "fv")) != -1) {
-		switch (c) {
-		case 'f':
-				daemon = 0;
-				break;
-		case 'v':
-				verbose = 1;
-				break;
-		default:
-				fputs("unrecognized command option", stderr);
-				usage();
-				exit(EXIT_FAILURE);
-				break;
+		while ((c = getopt(argc, argv, "fv")) != -1) {
+			switch (c) {
+			case 'f':
+					daemon = 0;
+					break;
+			case 'v':
+					verbose = 1;
+					break;
+			default:
+					fputs("unrecognized command option", stderr);
+					usage();
+					exit(EXIT_FAILURE);
+					break;
+			}
 		}
 	}
 
@@ -603,8 +609,10 @@ main(int argc, char *argv[])
         daemonize();
 
 	logger_set_verbose(verbose);
-	if (ipc_bind() < 0)
-		errx(1, "ipc_connect");
+	if (ipc_bind() < 0) {
+		printlog(LOG_ERR, "IPC bind failed");
+		//FIXME: IPC is broken here, maybe try to fix it later?
+	}
 	become_a_subreaper();
 	create_event_queue();
 	register_signal_handlers();
