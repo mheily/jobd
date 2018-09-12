@@ -40,6 +40,6 @@
 #define	_PATH_INITLOG		"/var/log/init.log"
 #define	_PATH_SLOGGER		"/sbin/session_logger"
 #define	_PATH_RUNCOM		"/lib/jmf/sbin/jobd"
-#define	_PATH_RUNDOWN		"/etc/rc.shutdown"
+#define	_PATH_RUNDOWN		"/lib/jmf/sbin/shutdown"
 #define	_PATH_REROOT		"/dev/reroot"
 #define	_PATH_REROOT_INIT	_PATH_REROOT "/init"
