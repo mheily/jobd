@@ -79,6 +79,7 @@ struct job {
 LIST_HEAD(job_list, job);
 
 int job_start(struct job *);
+int job_stop(struct job *job);
 struct job *job_new(void);
 void job_free(struct job *);
 int job_db_select_all(struct job_list *dest);

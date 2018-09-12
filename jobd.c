@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <syslog.h>
+#include <limits.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -52,6 +53,7 @@
 #include "logger.h"
 #include "job.h"
 #include "ipc.h"
+#include "pidfile.h"
 #include "tsort.h"
 
 static void sigchld_handler(int);
@@ -63,6 +65,7 @@ static void reload_configuration(int);
 #define JOB_ID_MAX 255
 
 static struct job *scheduler_lock = NULL;
+//static struct pidfh *pidfile_fh;
 
 static const struct signal_handler {
 	int signum;
@@ -160,27 +163,6 @@ unspool(void)
 	return (0);
 }
 
-static int
-stop(struct job *job)
-{
-	if (job->state != JOB_STATE_RUNNING)
-		return (-IPC_RESPONSE_INVALID_STATE);
-
-	printlog(LOG_DEBUG, "sending SIGTERM to job %s (pid %d)", job->id, job->pid);
-	(void) kill(job->pid, SIGTERM); //TODO: errorhandle
-	job->state = JOB_STATE_STOPPING;
-	//TODO: start a timeout
-	return (0);
-}
-
-// static int
-// restart(struct job *job)
-// {
-// 	(void)stop(job);
-// 	//TODO: wait
-// 	return (start(job));
-// }
-
 static void
 schedule(void)
 {
@@ -273,6 +255,8 @@ shutdown_handler(int signum)
     
 	jobd_is_shutting_down = true;
 
+	/* This has the effect of reversing the list, causing jobs to be
+	   stopped in the reverse order that they were started. */
 	LIST_INIT(&shutdown_list);
 	LIST_FOREACH_SAFE(job, &all_jobs, entries, tmpjob) {
 		LIST_REMOVE(job, entries);
@@ -284,28 +268,36 @@ shutdown_handler(int signum)
  	}
 
 	LIST_FOREACH_SAFE(job, &shutdown_list, entries, tmpjob) {
-		stop(job);
-		pid = wait(&status);
-		if (pid > 0) {
-			reaper(&shutdown_list, pid, status);
-		} else {
-			if (errno == EINTR) {
-				if (sigalrm_flag) {
-					printlog(LOG_ERR, "timeout: one or more jobs failed to terminate");
-				} else {
-					printlog(LOG_ERR, "caught unhandled signal");
-				}
-			} else if (errno == ECHILD) {
-				printlog(LOG_WARNING, "no remaining children to wait for");
-				break;			
+		if (job_stop(job) < 0) {
+			printlog(LOG_ERR, "unable to stop job: %s", job->id);
+			continue;
+		}
+		if (job->state == JOB_STATE_STOPPING) {
+			pid = wait(&status);
+			if (pid > 0) {
+				reaper(&shutdown_list, pid, status);
 			} else {
-				printlog(LOG_ERR, "wait(2): %s", strerror(errno));
+				if (errno == EINTR) {
+					if (sigalrm_flag) {
+						printlog(LOG_ERR, "timeout: one or more jobs failed to terminate");
+					} else {
+						printlog(LOG_ERR, "caught unhandled signal");
+					}
+				} else if (errno == ECHILD) {
+					printlog(LOG_WARNING, "no remaining children to wait for");
+					break;			
+				} else {
+					printlog(LOG_ERR, "wait(2): %s", strerror(errno));
+				}
+				exit(EXIT_FAILURE);
 			}
-			exit(EXIT_FAILURE);
 		}
 		LIST_REMOVE(job, entries);
 		job_free(job);
 	}
+
+	//if (pidfile_fh)
+	//	pidfile_remove(pidfile_fh);
 
 	if (signum == SIGINT) {
 		exit(EXIT_FAILURE);
@@ -341,7 +333,7 @@ ipc_server_handler(event_t *ev __attribute__((unused)))
 	int (*jump_table[IPC_REQUEST_MAX])(struct job *) = {
 		NULL,
 		&job_start,
-		&stop,
+		&job_stop,
 		&update_status,
 	};
 	
@@ -560,6 +552,28 @@ become_a_subreaper(void)
 #endif
 }
 
+//FIXME: filesystem is readonly :(
+	
+// static void
+// create_pid_file(void)
+// {
+// 	char path[PATH_MAX];
+// 	pid_t otherpid;
+
+// 	snprintf((char *)&path, sizeof(path), "%s/jobd.pid", compile_time_option.runstatedir);
+
+// 	pidfile_fh = pidfile_open(path, 0600, &otherpid);
+// 	if (pidfile_fh == NULL) {
+// 		if (errno == EEXIST) {
+// 			printlog(LOG_ERR, "daemon already running, pid: %jd.\n", (intmax_t) otherpid);
+// 		} else {
+// 			printlog(LOG_ERR, "cannot open or create pidfile: %s\n", path);
+// 		}
+// 		exit(EXIT_FAILURE);
+// 	}
+// 	printlog(LOG_DEBUG, "created pidfile %s", path);
+// }
+
 int
 main(int argc, char *argv[])
 {
@@ -603,9 +617,12 @@ main(int argc, char *argv[])
 		}
 	}
 
+	//create_pid_file();
 
 	if (daemon)
         daemonize();
+	
+	//pidfile_write(pidfile_fh);
 
 	logger_set_verbose(verbose);
 	if (ipc_bind() < 0) {

@@ -11,13 +11,13 @@ SQLITE_CFLAGS := -I$(SQLITE_SRCDIR) -DSQLITE_THREADSAFE=0 \
 					-DSQLITE_OMIT_LOAD_EXTENSION
 SQLITE_OBJ := $(SQLITE_SRCDIR)/sqlite3.o
 
-CFLAGS+=-Wall -Wextra -Werror -I$(SQLITE_SRCDIR)
+CFLAGS+=-Wall -Wextra -Werror -I$(SQLITE_SRCDIR) -Ivendor
 CFLAGS+=-g -O0
 
 # for asprintf()
 CFLAGS+=-D_GNU_SOURCE
 
-jobd_OBJS=jobd.o database.o ipc.o job.o logger.o parser.o toml.o tsort.o $(SQLITE_OBJ)
+jobd_OBJS=jobd.o database.o ipc.o job.o logger.o parser.o vendor/pidfile.o vendor/flopen.o toml.o tsort.o $(SQLITE_OBJ)
 jobcfg_OBJS=jobcfg.o database.o ipc.o job.o logger.o parser.o toml.o $(SQLITE_OBJ)
 jobadm_OBJS=jobadm.o database.o ipc.o logger.o $(SQLITE_OBJ)
 jobstat_OBJS=jobstat.o database.o ipc.o logger.o $(SQLITE_OBJ)
@@ -36,6 +36,7 @@ install-stage2:
 		$(DESTDIR)$(RUNSTATEDIR)/jmf
 	$(INSTALL) -m 755 jobd $(DESTDIR)$(SBINDIR)/jobd
 	test ! -e init || $(INSTALL) -m 755 init $(DESTDIR)$(SBINDIR)
+	test ! -e init || $(INSTALL) -m 755 shutdown.sh $(DESTDIR)$(SBINDIR)/shutdown
 	$(INSTALL) -m 755 jobadm jobcfg jobstat $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 644 schema.sql $(DESTDIR)$(DATAROOTDIR)/jmf
 
@@ -64,7 +65,7 @@ init:
 	cd $(INIT_SRCDIR) && $(CC) $(INIT_CFLAGS) -o ../../init -I. init.c getmntopts.c $(INIT_LDADD)
 
 clean:
-	rm -f *.o jobd jobcfg jobstat init
+	rm -f *.o vendor/*.o jobd jobcfg jobstat init
 
 distclean: clean
 	rm -f $(SQLITE_OBJ) config.mk config.h

@@ -16,8 +16,11 @@ if [ "$1" = "inside-the-box" ] ; then
     sudo /lib/jmf/bin/jobcfg init
     cat >/tmp/rc.toml <<EOF
 name = "rc"
-command = "/bin/sh -x /etc/rc autoboot"
 exclusive = true
+
+[methods]
+start = "/bin/sh -x /etc/rc autoboot"
+stop = "/bin/sh -x /etc/rc.shutdown"
 EOF
     sudo mv /tmp/rc.toml /lib/jmf/share/jmf/manifests
     sudo /lib/jmf/bin/jobcfg -f /lib/jmf/share/jmf/manifests -v import

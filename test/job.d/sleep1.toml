@@ -1,2 +1,5 @@
 name = 'sleep1'
-command = 'sleep 1' 
+
+[methods]
+
+start = 'sleep 1' 

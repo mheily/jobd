@@ -1,4 +1,6 @@
 name = 'exclusive'
-command = 'sleep 2'
 exclusive = true
 before = ["sleep1"]
+
+[methods]
+start = 'sleep 2'

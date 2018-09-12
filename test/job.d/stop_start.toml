@@ -1,0 +1,6 @@
+name = 'stop_start'
+
+[methods]
+
+start = 'sleep 1' 
+stop = 'sleep 1'

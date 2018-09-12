@@ -4,7 +4,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE jobs (
     id INTEGER PRIMARY KEY,
     job_id TEXT UNIQUE NOT NULL,
-    command TEXT NOT NULL,
+    command TEXT NOT NULL, -- DEADWOOD: should rip this out in favor of stop/start methods
     description VARCHAR,
     enable BOOLEAN NOT NULL DEFAULT 1 CHECK (enable IN (0,1)),
     exclusive BOOLEAN NOT NULL DEFAULT 0 CHECK (exclusive IN (0,1)),

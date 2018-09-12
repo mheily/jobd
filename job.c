@@ -52,19 +52,22 @@ redirect_file_descriptor(int oldfd, const char *path, int flags, mode_t mode)
 	return (0);
 }
 
-int
-job_start(struct job *job)
+static int
+job_method_exec(pid_t *child, const struct job *job, const char *method_name)
 {
+	pid_t pid;
 	sigset_t mask;
-	char *filename, *script;
+	char *filename, *script = NULL;
 	char *argv[5];
 	char **envp;
 
-	if (job->state != JOB_STATE_STOPPED)
-		return (-1); //TODO: want -IPC_RESPONSE_INVALID_STATE
+	*child = 0;
 
-	if (asprintf(&script, "exec %s", job->command) < 0)
-		return (-1);
+	script = job_get_method(job, method_name);
+	if (!script) {
+		printlog(LOG_DEBUG, "job `%s': method not found: `%s'", job->id, method_name);
+		return (0);
+	}
 
 	filename = "/bin/sh";
 	argv[0] = "/bin/sh";
@@ -73,11 +76,11 @@ job_start(struct job *job)
 	argv[3] = NULL;
 	envp = string_array_data(job->environment_variables);
 
-	job->pid = fork();
-	if (job->pid < 0) {
+	pid = fork();
+	if (pid < 0) {
 		printlog(LOG_ERR, "fork(2): %s", strerror(errno));
-		return (-1);
-	} else if (job->pid == 0) {
+		goto err_out;
+	} else if (pid == 0) {
 		(void)setsid();
 
 		sigfillset(&mask);
@@ -136,18 +139,86 @@ job_start(struct job *job)
     	}
 		/* NOTREACHED */
 	} else {
-		/*
+		printlog(LOG_DEBUG, "job `%s': method `%s' running as pid %d", job->id, method_name, pid);
+		*child = pid;
+	}
+
+	free(script);
+	return (0);
+
+err_out:
+	free(script);
+	return (-1);
+}
+
+int
+job_start(struct job *job)
+{
+	pid_t pid;
+
+	if (job->state != JOB_STATE_STOPPED) {
+		printlog(LOG_ERR, "job is in the wrong state");
+		return (-1);
+	}
+
+	if (job_method_exec(&pid, job, "start") < 0) {
+		printlog(LOG_ERR, "start method failed");
+		return (-1);
+	}
+	
+	/*
 		job->state = JOB_STATE_STARTING;
 		
 		TODO: allow the use of a check script that waits for the service to finish initializing.
-		*/
+	*/
+	job->pid = pid;
+	if (job->pid > 0) {
 		job->state = JOB_STATE_RUNNING;
-
-		//TODO: manager
-		printlog(LOG_DEBUG, "job %s started with pid %d: %s", job->id, job->pid, script);
-		free(script);
+		printlog(LOG_DEBUG, "job %s started with pid %d", job->id, job->pid);
 	}
 
+	return (0);
+}
+
+int
+job_stop(struct job *job)
+{
+	pid_t pid;
+
+	if (job->state == JOB_STATE_STOPPED)
+		return (0);
+
+	if (job->state != JOB_STATE_RUNNING) {
+		printlog(LOG_ERR, "job is in the wrong state");
+		return (-1);
+	}
+
+	if (job_method_exec(&pid, job, "stop") < 0) {
+		printlog(LOG_ERR, "stop method failed");
+		return (-1);
+	}
+
+	if (pid > 0 && (job->pid == 0)) {
+		job->pid = pid;
+	} else if (!pid && (job->pid > 0)) {
+		printlog(LOG_DEBUG, "sending SIGTERM to job %s (pid %d)", job->id, job->pid);
+		if (kill(job->pid, SIGTERM) < 0) {
+			if (errno == ESRCH) {
+				/* Probably a harmless race condition, but note it anyway */
+				printlog(LOG_WARNING, "job %s (pid %d): no such process", job->id, job->pid);
+				job->state = JOB_STATE_STOPPED;
+			} else {
+				printlog(LOG_ERR, "kill(2): %s", strerror(errno));
+				return (-1);
+			}
+		}
+		job->state = JOB_STATE_STOPPING;
+	} else {
+		/* FIXME: open design question: what about jobs with a PID *and* a stop method? */
+	}
+	
+	//TODO: start a timeout
+	
 	return (0);
 }
 
@@ -328,6 +399,7 @@ err_out:
 	return (-1);
 }
 
+/* The caller must free the value returned by this function */
 char *
 job_get_method(const struct job *job, const char *method_name)
 {
