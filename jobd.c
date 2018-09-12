@@ -68,7 +68,7 @@ static void reload_configuration(int);
 #define JOB_ID_MAX 255
 
 static struct job *scheduler_lock = NULL;
-//static struct pidfh *pidfile_fh;
+static struct pidfh *pidfile_fh;
 
 static const struct signal_handler {
 	int signum;
@@ -300,8 +300,8 @@ shutdown_handler(int signum)
 		job_free(job);
 	}
 
-	//if (pidfile_fh)
-	//	pidfile_remove(pidfile_fh);
+	if (pidfile_fh)
+		pidfile_remove(pidfile_fh);
 
 	if (signum == SIGINT) {
 		exit(EXIT_FAILURE);
@@ -556,27 +556,31 @@ become_a_subreaper(void)
 #endif
 }
 
-//FIXME: filesystem is readonly :(
+static void
+create_pid_file(void)
+{
+	char path[PATH_MAX];
+	pid_t otherpid;
+	int rv;
+
+	rv = snprintf((char *)&path, sizeof(path), "%s/jobd.pid", compile_time_option.runstatedir);
+	if (rv >= (int)sizeof(path)) {
+		printlog(LOG_ERR, "unable to create pidfile; buffer too small");
+		abort();
+	}
+
+	pidfile_fh = pidfile_open(path, 0600, &otherpid);
+	if (pidfile_fh == NULL) {
+		if (errno == EEXIST) {
+			printlog(LOG_ERR, "daemon already running, pid: %jd.\n", (intmax_t) otherpid);
+		} else {
+			printlog(LOG_ERR, "cannot open or create pidfile: %s\n", path);
+		}
+		exit(EXIT_FAILURE);
+	}
 	
-// static void
-// create_pid_file(void)
-// {
-// 	char path[PATH_MAX];
-// 	pid_t otherpid;
-
-// 	snprintf((char *)&path, sizeof(path), "%s/jobd.pid", compile_time_option.runstatedir);
-
-// 	pidfile_fh = pidfile_open(path, 0600, &otherpid);
-// 	if (pidfile_fh == NULL) {
-// 		if (errno == EEXIST) {
-// 			printlog(LOG_ERR, "daemon already running, pid: %jd.\n", (intmax_t) otherpid);
-// 		} else {
-// 			printlog(LOG_ERR, "cannot open or create pidfile: %s\n", path);
-// 		}
-// 		exit(EXIT_FAILURE);
-// 	}
-// 	printlog(LOG_DEBUG, "created pidfile %s", path);
-// }
+	printlog(LOG_DEBUG, "created pidfile %s", path);
+}
 
 
 //todo: move to sysmgr.c
@@ -664,12 +668,12 @@ main(int argc, char *argv[])
 		}
 	}
 
-	//create_pid_file();
+	create_pid_file();
 
 	if (daemon)
         daemonize();
 	
-	//pidfile_write(pidfile_fh);
+	pidfile_write(pidfile_fh);
 
 	logger_set_verbose(verbose);
 	if (ipc_bind() < 0) {
