@@ -317,14 +317,6 @@ reload_configuration(int signum __attribute__((unused)))
 	schedule();
 }
 
-static int
-update_status(struct job *unused)
-{
-	(void) unused;
-	puts("wheeeeee");
-	return (0);
-}
-
 static void
 ipc_server_handler(event_t *ev __attribute__((unused)))
 {
@@ -338,7 +330,8 @@ ipc_server_handler(event_t *ev __attribute__((unused)))
 		NULL,
 		&job_start,
 		&job_stop,
-		&update_status,
+		&job_enable,
+		&job_disable,
 	};
 	
 	sfd = ipc_get_sockfd();
@@ -350,15 +343,11 @@ ipc_server_handler(event_t *ev __attribute__((unused)))
 
 	printlog(LOG_DEBUG, "got IPC request; opcode=%d job_id=%s", req.opcode, req.job_id);
 	if (req.opcode > 0 && req.opcode < IPC_REQUEST_MAX) {
-		if (req.job_id[0] == '\0') {
-			res.retcode = (*jump_table[req.opcode])(NULL);
+		struct job *job = job_list_lookup(&all_jobs, req.job_id);
+		if (job) {
+			res.retcode = (*jump_table[req.opcode])(job);
 		} else {
-			struct job *job = job_list_lookup(&all_jobs, req.job_id);
-			if (job) {
-				res.retcode = (*jump_table[req.opcode])(job);
-			} else {
-				res.retcode = IPC_RESPONSE_NOT_FOUND;
-			}
+			res.retcode = IPC_RESPONSE_NOT_FOUND;
 		}
 	}
     

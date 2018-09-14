@@ -24,7 +24,8 @@ struct ipc_request {
 		IPC_REQUEST_UNDEFINED,
 		IPC_REQUEST_START,
 		IPC_REQUEST_STOP,
-		IPC_REQUEST_STATUS,
+		IPC_REQUEST_ENABLE,
+		IPC_REQUEST_DISABLE,
 		IPC_REQUEST_MAX, /* Not a real opcode, just setting the maximum number of codes */
 	} opcode;
 	char job_id[JOB_ID_MAX + 1];

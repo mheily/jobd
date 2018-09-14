@@ -421,3 +421,53 @@ job_get_method(const struct job *job, const char *method_name)
 
 	return (success ? result : NULL);
 }
+
+int
+job_enable(struct job *job)
+{
+	sqlite3_stmt *stmt;
+	int success;
+
+	if (!job)
+		return (-1);
+	
+	const char *sql = "UPDATE jobs SET enable = 1 WHERE job_id = ?";
+	success = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
+		sqlite3_bind_int64(stmt, 1, job->row_id) == SQLITE_OK &&
+  	    sqlite3_step(stmt) == SQLITE_DONE;
+
+	sqlite3_finalize(stmt);
+
+	if (success) {
+		job->enable = true;
+		// FIXME: schedule here?
+		return (0);
+	} else {
+		return (-1);
+	}
+}
+
+int
+job_disable(struct job *job)
+{
+	sqlite3_stmt *stmt;
+	int success;
+
+	if (!job)
+		return (-1);
+	
+	const char *sql = "UPDATE jobs SET enable = 0 WHERE job_id = ?";
+	success = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
+		sqlite3_bind_int64(stmt, 1, job->row_id) == SQLITE_OK &&
+  	    sqlite3_step(stmt) == SQLITE_DONE;
+
+	sqlite3_finalize(stmt);
+
+	if (success) {
+		job->enable = false;
+		// FIXME: stop job here?
+		return (0);
+	} else {
+		return (-1);
+	}
+}
