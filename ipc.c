@@ -41,7 +41,7 @@ ipc_init(const char *_socketpath)
 	if (_socketpath) {
 		socketpath = strdup(_socketpath);
 	} else {
-		if (asprintf(&socketpath, "%s/.jobd.sock", compile_time_option.runstatedir) < 0)
+		if (asprintf(&socketpath, "%s/jobd.sock", compile_time_option.runstatedir) < 0)
 			socketpath = NULL;
 	}
 	if (!socketpath)
@@ -129,13 +129,12 @@ ipc_bind(void)
 	rv = bind(ipc_sockfd, (struct sockaddr *) &ipc_server_addr, sizeof(ipc_server_addr));
 	if (rv < 0) {
 		if (errno == EADDRINUSE) {
-			//TODO: check for multiple jobd instances
 			unlink(socketpath);
 			if (bind(ipc_sockfd, (struct sockaddr *) &ipc_server_addr, sizeof(ipc_server_addr)) == 0) {
 				return (0);
 			}				
 		}
-		printlog(LOG_ERR, "bind(2): %s", strerror(errno));
+		printlog(LOG_ERR, "bind(2) to %s: %s", socketpath, strerror(errno));
 		return (-1);
 	}
 
