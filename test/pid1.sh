@@ -17,6 +17,8 @@ if [ "$1" = "inside-the-box" ] ; then
     cat >/tmp/rc.toml <<EOF
 name = "rc"
 exclusive = true
+standard_out_path = "/dev/console"
+standard_error_path = "/dev/console"
 
 [methods]
 start = "/bin/sh -x /etc/rc autoboot"
