@@ -33,7 +33,7 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	char *command = argv[1];
+	char *job_id, *command;
 	int rv;
 
 	if (logger_init() < 0)
@@ -51,19 +51,25 @@ main(int argc, char *argv[])
 	if (ipc_connect() < 0)
 		errx(1, "ipc_connect");
 
-	(void) argc;
-	if (!command)
-		errx(1, "command expected");
-
+	if (argc < 2) {
+		usage();
+		exit(1);
+	}
+	
+	job_id = argv[1];
+	command = argv[2];
+	
 	if (!strcmp(command, "start")) {
-		rv = ipc_client_request(IPC_REQUEST_START, argv[2]);
+		rv = ipc_client_request(IPC_REQUEST_START, job_id);
 	} else if (!strcmp(command, "stop")) {
-		rv = ipc_client_request(IPC_REQUEST_STOP, argv[2]);
-	} else if (!strcmp(command, "status")) {
-		rv = ipc_client_request(IPC_REQUEST_STATUS, NULL);
+		rv = ipc_client_request(IPC_REQUEST_STOP, job_id);
 	} else if (!strcmp(command, "restart")) {
-		ipc_client_request(IPC_REQUEST_STOP, argv[2]);//ERRCHECK
-		rv = ipc_client_request(IPC_REQUEST_START, argv[2]);
+		ipc_client_request(IPC_REQUEST_STOP, job_id);//ERRCHECK
+		rv = ipc_client_request(IPC_REQUEST_START, job_id);
+	} else if (!strcmp(command, "enable")) {
+		rv = ipc_client_request(IPC_REQUEST_ENABLE, job_id);
+	} else if (!strcmp(command, "disable")) {
+		rv = ipc_client_request(IPC_REQUEST_DISABLE, job_id);
 	} else if (!strcmp(command, "help")) {
 		usage();
 		rv = IPC_RESPONSE_OK;
