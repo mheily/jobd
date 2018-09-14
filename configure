@@ -16,8 +16,11 @@
 #
 
 if [ "$1" = "--as-system-manager" ] ; then
-    export PREFIX=/lib/jmf 
-    exec ./configure
+    shift
+    export PREFIX=/lib/jmf
+    export BINDIR=/bin
+    export RUNSTATEDIR=/lib/jmf/run
+    exec ./configure $*
 fi
 
 prefix=${PREFIX:-/usr/local}
