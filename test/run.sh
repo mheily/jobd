@@ -17,15 +17,9 @@ ulimit -H -c unlimited >/dev/null
 ulimit -S -c unlimited >/dev/null
 
 objdir="./test/obj"
-rm -rf $objdir
-mkdir -p $objdir
-make distclean
-PREFIX=$objdir ./configure
-make all -j6
-make install
+./test/build.sh
 
 install test/job.d/* ./test/obj/share/jmf/manifests
-$objdir/bin/jobcfg -v init
 $objdir/bin/jobcfg -f test/job.d -v import
 #sqlite3 ~/.local/share/jmf/repository.db .schema
 #sqlite3 ~/.local/share/jmf/repository.db .dump
