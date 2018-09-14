@@ -16,6 +16,7 @@
 
 #include <fcntl.h>
 #include <syslog.h>
+#include <stdarg.h>
 #include <unistd.h>
 
 #include "logger.h"
@@ -76,4 +77,23 @@ void
 logger_set_verbose(int flag)
 {
 	logger_verbose = flag;
+}
+
+int __attribute__((format(printf, 2, 3)))
+logger_append(int level, const char *format, ...)
+{
+	va_list args;
+    va_start(args, format);
+	if (logger_use_syslog) {
+		vsyslog(level, format, args);
+	} else if (logger_verbose || level != LOG_DEBUG) {
+		fprintf(logger_fh, "%d ", level);
+		vfprintf(logger_fh, format, args);
+		fflush(logger_fh);
+	}
+	va_end(args);
+	if (level <= LOG_ERR)
+		return (-1);
+	else
+		return (0);
 }

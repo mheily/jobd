@@ -20,16 +20,7 @@
 #include <stdio.h>
 #include <syslog.h>
 
-#define printlog(level, format,...) do {				\
-	if (logger_use_syslog) {							\
-		syslog(level, "%s(%s:%d): "format"\n",				\
-			 __func__, __FILE__, __LINE__, ## __VA_ARGS__);	\
-	} else if (logger_verbose || level != LOG_DEBUG) {	\
-		fprintf(logger_fh, "%d %s(%s:%d): "format"\n",	\
-level, __func__, __FILE__, __LINE__, ## __VA_ARGS__); 	\
-		fflush(logger_fh);								\
-	}													\
-} while (0)
+#define printlog(level, format,...) logger_append(level, "%s(%s:%d): "format"\n", __func__, __FILE__, __LINE__, ## __VA_ARGS__)
 
 extern FILE *logger_fh;
 extern int logger_use_syslog;
@@ -39,6 +30,7 @@ FILE *logger_fh;
 
 int logger_init(void);
 int logger_open(const char *);
+int __attribute__((format(printf, 2, 3))) logger_append(int level, const char *format, ...);
 void logger_set_verbose(int);
 
 #endif /* _LOGGER_H */
