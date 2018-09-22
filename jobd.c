@@ -626,7 +626,7 @@ main(int argc, char *argv[])
 		printlog(LOG_ERR, "unable to initialize the database routines");
 		exit(EXIT_FAILURE);
 	}
-	if (db_open(NULL, false) < 0) { 
+	if (db_open(NULL, DB_OPEN_CREATE_VOLATILE) < 0) { 
 		printlog(LOG_ERR, "unable to open the database");
 		exit(EXIT_FAILURE);
 	}

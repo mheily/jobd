@@ -174,7 +174,7 @@ main(int argc, char *argv[])
 		exit(EXIT_SUCCESS);
 	}
 
-	if (db_open(NULL, false) < 0)
+	if (db_open(NULL, DB_OPEN_CREATE_VOLATILE) < 0) // FIXME: races with jobd to create volatile
 		errx(1, "unable to open the database");
 
 	if (!strcmp(command, "import")) {
