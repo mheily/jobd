@@ -16,6 +16,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <sqlite3.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -40,6 +41,69 @@ _db_log_callback(void *unused, int error_code, const char *msg)
 {
 	(void) unused;
 	printlog(LOG_ERR, "sqlite3 error %d: %s", error_code, msg);
+}
+
+static int
+_db_setup_volatile(void)
+{
+	char path[PATH_MAX];
+	int rv;
+
+	rv = snprintf((char *)&path, sizeof(path),  "%s/jmf/volatile.sql", compile_time_option.datarootdir);
+	if (rv >= (int)sizeof(path) || rv < 0) {
+			printlog(LOG_ERR, "snprintf failed");
+			return (-1);
+	}
+
+	rv = db_exec_path(path);
+	if (rv < 0) {
+		printlog(LOG_ERR, "Error executing SQL from %s", path);
+		return (-1);
+	}
+
+	return (0);
+}
+
+static int
+_db_create_volatile(const char *dbfile)
+{
+	sqlite3 *tmpconn;
+	int rv;
+
+	rv = sqlite3_open_v2(dbfile, &tmpconn, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+	if (rv != SQLITE_OK) {
+		//FIXME:printlog(LOG_ERR, "Error opening %s: %s", path, sqlite3_errmsg(dbh));
+		return (-1);
+	}
+	if (sqlite3_close(tmpconn) != SQLITE_OK)
+		return (-1);
+
+	printlog(LOG_DEBUG, "created an empty %s", dbfile);
+	return (0);
+}
+
+static int
+_db_attach_volatile(const char *path)
+{
+	char sql[PATH_MAX+1024];
+	int rv;
+
+	rv = snprintf((char *)&sql, sizeof(sql), 
+		"ATTACH DATABASE '%s' AS 'volatile';"
+		"PRAGMA volatile.synchronous = OFF;",
+		 path); //WARN: injection
+	if (rv >= (int)sizeof(sql) || rv < 0) {
+			printlog(LOG_ERR, "snprintf failed");
+			return (-1);
+	}
+
+	if (db_exec(dbh, sql) < 0) {
+		printlog(LOG_ERR, "Error attaching volatile database");
+		return (-1);
+	}
+
+	printlog(LOG_DEBUG, "attached %s as volatile", path);
+	return (0);
 }
 
 int
@@ -70,29 +134,56 @@ db_init(void)
 }
 
 int
-db_open(const char *path, bool readonly)
+db_open(const char *path, int flags)
 {
-	int rv, flags;
+	char volatile_dbpath[PATH_MAX];
+	int rv, sqlite_flags;
 	
 	if (dbh) {
 		printlog(LOG_ERR, "database is already open");
 		return (-1);
 	}
 
+	rv = snprintf((char *)&volatile_dbpath, sizeof(volatile_dbpath), "%s/volatile.db", compile_time_option.runstatedir);
+	if (rv >= (int)sizeof(volatile_dbpath) || rv < 0) {
+			printlog(LOG_ERR, "snprintf failed");
+			return (-1);
+	}
+
 	if (!path)
 		path = db_default.dbpath;
 	
-	if (readonly)
-		flags = SQLITE_OPEN_READONLY;
+	if (flags & DB_OPEN_READONLY)
+		sqlite_flags = SQLITE_OPEN_READONLY;
 	else
-		flags = SQLITE_OPEN_READWRITE;
+		sqlite_flags = SQLITE_OPEN_READWRITE;
 
-	rv = sqlite3_open_v2(path, &dbh, flags, NULL);
+	rv = sqlite3_open_v2(path, &dbh, sqlite_flags, NULL);
 	if (rv != SQLITE_OK) {
 		//FIXME:printlog(LOG_ERR, "Error opening %s: %s", path, sqlite3_errmsg(dbh));
 		return (-1);
 	}
 	printlog(LOG_DEBUG, "opened %s", path);
+
+	if (access(volatile_dbpath, F_OK) == 0) {
+		if (_db_attach_volatile(volatile_dbpath) < 0)
+			return (-1);
+	} else if (flags & DB_OPEN_CREATE_VOLATILE) {
+		if (_db_create_volatile(volatile_dbpath) < 0) {
+			unlink(volatile_dbpath);
+			return (-1);
+		}
+
+		if (_db_attach_volatile(volatile_dbpath) < 0)
+			return (-1);
+	
+		if (_db_setup_volatile() < 0)
+			return (-1);
+	} else {
+		printlog(LOG_ERR, "unable to open volatile.db");
+		return (-1);
+	}
+
 	return (0);
 }
 
@@ -139,6 +230,23 @@ db_exists(void)
 		return (true);
 }
 
+int
+db_exec(sqlite3 *conn, const char *sql)
+{
+	int rv;
+	char *errmsg;
+
+	printlog(LOG_DEBUG, "Executing SQL: \n\n%s\n--", sql);
+
+	rv = sqlite3_exec(conn, sql, 0, 0, &errmsg);
+	if (rv != SQLITE_OK) {
+		printlog(LOG_ERR, "SQL error: %s", errmsg);
+		sqlite3_free(errmsg);
+	}
+
+	return (rv == SQLITE_OK ? 0 : -1);
+}
+
 int 
 db_exec_path(const char *path)
 {
@@ -146,7 +254,6 @@ db_exec_path(const char *path)
 	struct stat sb;
 	int rv, fd;
 	ssize_t bytes;
-	char *errmsg;
 
 	if (!dbh) {
 		printlog(LOG_ERR, "database is not open");
@@ -184,16 +291,10 @@ db_exec_path(const char *path)
 
 	close(fd);
 
-	printlog(LOG_DEBUG, "Executing SQL: \n\n%s\n--", sql);
-
-	rv = sqlite3_exec(dbh, sql, 0, 0, &errmsg);
-	if (rv != SQLITE_OK) {
-		printlog(LOG_ERR, "SQL error: %s", errmsg);
-		sqlite3_free(errmsg);
-	}
+	rv = db_exec(dbh, sql);
 	free(sql);
 
-	return (rv == SQLITE_OK ? 0 : -1);
+	return (rv);
 }
 
 int

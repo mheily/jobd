@@ -20,6 +20,9 @@
 #include <stdbool.h>
 #include <sqlite3.h>
 
+#define DB_OPEN_READONLY 0x01
+#define DB_OPEN_CREATE_VOLATILE 0x10
+
 #define db_check_result(_rv, _stmt) \
 	if ((_rv) != SQLITE_OK) { \
 		printlog(LOG_ERR, "Database error: %s", sqlite3_errmsg(dbh)); \
@@ -36,8 +39,9 @@ extern sqlite3 *dbh;
 
 int db_init(void);
 int db_create(const char *, const char *);
-int db_open(const char *, bool);
+int db_open(const char *, int);
 bool db_exists(void);
+int db_exec(sqlite3 *, const char *sql);
 int db_exec_path(const char *);
 
 int db_select_into_string_array(struct string_array *strarr, sqlite3_stmt *stmt);
