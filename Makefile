@@ -38,7 +38,7 @@ install-stage2:
 	test ! -e init || $(INSTALL) -m 755 init $(DESTDIR)$(SBINDIR)
 	test ! -e init || $(INSTALL) -m 755 shutdown.sh $(DESTDIR)$(SBINDIR)/shutdown
 	$(INSTALL) -m 755 jobadm jobcfg jobstat $(DESTDIR)$(BINDIR)
-	$(INSTALL) -m 644 schema.sql $(DESTDIR)$(DATAROOTDIR)/jmf
+	$(INSTALL) -m 644 schema.sql volatile.sql $(DESTDIR)$(DATAROOTDIR)/jmf
 
 %.o: %.c *.h config.h
 	$(CC) -c $(CFLAGS) $< -o $@
