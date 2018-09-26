@@ -10,6 +10,17 @@ err() {
     exit 1
 }
 
+assert_contains() {
+	msg="$*"
+	echo "assert_contains: waiting for: ${msg}"
+	for x in $(seq 1 10) ; do
+		grep -q "$msg" test.log && break || true
+		sleep 1
+	done
+	grep -q "$msg" test.log || err "unexpected response"
+	echo "assert_contains: success: ${msg}"
+}
+
 trap cleanup EXIT
 
 #on linux: echo '/tmp/core_%e.%p' | sudo tee /proc/sys/kernel/core_pattern
@@ -26,14 +37,29 @@ $objdir/bin/jobcfg -f test/job.d -v import
 #sqlite3 -header ~/.local/share/jmf/repository.db 'select * from jobs'
 #sqlite3 -header ~/.local/share/jmf/repository.db 'select * from job_methods'
 
+
 set +x
 echo "# Test log started on $(date)" > test.log
 tail -f test.log &
 tail_pid=$!
 $objdir/sbin/jobd -fv >>test.log 2>&1 &
 jobd_pid=$!
-for x in $(seq 1 10) ; do
-    grep -q 'job sleep1 .* exited' test.log && break || true
-    sleep 1
-done
-grep -q 'job sleep1 .* exited' test.log || err "unexpected response"
+
+
+# Test if a job finishes
+assert_contains 'job sleep1 .* exited'
+
+# Test IPC
+$objdir/bin/jobadm enable_me enable
+assert_contains 'job enable_me has been enabled'
+assert_contains 'job enable_me .* exited'
+$objdir/bin/jobadm enable_me disable
+assert_contains 'job enable_me has been disabled'
+
+# Disable a running job
+$objdir/bin/jobadm disable_me disable
+assert_contains 'job disable_me has been disabled'
+assert_contains 'sending SIGTERM to job disable_me'
+
+printf "\n\nSUCCESS: All tests passed.\n"
+exit 0

@@ -1,0 +1,6 @@
+name = 'enable_me'
+enable = false
+
+[methods]
+
+start = 'sleep 1' 
