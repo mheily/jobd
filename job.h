@@ -89,10 +89,14 @@ int job_stop(struct job *job);
 int job_enable(struct job *job);
 int job_disable(struct job *job);
 
+int job_enable_by_id(const char *job_id);
+
 struct job *job_new(void);
 void job_free(struct job *);
 int job_find(struct job **result, const char *job_id);
 int job_db_select_all(struct job_list *dest);
+void job_solve(struct job *job);
+
 struct job * job_list_lookup(const struct job_list *jobs, const char *id);
 char * job_get_method(const struct job *job, const char *method_name);
 

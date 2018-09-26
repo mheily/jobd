@@ -180,23 +180,11 @@ schedule(void)
 	}
 
 	LIST_FOREACH(job, &all_jobs, entries) {
-		switch (job->state) {
-			case JOB_STATE_UNKNOWN:
-				job->state = JOB_STATE_STOPPED;
-				if (job->enable) {
-					job_start(job);
-					if (job->exclusive && job->state == JOB_STATE_RUNNING) {
-						printlog(LOG_DEBUG, "scheduler locked by %s", job->id);
-						scheduler_lock = job;
-						return;
-					}
-				}
-				break;
-			case JOB_STATE_STOPPED:
-				break;
-			default:
-				//err???
-				break;
+		job_solve(job);
+		if (job->exclusive && job->state == JOB_STATE_RUNNING) {
+			printlog(LOG_DEBUG, "scheduler locked by %s", job->id);
+			scheduler_lock = job;
+			return;
 		}
 	}
 }
@@ -323,9 +311,10 @@ ipc_server_handler(event_t *ev __attribute__((unused)))
 	ssize_t bytes;
 	struct sockaddr_un client_addr;
 	socklen_t len;
-	int sfd;
+	int cfd;
 	struct ipc_request req;
 	struct ipc_response res;
+	struct job *job;
 	int (*jump_table[IPC_REQUEST_MAX])(struct job *) = {
 		NULL,
 		&job_start,
@@ -334,16 +323,22 @@ ipc_server_handler(event_t *ev __attribute__((unused)))
 		&job_disable,
 	};
 	
-	sfd = ipc_get_sockfd();
+	int addrlen = sizeof(struct sockaddr_un);
+	cfd = accept(ipc_get_sockfd(), (struct sockaddr *)&client_addr, (socklen_t*) &addrlen);
+	if (cfd < 0)
+		err(1, "accept(2)");
+		
 	len = sizeof(struct sockaddr_un);
-	bytes = recvfrom(sfd, &req, sizeof(req), 0, (struct sockaddr *) &client_addr, &len);
+	bytes = read(cfd, &req, sizeof(req));
     if (bytes < 0) {
-		err(1, "recvfrom(2)");
+		err(1, "read(2)");
+	} else if (bytes < len) {
+		err(1, "TODO - handle short read");
 	}
 
 	printlog(LOG_DEBUG, "got IPC request; opcode=%d job_id=%s", req.opcode, req.job_id);
 	if (req.opcode > 0 && req.opcode < IPC_REQUEST_MAX) {
-		struct job *job = job_list_lookup(&all_jobs, req.job_id);
+		job = job_list_lookup(&all_jobs, req.job_id);
 		if (job) {
 			res.retcode = (*jump_table[req.opcode])(job);
 		} else {
@@ -352,8 +347,14 @@ ipc_server_handler(event_t *ev __attribute__((unused)))
 	}
     
 	printlog(LOG_DEBUG, "sending IPC response; retcode=%d", res.retcode);
-	if (sendto(sfd, &res, sizeof(res), 0, (struct sockaddr*) &client_addr, len) < 0) {
-		err(1, "sendto(2)");
+	bytes = write(cfd, &res, sizeof(res));
+	if (bytes < 0) {
+		err(1, "write(2)");
+	}
+
+	printlog(LOG_DEBUG, "closing IPC client session %d", cfd);
+	if (close(cfd) < 0) {
+		err(1, "close(2)");
 	}
 }
 
