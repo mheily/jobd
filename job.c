@@ -458,8 +458,8 @@ job_find(struct job **result, const char *job_id)
 	struct job *job = NULL;
 	int rv;
 
-	errx(1,"FIXME: need to debug this");
-	
+	printlog(LOG_ERR,"FIXME: need to debug this");
+	return (-1);
 	*result = NULL;
 
 	rv = snprintf((char *)&sql, sizeof(sql),  "%s WHERE job_id = ?", select_sql);
