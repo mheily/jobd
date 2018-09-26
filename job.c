@@ -380,6 +380,67 @@ job_db_select_all(struct job_list *dest)
 		if (job_get_depends(job) < 0)
 			goto err_out;
 
+
+// FIXME: This returns the wrong job!
+int
+job_find(struct job **result, const char *job_id)
+{
+	char sql[SQL_BUF_MAX];
+	sqlite3_stmt *stmt;
+	struct job *job = NULL;
+	int rv;
+
+	errx(1,"FIXME: need to debug this");
+	
+	*result = NULL;
+
+	rv = snprintf((char *)&sql, sizeof(sql),  "%s WHERE job_id = ?", select_sql);
+	if (rv >= (int)sizeof(sql) || rv < 0) {
+			printlog(LOG_ERR, "snprintf failed");
+			return (-1);
+	}
+
+	rv = sqlite3_prepare_v2(dbh, select_sql, -1, &stmt, 0);
+	if (rv != SQLITE_OK) {
+		db_log_error(rv);
+		return (-1);
+	}
+
+	sqlite3_bind_text(stmt, 1, job_id, -1, SQLITE_STATIC); 
+	if (rv != SQLITE_OK) {
+		db_log_error(rv);
+		return (-1);
+	}
+
+	rv = sqlite3_step(stmt);
+	if (rv == SQLITE_DONE) {
+		sqlite3_finalize(stmt);
+		return (-1);
+	}
+
+	if (rv == SQLITE_ROW) {
+		job = job_new();
+		if (!job)
+			goto err_out;
+
+		if (_job_stmt_copyin(stmt, job) < 0)
+			goto err_out;
+	} else {
+		db_log_error(rv);
+		return (-1);	
+	}
+
+	sqlite3_finalize(stmt);
+	*result = job;
+
+	return (0);
+
+err_out:
+	sqlite3_finalize(stmt);
+	job_free(job);
+	return (-1);
+}
+
 		LIST_INSERT_HEAD(dest, job, entries);
 	}
 

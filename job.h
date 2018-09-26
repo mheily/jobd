@@ -91,6 +91,7 @@ int job_disable(struct job *job);
 
 struct job *job_new(void);
 void job_free(struct job *);
+int job_find(struct job **result, const char *job_id);
 int job_db_select_all(struct job_list *dest);
 struct job * job_list_lookup(const struct job_list *jobs, const char *id);
 char * job_get_method(const struct job *job, const char *method_name);
