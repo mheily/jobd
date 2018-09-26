@@ -23,6 +23,9 @@
 #define DB_OPEN_READONLY 0x01
 #define DB_OPEN_CREATE_VOLATILE 0x10
 
+/* Maximum length of a SQL string stored on the stack */
+#define SQL_BUF_MAX 2048
+
 #define db_check_result(_rv, _stmt) \
 	if ((_rv) != SQLITE_OK) { \
 		printlog(LOG_ERR, "Database error: %s", sqlite3_errmsg(dbh)); \

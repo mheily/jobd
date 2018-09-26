@@ -32,6 +32,12 @@
 /* Max length of a job ID. Equivalent to FILE_MAX */
 #define JOB_ID_MAX 255
 
+/* Maximum length of job->command or any inline shell script used as a job method.
+   TODO: verify this is not larger than the output of "getconf ARG_MAX" during
+         ./configure runs
+*/
+#define JOB_ARG_MAX 200000
+
 enum job_state {
 	JOB_STATE_UNKNOWN,
 	JOB_STATE_STARTING,
