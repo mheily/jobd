@@ -163,7 +163,7 @@ db_open(const char *path, int flags)
 		//FIXME:printlog(LOG_ERR, "Error opening %s: %s", path, sqlite3_errmsg(dbh));
 		return (-1);
 	}
-	printlog(LOG_DEBUG, "opened %s", path);
+	printlog(LOG_DEBUG, "opened %s with flags %d", path, sqlite_flags);
 
 	if (access(volatile_dbpath, F_OK) == 0) {
 		if (_db_attach_volatile(volatile_dbpath) < 0)
