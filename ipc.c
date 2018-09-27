@@ -16,7 +16,7 @@
 
 #include <err.h>
 #include <errno.h>
-// #include <fcntl.h>
+#include <fcntl.h>
 // #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -56,7 +56,7 @@ int
 ipc_client_request(int opcode, char *job_id)
 {
 	ssize_t bytes;
-	struct sockaddr_un sa_to, sa_from;
+	struct sockaddr_un sa_to;
 	socklen_t len;
 	struct ipc_request req;
 	struct ipc_response res;
@@ -78,15 +78,20 @@ ipc_client_request(int opcode, char *job_id)
 		req.job_id[0] = '\0';
 	}
 	len = (socklen_t) sizeof(struct sockaddr_un);
-	if (sendto(ipc_sockfd, &req, sizeof(req), 0, (struct sockaddr*) &sa_to, len) < 0) {
-		err(1, "sendto(2)");
+	bytes = write(ipc_sockfd, &req, sizeof(req));
+	if (bytes < 0) {
+		err(1, "write(2)");
+	} else if (bytes < len) {
+		err(1, "TODO - handle short write");
 	}
 	printlog(LOG_DEBUG, "sent IPC request; opcode=%d job_id=%s", req.opcode, req.job_id);
 
 	len = sizeof(struct sockaddr_un);
-	bytes = recvfrom(ipc_sockfd, &res, sizeof(res), 0, (struct sockaddr *) &sa_from, &len);
+	bytes = read(ipc_sockfd, &res, sizeof(res));
     if (bytes < 0) {
 		err(1, "recvfrom(2)");
+	} else if ((size_t)bytes < sizeof(res)) {
+		err(1, "TODO - handle short read of %zu bytes", bytes);
 	}
 	printlog(LOG_DEBUG, "got IPC response; retcode=%d", res.retcode);
 	return (res.retcode);
@@ -103,9 +108,14 @@ create_ipc_socket(void)
 		return (-1);
 	}
 
-    sd = socket(AF_UNIX, SOCK_DGRAM, 0);
+    sd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sd < 0) {
 		printlog(LOG_ERR, "socket(2): %s", strerror(errno));
+		return (-1);
+	}
+	if (fcntl(sd, F_SETFD, FD_CLOEXEC) < 0) {
+		printlog(LOG_ERR, "fcntl(2): %s", strerror(errno));
+		close(sd);
 		return (-1);
 	}
 
@@ -115,6 +125,20 @@ create_ipc_socket(void)
 	memcpy(&ipc_server_addr, &saun, sizeof(ipc_server_addr));//FIXME: is this used?
 	ipc_sockfd = sd;
 	printlog(LOG_DEBUG, "bound to %s", socketpath);
+	return (0);
+}
+
+static int
+_ipc_listen(int sd)
+{
+	int rv;
+
+	rv = listen(sd, 512);
+	if (rv < 0) {
+		printlog(LOG_ERR, "listen(2)");
+		return (-1);		
+	}
+
 	return (0);
 }
 
@@ -131,14 +155,14 @@ ipc_bind(void)
 		if (errno == EADDRINUSE) {
 			unlink(socketpath);
 			if (bind(ipc_sockfd, (struct sockaddr *) &ipc_server_addr, sizeof(ipc_server_addr)) == 0) {
-				return (0);
+				return (_ipc_listen(ipc_sockfd));
 			}				
 		}
 		printlog(LOG_ERR, "bind(2) to %s: %s", socketpath, strerror(errno));
 		return (-1);
 	}
 
-	return (0);
+	return (_ipc_listen(ipc_sockfd));
 }
 
 int
@@ -151,8 +175,9 @@ ipc_connect(void)
       
 	memset(&saun, 0, sizeof(saun));
 	saun.sun_family = AF_UNIX;
-	if (bind(ipc_sockfd, (struct sockaddr *) &saun, sizeof(saun)) < 0) {
-		printlog(LOG_ERR, "bind(2): %s", strerror(errno));
+	strncpy(saun.sun_path, socketpath, sizeof(saun.sun_path) - 1);
+	if (connect(ipc_sockfd, (struct sockaddr *) &saun, sizeof(saun)) < 0) {
+		printlog(LOG_ERR, "connect(2) to %s: %s", saun.sun_path, strerror(errno));
 		return (-1);
 	}
 
