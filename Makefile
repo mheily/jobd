@@ -17,12 +17,14 @@ CFLAGS+=-g -O0
 # for asprintf()
 CFLAGS+=-D_GNU_SOURCE
 
+bin_BINS := jobcfg jobstat jobadm
+
 jobd_OBJS=jobd.o database.o ipc.o job.o logger.o parser.o vendor/pidfile.o vendor/flopen.o toml.o tsort.o $(SQLITE_OBJ)
 jobcfg_OBJS=jobcfg.o database.o ipc.o job.o logger.o parser.o toml.o $(SQLITE_OBJ)
 jobadm_OBJS=jobadm.o database.o ipc.o logger.o $(SQLITE_OBJ)
 jobstat_OBJS=jobstat.o database.o ipc.o logger.o $(SQLITE_OBJ)
 
-all: jobcfg jobd jobstat jobadm
+all: jobd $(bin_BINS)
 
 install: all config.mk
 	$(MAKE) -f Makefile -f config.mk install-stage2
@@ -65,7 +67,7 @@ init:
 	cd $(INIT_SRCDIR) && $(CC) $(INIT_CFLAGS) -o ../../init -I. init.c getmntopts.c $(INIT_LDADD)
 
 clean:
-	rm -f *.o vendor/*.o jobd jobcfg jobstat init
+	rm -f *.o vendor/*.o jobd $(bin_BINS) init
 
 distclean: clean
 	rm -f $(SQLITE_OBJ) config.mk config.h
