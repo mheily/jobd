@@ -228,7 +228,7 @@ parse_job(struct job_parser *jpr)
 
 	if (parse_string(&j->id, tab, "name", ""))
 		goto_err("name");
-	if (parse_string(&j->command, tab, "command", "/bin/true"))
+	if (parse_string(&j->command, tab, "command", ""))
 		goto_err("command");
 	if (parse_string(&j->description, tab, "description", ""))
 		goto_err("description");
