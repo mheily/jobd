@@ -20,7 +20,6 @@
 #include <stdbool.h>
 #include <sqlite3.h>
 
-#define DB_OPEN_READONLY 0x01
 #define DB_OPEN_CREATE_VOLATILE 0x10
 
 /* Maximum length of a SQL string stored on the stack */

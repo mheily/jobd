@@ -153,10 +153,7 @@ db_open(const char *path, int flags)
 	if (!path)
 		path = db_default.dbpath;
 	
-	if (flags & DB_OPEN_READONLY)
-		sqlite_flags = SQLITE_OPEN_READONLY;
-	else
-		sqlite_flags = SQLITE_OPEN_READWRITE;
+	sqlite_flags = SQLITE_OPEN_READWRITE;
 
 	rv = sqlite3_open_v2(path, &dbh, sqlite_flags, NULL);
 	if (rv != SQLITE_OK) {
