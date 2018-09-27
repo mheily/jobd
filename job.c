@@ -63,58 +63,58 @@ static void
 _job_child_pre_exec(const struct job *job)
 {
 	sigset_t mask;
-		(void)setsid();
+	(void)setsid();
 
-		sigfillset(&mask);
-		(void) sigprocmask(SIG_UNBLOCK, &mask, NULL);
+	sigfillset(&mask);
+	(void) sigprocmask(SIG_UNBLOCK, &mask, NULL);
 
-		//TODO: setrlimit
-		if (chdir(job->working_directory) < 0) {
-			printlog(LOG_ERR, "chdir(2) to %s: %s", job->working_directory, strerror(errno));
+	//TODO: setrlimit
+	if (chdir(job->working_directory) < 0) {
+		printlog(LOG_ERR, "chdir(2) to %s: %s", job->working_directory, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+	if (getuid() == 0) {
+		if (strcmp(job->root_directory, "/") && (chroot(job->root_directory) < 0)) {
+			printlog(LOG_ERR, "chroot(2) to %s: %s", job->root_directory, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
-		if (getuid() == 0) {
-			if (strcmp(job->root_directory, "/") && (chroot(job->root_directory) < 0)) {
-				printlog(LOG_ERR, "chroot(2) to %s: %s", job->root_directory, strerror(errno));
-				exit(EXIT_FAILURE);
-			}
-			if (job->init_groups && (initgroups(job->user_name, job->gid) < 0)) {
-				printlog(LOG_ERR, "initgroups(3): %s", strerror(errno));
-				exit(EXIT_FAILURE);
-			}
-			if (setgid(job->gid) < 0) {
-				printlog(LOG_ERR, "setgid(2): %s", strerror(errno));
-				exit(EXIT_FAILURE);
-			}
+		if (job->init_groups && (initgroups(job->user_name, job->gid) < 0)) {
+			printlog(LOG_ERR, "initgroups(3): %s", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		if (setgid(job->gid) < 0) {
+			printlog(LOG_ERR, "setgid(2): %s", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
 #ifndef __GLIBC__
-			/* KLUDGE: above is actually a test for BSD */
-			if (setlogin(job->user_name) < 0) {
-				printlog(LOG_ERR, "setlogin(2): %s", strerror(errno));
-				exit(EXIT_FAILURE);
-			}
+		/* KLUDGE: above is actually a test for BSD */
+		if (setlogin(job->user_name) < 0) {
+			printlog(LOG_ERR, "setlogin(2): %s", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
 #endif
-			if (setuid(job->uid) < 0) {
-				printlog(LOG_ERR, "setuid(2): %s", strerror(errno));
-				exit(EXIT_FAILURE);
-			}
+		if (setuid(job->uid) < 0) {
+			printlog(LOG_ERR, "setuid(2): %s", strerror(errno));
+			exit(EXIT_FAILURE);
 		}
-		(void) umask(job->umask);
+	}
+	(void) umask(job->umask);
 
-		//TODO this->setup_environment();
-		//this->createDescriptors();
+	//TODO this->setup_environment();
+	//this->createDescriptors();
 
-		if (redirect_file_descriptor(STDIN_FILENO, job->standard_in_path, O_RDONLY, 0600) < 0) {
-			printlog(LOG_ERR, "unable to redirect STDIN");
-			exit(EXIT_FAILURE);
-		}
-		if (redirect_file_descriptor(STDOUT_FILENO, job->standard_out_path, O_CREAT | O_WRONLY, 0600) < 0) {
-			printlog(LOG_ERR, "unable to redirect STDOUT");
-			exit(EXIT_FAILURE);
-		}
-		if (redirect_file_descriptor(STDERR_FILENO, job->standard_error_path, O_CREAT | O_WRONLY, 0600) < 0) {
-			printlog(LOG_ERR, "unable to redirect STDERR");
-			exit(EXIT_FAILURE);
-		}
+	if (redirect_file_descriptor(STDIN_FILENO, job->standard_in_path, O_RDONLY, 0600) < 0) {
+		printlog(LOG_ERR, "unable to redirect STDIN");
+		exit(EXIT_FAILURE);
+	}
+	if (redirect_file_descriptor(STDOUT_FILENO, job->standard_out_path, O_CREAT | O_WRONLY, 0600) < 0) {
+		printlog(LOG_ERR, "unable to redirect STDOUT");
+		exit(EXIT_FAILURE);
+	}
+	if (redirect_file_descriptor(STDERR_FILENO, job->standard_error_path, O_CREAT | O_WRONLY, 0600) < 0) {
+		printlog(LOG_ERR, "unable to redirect STDERR");
+		exit(EXIT_FAILURE);
+	}
 }
 
 static int
@@ -154,7 +154,7 @@ job_command_exec(pid_t *child, const struct job *job, const char *command)
     	}
 		/* NOTREACHED */
 	} else {
-		printlog(LOG_DEBUG, "job `%s': executing command as pid %d", job->id, pid);
+		printlog(LOG_DEBUG, "job `%s': executing command as pid %d: %s", job->id, pid, exec_command);
 		*child = pid;
 	}
 
@@ -196,7 +196,7 @@ job_method_exec(pid_t *child, const struct job *job, const char *method_name)
     	}
 		/* NOTREACHED */
 	} else {
-		printlog(LOG_DEBUG, "job `%s': method `%s' running as pid %d", job->id, method_name, pid);
+		printlog(LOG_DEBUG, "job `%s': method `%s' running as pid %d: script=%s", job->id, method_name, pid, script);
 		*child = pid;
 	}
 
@@ -233,16 +233,16 @@ job_start(struct job *job)
 		return (-1);
 	}
 
-	if (job->command) {
+	if (job->command && job->command[0] != '\0') {
 		if (job_command_exec(&pid, job, job->command) < 0) {
 			printlog(LOG_ERR, "start command failed");
 			return (-1);			
 		}
 	} else {
-	if (job_method_exec(&pid, job, "start") < 0) {
-		printlog(LOG_ERR, "start method failed");
-		return (-1);
-	}
+		if (job_method_exec(&pid, job, "start") < 0) {
+			printlog(LOG_ERR, "start method failed");
+			return (-1);
+		}
 	}
 	
 	/*
