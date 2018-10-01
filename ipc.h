@@ -19,16 +19,16 @@
 
 #include "job.h" // just for JOB_ID_MAX
 
+/* Maximum length of a method name */
+#define JOB_METHOD_NAME_MAX	128
+
+/* Maximum length of arguments to a method */
+#define JOB_METHOD_ARG_MAX	512
+
 struct ipc_request {
-	enum {
-		IPC_REQUEST_UNDEFINED,
-		IPC_REQUEST_START,
-		IPC_REQUEST_STOP,
-		IPC_REQUEST_ENABLE,
-		IPC_REQUEST_DISABLE,
-		IPC_REQUEST_MAX, /* Not a real opcode, just setting the maximum number of codes */
-	} opcode;
-	char job_id[JOB_ID_MAX + 1];
+	char job_id[JOB_ID_MAX];
+	char method[JOB_METHOD_NAME_MAX];
+	char args[JOB_METHOD_ARG_MAX];
 };
 
 struct ipc_response {
@@ -40,10 +40,18 @@ struct ipc_response {
 	} retcode;
 };
 
+struct ipc_session {
+	int client_fd;
+	struct ipc_request req;
+	struct ipc_response res;
+};
+
 int ipc_init(const char *_socketpath);
 int ipc_bind(void);
 int ipc_connect(void);
-int ipc_client_request(int opcode, char *job_id);
+int ipc_client_request(const char *job_id, const char *method);
+int ipc_read_request(struct ipc_session *s);
+int ipc_send_response(struct ipc_session *s);
 int ipc_get_sockfd(void);
 
 #endif /* _IPC_H */

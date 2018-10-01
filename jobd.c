@@ -305,57 +305,46 @@ reload_configuration(int signum __attribute__((unused)))
 	schedule();
 }
 
-static void
+static int
 ipc_server_handler(event_t *ev __attribute__((unused)))
 {
-	ssize_t bytes;
-	struct sockaddr_un client_addr;
-	socklen_t len;
-	int cfd;
-	struct ipc_request req;
-	struct ipc_response res;
+	struct ipc_session session;
 	struct job *job;
-	int (*jump_table[IPC_REQUEST_MAX])(struct job *) = {
-		NULL,
-		&job_start,
-		&job_stop,
-		&job_enable,
-		&job_disable,
-	};
-	
-	int addrlen = sizeof(struct sockaddr_un);
-	cfd = accept(ipc_get_sockfd(), (struct sockaddr *)&client_addr, (socklen_t*) &addrlen);
-	if (cfd < 0)
-		err(1, "accept(2)");
-		
-	len = sizeof(struct sockaddr_un);
-	bytes = read(cfd, &req, sizeof(req));
-    if (bytes < 0) {
-		err(1, "read(2)");
-	} else if (bytes < len) {
-		err(1, "TODO - handle short read");
+
+	if (ipc_read_request(&session) < 0) {
+		printlog(LOG_ERR, "ipc_read_request() failed");
+		return (-1);
 	}
 
-	printlog(LOG_DEBUG, "got IPC request; opcode=%d job_id=%s", req.opcode, req.job_id);
-	if (req.opcode > 0 && req.opcode < IPC_REQUEST_MAX) {
-		job = job_list_lookup(&all_jobs, req.job_id);
-		if (job) {
-			res.retcode = (*jump_table[req.opcode])(job);
-		} else {
-			res.retcode = IPC_RESPONSE_NOT_FOUND;
+	const struct ipc_request * const req = &session.req;
+	struct ipc_response * const res = &session.res;
+	printlog(LOG_DEBUG, "got IPC request; method=%s job_id=%s", req->method, req->job_id);
+	job = job_list_lookup(&all_jobs, req->job_id);
+	if (!job) {
+		res->retcode = IPC_RESPONSE_NOT_FOUND;
+		if (ipc_send_response(&session) < 0) {
+			printlog(LOG_ERR, "ipc_read_request() failed");
 		}
-	}
-    
-	printlog(LOG_DEBUG, "sending IPC response; retcode=%d", res.retcode);
-	bytes = write(cfd, &res, sizeof(res));
-	if (bytes < 0) {
-		err(1, "write(2)");
+		return (-1);
 	}
 
-	printlog(LOG_DEBUG, "closing IPC client session %d", cfd);
-	if (close(cfd) < 0) {
-		err(1, "close(2)");
+	if (!strcmp(req->method, "start")) {
+		res->retcode = job_start(job);
+	} else if (!strcmp(req->method, "stop")) {
+		res->retcode = job_stop(job);
+	} else if (!strcmp(req->method, "enable")) {
+		res->retcode = job_enable(job);
+	} else if (!strcmp(req->method, "disable")) {
+		res->retcode = job_disable(job);
+	} else {
+		res->retcode = IPC_RESPONSE_NOT_FOUND;		
 	}
+	if (ipc_send_response(&session) < 0) {
+		printlog(LOG_ERR, "ipc_read_request() failed");
+		return (-1);
+	}
+
+	return (0);
 }
 
 static void
@@ -623,6 +612,7 @@ main(int argc, char *argv[])
 	if (jobd_is_system_manager) {
 		mount_runstatedir();
 	}
+// #error when running as system manager, filesystem is readonly. database conn does not get updated when fs goes
 	if (db_init() < 0) {
 		printlog(LOG_ERR, "unable to initialize the database routines");
 		exit(EXIT_FAILURE);

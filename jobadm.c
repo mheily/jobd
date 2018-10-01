@@ -58,27 +58,8 @@ main(int argc, char *argv[])
 	
 	job_id = argv[1];
 	command = argv[2];
-	
-	if (!strcmp(command, "start")) {
-		rv = ipc_client_request(IPC_REQUEST_START, job_id);
-	} else if (!strcmp(command, "stop")) {
-		rv = ipc_client_request(IPC_REQUEST_STOP, job_id);
-	} else if (!strcmp(command, "restart")) {
-		ipc_client_request(IPC_REQUEST_STOP, job_id);//ERRCHECK
-		rv = ipc_client_request(IPC_REQUEST_START, job_id);
-	} else if (!strcmp(command, "enable")) {
-		rv = ipc_client_request(IPC_REQUEST_ENABLE, job_id);
-	} else if (!strcmp(command, "disable")) {
-		rv = ipc_client_request(IPC_REQUEST_DISABLE, job_id);
-	} else if (!strcmp(command, "help")) {
-		usage();
-		rv = IPC_RESPONSE_OK;
-	} else {
-		printlog(LOG_ERR, "unrecognized command: %s", command);
-		usage();
-		exit(EXIT_FAILURE);
-	}
 
+	rv = ipc_client_request(job_id, command);
 	if (rv != IPC_RESPONSE_OK) {
 		fprintf(stderr, "ERROR: Request failed with retcode %d\n", rv);
 		exit(EXIT_FAILURE);

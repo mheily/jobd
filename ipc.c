@@ -53,7 +53,7 @@ ipc_init(const char *_socketpath)
 }
 
 int
-ipc_client_request(int opcode, char *job_id)
+ipc_client_request(const char *job_id, const char *method)
 {
 	ssize_t bytes;
 	struct sockaddr_un sa_to;
@@ -70,13 +70,12 @@ ipc_client_request(int opcode, char *job_id)
 		errx(1, "socket path is too long");
     strncpy(sa_to.sun_path, socketpath, sizeof(sa_to.sun_path) - 1);
 
-	req.opcode = opcode;
-	if (job_id) {
-		strncpy((char*)&req.job_id, job_id, JOB_ID_MAX);
-		req.job_id[JOB_ID_MAX] = '\0';
-	} else {
-		req.job_id[0] = '\0';
-	}
+	strncpy(req.method, method, sizeof(req.method));
+	req.method[sizeof(req.method) - 1] = '\0';
+
+	strncpy((char*)&req.job_id, job_id, JOB_ID_MAX);
+	req.job_id[sizeof(req.job_id) - 1] = '\0';
+
 	len = (socklen_t) sizeof(struct sockaddr_un);
 	bytes = write(ipc_sockfd, &req, sizeof(req));
 	if (bytes < 0) {
@@ -84,7 +83,7 @@ ipc_client_request(int opcode, char *job_id)
 	} else if (bytes < len) {
 		err(1, "TODO - handle short write");
 	}
-	printlog(LOG_DEBUG, "sent IPC request; opcode=%d job_id=%s", req.opcode, req.job_id);
+	printlog(LOG_DEBUG, "sent IPC request: %s::%s()",req.job_id, req.method);
 
 	len = sizeof(struct sockaddr_un);
 	bytes = read(ipc_sockfd, &res, sizeof(res));
@@ -163,6 +162,54 @@ ipc_bind(void)
 	}
 
 	return (_ipc_listen(ipc_sockfd));
+}
+
+int ipc_send_response(struct ipc_session *s)
+{
+	ssize_t bytes;
+
+	printlog(LOG_DEBUG, "sending IPC response; retcode=%d", s->res.retcode);
+	bytes = write(s->client_fd, &s->res, sizeof(s->res));
+	if (bytes < 0) {
+		printlog(LOG_ERR, "write(2): %s", strerror(errno));
+		(void)close(s->client_fd);
+		return (-1);
+	}
+
+	printlog(LOG_DEBUG, "closing IPC client session %d", s->client_fd);
+	if (close(s->client_fd) < 0) {
+		printlog(LOG_ERR, "close(2): %s", strerror(errno));
+		return (-1);
+	}
+
+	return (0);
+}
+
+int
+ipc_read_request(struct ipc_session *session)
+{
+	ssize_t bytes;
+	struct sockaddr_un client_addr;
+	socklen_t len;
+	
+	int addrlen = sizeof(struct sockaddr_un);
+	session->client_fd = accept(ipc_get_sockfd(), (struct sockaddr *)&client_addr, (socklen_t*) &addrlen);
+	if (session->client_fd < 0) {
+		printlog(LOG_ERR, "accept(2): %s", strerror(errno));
+		return (-1);
+	}
+
+	len = sizeof(struct sockaddr_un);
+	bytes = read(session->client_fd, &session->req, sizeof(session->req));
+    if (bytes < 0) {
+		printlog(LOG_ERR, "read(2): %s", strerror(errno));
+		(void)close(session->client_fd);
+		return (-1);
+	} else if (bytes < len) {
+		err(1, "FIXME - handle short read"); //XXX CRASHER
+	}
+
+	return (0);
 }
 
 int
