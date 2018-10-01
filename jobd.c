@@ -306,6 +306,16 @@ reload_configuration(int signum __attribute__((unused)))
 }
 
 static int
+_jobd_ipc_request_handler(const char *method)
+{
+	if (!strcmp(method, "reopen_database")) {
+		return (db_reopen());
+	} else {
+		return (IPC_RESPONSE_NOT_FOUND);
+	}
+}
+
+static int
 ipc_server_handler(event_t *ev __attribute__((unused)))
 {
 	struct ipc_session session;
@@ -319,26 +329,31 @@ ipc_server_handler(event_t *ev __attribute__((unused)))
 	const struct ipc_request * const req = &session.req;
 	struct ipc_response * const res = &session.res;
 	printlog(LOG_DEBUG, "got IPC request; method=%s job_id=%s", req->method, req->job_id);
-	job = job_list_lookup(&all_jobs, req->job_id);
-	if (!job) {
-		res->retcode = IPC_RESPONSE_NOT_FOUND;
-		if (ipc_send_response(&session) < 0) {
-			printlog(LOG_ERR, "ipc_read_request() failed");
+
+	if (!strcmp(req->job_id, "jobd")) {
+		res->retcode = _jobd_ipc_request_handler(req->method);
+	} else {
+		job = job_list_lookup(&all_jobs, req->job_id);
+		if (!job) {
+			res->retcode = IPC_RESPONSE_NOT_FOUND;
+			if (ipc_send_response(&session) < 0) {
+				printlog(LOG_ERR, "ipc_read_request() failed");
+			}
+			return (-1);
 		}
-		return (-1);
+		if (!strcmp(req->method, "start")) {
+			res->retcode = job_start(job);
+		} else if (!strcmp(req->method, "stop")) {
+			res->retcode = job_stop(job);
+		} else if (!strcmp(req->method, "enable")) {
+			res->retcode = job_enable(job);
+		} else if (!strcmp(req->method, "disable")) {
+			res->retcode = job_disable(job);
+		} else {
+			res->retcode = IPC_RESPONSE_NOT_FOUND;		
+		}
 	}
 
-	if (!strcmp(req->method, "start")) {
-		res->retcode = job_start(job);
-	} else if (!strcmp(req->method, "stop")) {
-		res->retcode = job_stop(job);
-	} else if (!strcmp(req->method, "enable")) {
-		res->retcode = job_enable(job);
-	} else if (!strcmp(req->method, "disable")) {
-		res->retcode = job_disable(job);
-	} else {
-		res->retcode = IPC_RESPONSE_NOT_FOUND;		
-	}
 	if (ipc_send_response(&session) < 0) {
 		printlog(LOG_ERR, "ipc_read_request() failed");
 		return (-1);

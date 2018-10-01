@@ -50,6 +50,7 @@ jobd_pid=$!
 assert_contains 'job sleep1 .* exited'
 
 # Test IPC
+$objdir/bin/jobadm jobd reopen_database
 $objdir/bin/jobadm enable_me enable
 assert_contains 'job enable_me has been enabled'
 assert_contains 'job enable_me .* exited'
