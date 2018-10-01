@@ -42,6 +42,7 @@ extern sqlite3 *dbh;
 int db_init(void);
 int db_create(const char *, const char *);
 int db_open(const char *, int);
+int db_reopen();
 bool db_exists(void);
 int db_exec(sqlite3 *, const char *sql);
 int db_exec_path(const char *);

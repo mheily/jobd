@@ -34,6 +34,7 @@ static struct {
 	char *schemapath;
 } db_default;
 
+static char *dbpath;
 sqlite3 *dbh = NULL;
 
 static void
@@ -181,8 +182,30 @@ db_open(const char *path, int flags)
 		return (-1);
 	}
 
+	dbpath = strdup(path);
+	if (!dbpath) abort(); //FIXME
+
 	return (0);
 }
+
+int
+db_reopen(void)
+{
+	int rv;
+	if (!dbh) {
+		printlog(LOG_ERR, "database is not open");
+		return (-1);
+	}
+	rv = sqlite3_close(dbh);
+	if (rv == SQLITE_OK) {
+		dbh = NULL;
+		return (db_open(dbpath, 0));
+	} else {
+		db_log_error(rv);
+		return (-1);
+	}
+}
+
 
 int
 db_create(const char *path, const char *schemapath)
