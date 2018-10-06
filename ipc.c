@@ -206,7 +206,10 @@ ipc_read_request(struct ipc_session *session)
 		(void)close(session->client_fd);
 		return (-1);
 	} else if (bytes < len) {
-		err(1, "FIXME - handle short read"); //XXX CRASHER
+		printlog(LOG_ERR, "read(2): expected %zu bytes but got %zu bytes",
+			(size_t)len, (size_t) bytes);
+		(void)close(session->client_fd);
+		return (-1);
 	}
 
 	return (0);
