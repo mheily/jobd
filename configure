@@ -23,6 +23,17 @@ if [ "$1" = "--as-system-manager" ] ; then
     exec ./configure $*
 fi
 
+if [ "$1" = "--as-current-user" ] ; then
+    shift
+    export PREFIX=$HOME/.local
+    export BINDIR=$HOME/.local/bin
+    export SBINDIR=$HOME/.local/bin
+    export PKGCONFIGDIR=$HOME/.config
+    export LOCALSTATEDIR=$HOME/.config
+    export RUNSTATEDIR=/run/user/$(id -u)
+    exec ./configure $*
+fi
+
 prefix=${PREFIX:-/usr/local}
 bindir=${BINDIR:-${prefix}/bin}
 sbindir=${SBINDIR:-${prefix}/sbin}
