@@ -190,49 +190,47 @@ schedule(void)
 }
 
 static void
-reaper(struct job_list *jobs, pid_t pid, int status)
+reaper(pid_t pid, int status)
 {
-	struct job *job;
+	char job_id[JOB_ID_MAX];
+	int last_exit_status, term_signal;
 
 	printlog(LOG_DEBUG, "reaping PID %d", pid);
 
-	LIST_FOREACH(job, jobs, entries) {
-		if (job->pid == pid) {
-			if (job->state != JOB_STATE_STOPPING) {
-				printlog(LOG_NOTICE, "job %s terminated unexpectedly", job->id);
-				//TODO: mark it as errored
-			}
-			job->state = JOB_STATE_STOPPED;
-			job->pid = 0;
-			job->exited = true;
-			if (WIFEXITED(status)) {
-				job->last_exit_status = WEXITSTATUS(status);
-				job->term_signal = 0;
-			} else if (WIFSIGNALED(status)) {
-				job->last_exit_status = -1;
-				job->term_signal = WTERMSIG(status);
-			} else {
-				job->term_signal = -1;
-				job->last_exit_status = -1;
-				printlog(LOG_ERR, "unhandled exit status");
-			}
-			printlog(LOG_DEBUG, "job %s (pid %d) exited with status=%d term_signal=%d",
-    		    job->id, pid, job->last_exit_status, job->term_signal);
-
-			if (jobd_is_shutting_down) {
-				// Do not reschedule. 
-			} else {
-				if (scheduler_lock == job) {
-					printlog(LOG_DEBUG, "unlocking the scheduler");
-					scheduler_lock = NULL;
-					schedule();
-				}
-			}
-
-			return;
-		}
+	if (job_get_label_by_pid(job_id, pid, sizeof(job_id)) < 0) {
+	 	printlog(LOG_ERR, "unable to find a process with pid %d", pid);
+		return;
 	}
-	printlog(LOG_ERR, "no job associated with pid %d", pid);
+
+	// if (job->state != JOB_STATE_STOPPING) {
+	// 	printlog(LOG_NOTICE, "job %s terminated unexpectedly", job->id);
+	// 	//TODO: mark it as errored
+	// }
+	// job->state = JOB_STATE_STOPPED;
+	
+	if (WIFEXITED(status)) {
+		last_exit_status = WEXITSTATUS(status);
+		printlog(LOG_DEBUG, "job %s (pid %d) exited with status=%d", job_id, pid, last_exit_status);
+		job_set_exit_status(pid, last_exit_status); // TODO: errcheck
+	} else if (WIFSIGNALED(status)) {
+		term_signal = WTERMSIG(status);
+		printlog(LOG_DEBUG, "job %s (pid %d) caught signal %d",	job_id, pid, term_signal);
+		job_set_signal_status(pid, term_signal); // TODO: errcheck
+	} else {
+		// TODO: Handle sigstop/sigcont
+		printlog(LOG_ERR, "unhandled exit status type");
+	}
+
+	if (jobd_is_shutting_down) {
+			// Do not reschedule. 
+	} else {
+		//FIXME: locking sucks
+		//if (scheduler_lock == job) {
+	//		printlog(LOG_DEBUG, "unlocking the scheduler");
+			scheduler_lock = NULL;
+			schedule();
+	//	}
+	}
 }
 
 static void
@@ -267,7 +265,7 @@ shutdown_handler(int signum)
 		if (job->state == JOB_STATE_STOPPING) {
 			pid = wait(&status);
 			if (pid > 0) {
-				reaper(&shutdown_list, pid, status);
+				reaper(pid, status);
 			} else {
 				if (errno == EINTR) {
 					if (sigalrm_flag) {
@@ -526,7 +524,7 @@ sigchld_handler(int signum __attribute__((unused)))
 	for (;;) {
 		pid = waitpid(-1, &status, WNOHANG);
 		if (pid > 0) {
-			reaper(&all_jobs, pid, status);
+			reaper(pid, status);
 		} else {
 			break;
 		}

@@ -250,10 +250,11 @@ job_start(struct job *job)
 		
 		TODO: allow the use of a check script that waits for the service to finish initializing.
 	*/
-	job->pid = pid;
-	if (job->pid > 0) {
+	if (pid > 0) {
 		job->state = JOB_STATE_RUNNING;
-		printlog(LOG_DEBUG, "job %s started with pid %d", job->id, job->pid);
+		printlog(LOG_DEBUG, "job %s started with pid %d", job->id, pid);
+		if (job_register_pid(job->row_id, pid) < 0)
+			return (-1);//TODO: LOG
 	}
 
 	return (0);
@@ -262,7 +263,7 @@ job_start(struct job *job)
 int
 job_stop(struct job *job)
 {
-	pid_t pid;
+	pid_t pid, job_pid;
 
 	if (job->state == JOB_STATE_STOPPED) {
 		printlog(LOG_DEBUG, "job %s is already stopped", job->id);
@@ -279,14 +280,19 @@ job_stop(struct job *job)
 		return (-1);
 	}
 
-	if (pid > 0 && (job->pid == 0)) {
-		job->pid = pid;
-	} else if (!pid && (job->pid > 0)) {
-		printlog(LOG_DEBUG, "sending SIGTERM to job %s (pid %d)", job->id, job->pid);
-		if (kill(job->pid, SIGTERM) < 0) {
+	if (job_get_pid(&job_pid, job->row_id) < 0) {
+		printlog(LOG_ERR, "pid lookup failed");
+		return (-1);
+	}
+
+	if (pid > 0 && (job_pid == 0)) {
+		job_pid = pid;
+	} else if (!pid && (job_pid > 0)) {
+		printlog(LOG_DEBUG, "sending SIGTERM to job %s (pid %d)", job->id, job_pid);
+		if (kill(job_pid, SIGTERM) < 0) {
 			if (errno == ESRCH) {
 				/* Probably a harmless race condition, but note it anyway */
-				printlog(LOG_WARNING, "job %s (pid %d): no such process", job->id, job->pid);
+				printlog(LOG_WARNING, "job %s (pid %d): no such process", job->id, job_pid);
 				job->state = JOB_STATE_STOPPED;
 			} else {
 				printlog(LOG_ERR, "kill(2): %s", strerror(errno));
@@ -642,4 +648,132 @@ job_disable(struct job *job)
 	} else {
 		return (-1);
 	}
+}
+
+int
+job_register_pid(int64_t row_id, pid_t pid)
+{
+	sqlite3_stmt *stmt = NULL;
+	const char *sql = "INSERT INTO volatile.processes "
+					  " (pid, job_id) "
+					  "VALUES "
+					  " (?, ?)";
+
+	if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
+		sqlite3_bind_int64(stmt, 1, pid) != SQLITE_OK ||
+		sqlite3_bind_int64(stmt, 2, row_id) != SQLITE_OK ||
+		sqlite3_step(stmt) != SQLITE_DONE)
+	{
+		db_log_error(sqlite3_finalize(stmt));
+		return (-1);
+	}
+
+	// TODO: set process_state_id
+
+	sqlite3_finalize(stmt);
+	return (0);
+}
+
+int
+job_get_pid(pid_t *pid, int64_t row_id)
+{
+	sqlite3_stmt *stmt = NULL;
+	const char *sql = "SELECT processes.pid FROM processes WHERE job_id = ?";
+
+	if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
+		sqlite3_bind_int64(stmt, 1, row_id) != SQLITE_OK)
+	{
+		db_log_error(sqlite3_finalize(stmt));
+		return (-1);
+	}
+
+	int rv = sqlite3_step(stmt);
+	if (rv == SQLITE_DONE) {
+		*pid = 0;
+	} else if (rv == SQLITE_ROW) {
+		*pid = (pid_t) sqlite3_column_int(stmt, 0);
+	} else {
+	  	db_log_error(sqlite3_finalize(stmt));
+		*pid = 0;
+		return (-1);
+	}
+	
+	sqlite3_finalize(stmt);
+	return (0);
+}
+
+int
+job_get_label_by_pid(char label[JOB_ID_MAX], pid_t pid, size_t sz)
+{
+	sqlite3_stmt *stmt = NULL;
+	const char *sql = "SELECT jobs.job_id "
+					  "  FROM jobs "
+					  "INNER JOIN processes ON processes.job_id = jobs.id "
+					  "  WHERE pid = ?";
+
+	if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
+		sqlite3_bind_int64(stmt, 1, pid) != SQLITE_OK)
+		{
+			db_log_error(sqlite3_finalize(stmt));
+			label[0] = '\0';
+			return (-1);
+		}
+
+	int rv = sqlite3_step(stmt);
+	if (rv == SQLITE_DONE) {
+		label[0] = '\0';
+	} else if (rv == SQLITE_ROW) {
+		strncpy(label, (char *)sqlite3_column_text(stmt, 0), sz - 1);
+		if (sz > 0)
+			label[sz] = '\0';
+	} else {
+		db_log_error(sqlite3_finalize(stmt));
+		label[0] = '\0';
+		return (-1);
+	}
+
+	sqlite3_finalize(stmt);
+	return (0);
+}
+
+int
+job_set_exit_status(pid_t pid, int status)
+{
+	sqlite3_stmt *stmt = NULL;
+	const char *sql = "UPDATE volatile.processes "
+					  "SET exited = 1, exit_status = ? "
+					  "WHERE pid = ?";
+
+	if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
+		sqlite3_bind_int64(stmt, 1, status) != SQLITE_OK ||
+		sqlite3_bind_int64(stmt, 2, pid) != SQLITE_OK ||
+		sqlite3_step(stmt) != SQLITE_DONE)
+	{
+		db_log_error(sqlite3_finalize(stmt));
+		return (-1);
+	}
+
+	sqlite3_finalize(stmt);
+	return (0);
+}
+
+int
+job_set_signal_status(pid_t pid, int signum)
+{
+	sqlite3_stmt *stmt = NULL;
+	const char *sql = "UPDATE volatile.processes "
+					  "SET signaled = 1, signal_number = ? "
+					  "WHERE pid = ?";
+
+	if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
+		sqlite3_bind_int64(stmt, 1, signum) != SQLITE_OK ||
+		sqlite3_bind_int64(stmt, 2, pid) != SQLITE_OK ||
+		sqlite3_step(stmt) != SQLITE_DONE)
+	{
+		db_log_error(sqlite3_finalize(stmt));
+		return (-1);
+	}
+
+	sqlite3_finalize(stmt);
+	return (0);
 }

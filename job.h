@@ -51,11 +51,8 @@ struct job_parser;
 
 struct job {
 	LIST_ENTRY(job) entries;
-	pid_t pid;
 	enum job_state state;
-	bool exited;
-	int last_exit_status, term_signal;
-	size_t incoming_edges;
+    size_t incoming_edges;
     int64_t row_id;
 
 	/* Items below here are parsed from the manifest */
@@ -89,8 +86,6 @@ int job_stop(struct job *job);
 int job_enable(struct job *job);
 int job_disable(struct job *job);
 
-int job_enable_by_id(const char *job_id);
-
 struct job *job_new(void);
 void job_free(struct job *);
 int job_find(struct job **result, const char *job_id);
@@ -99,5 +94,12 @@ void job_solve(struct job *job);
 
 struct job * job_list_lookup(const struct job_list *jobs, const char *id);
 char * job_get_method(const struct job *job, const char *method_name);
+
+int job_register_pid(int64_t row_id, pid_t pid);
+int job_get_label_by_pid(char label[JOB_ID_MAX], pid_t pid, size_t sz);
+int job_get_pid(pid_t *pid, int64_t row_id);
+
+int job_set_exit_status(pid_t pid, int status);
+int job_set_signal_status(pid_t pid, int signum);
 
 #endif /* _JOB_H */
