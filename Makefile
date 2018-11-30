@@ -19,7 +19,7 @@ CFLAGS+=-D_GNU_SOURCE
 
 bin_BINS := jobcfg jobstat jobadm
 
-jobd_OBJS=jobd.o database.o ipc.o job.o logger.o parser.o vendor/pidfile.o vendor/flopen.o toml.o tsort.o $(SQLITE_OBJ)
+jobd_OBJS=jobd.o database.o ipc.o job.o logger.o parser.o vendor/pidfile.o vendor/flopen.o toml.o $(SQLITE_OBJ)
 jobcfg_OBJS=jobcfg.o database.o ipc.o job.o logger.o parser.o toml.o $(SQLITE_OBJ)
 jobadm_OBJS=jobadm.o database.o ipc.o logger.o $(SQLITE_OBJ)
 jobstat_OBJS=jobstat.o database.o ipc.o logger.o $(SQLITE_OBJ)
@@ -71,3 +71,8 @@ clean:
 
 distclean: clean
 	rm -f $(SQLITE_OBJ) config.mk config.h
+
+sloccount:
+	sloccount `ls *.[ch] | egrep -v '(toml|queue)\.'` | egrep ^ansic
+
+PHONY : sloccount
