@@ -88,25 +88,7 @@ err:
 	return (-1);
 }
 
-static int
-parse_gid(gid_t *result, const char *group_name)
-{
-	struct group *grp;
 
-	if (!group_name || group_name[0] == '\0') {
-		*result = getgid();
-		return (0);
-	}
-
-	grp = getgrnam(group_name);
-	if (grp) {
-		*result = grp->gr_gid;
-		return (0);
-	} else {
-		printlog(LOG_ERR, "group not found: %s", group_name);
-		return (-1);
-	}
-}
 
 static int
 parse_uid(uid_t *result, toml_table_t *tab, const char *key, const uid_t default_value)
@@ -238,14 +220,12 @@ parse_job(struct job_parser *jpr)
 		goto_err("before");
 	if (parse_bool(&j->enable, tab, "enable", true))
 		goto_err("enable");
-	if (parse_bool(&j->exclusive, tab, "exclusive", false))
-		goto_err("exclusive");
+	if (parse_bool(&j->wait_flag, tab, "wait", false))
+		goto_err("wait");
 	if (parse_environment_variables(j, tab))
 		goto_err("environment");
 	if (parse_string(&j->group_name, tab, "group", ""))
 		goto_err("group");
-	if (parse_gid(&j->gid, j->group_name))
-		goto_err("gid");
 	if (parse_bool(&j->init_groups, tab, "init_groups", true))
 		goto_err("init_groups");
 	if (parse_bool(&j->keep_alive, tab, "keep_alive", false))
@@ -460,7 +440,7 @@ job_db_insert(struct job_parser *jpr)
 	const char *sql = "INSERT INTO jobs (job_id, description, gid, init_groups,"
 		"keep_alive, root_directory, standard_error_path,"
 		"standard_in_path, standard_out_path, umask, user_name,"
-		"working_directory, enable, command, exclusive) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+		"working_directory, enable, command, wait) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
 	rv = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
 		 sqlite3_bind_text(stmt, 1, job->id, -1, SQLITE_STATIC) == SQLITE_OK &&
@@ -477,7 +457,7 @@ job_db_insert(struct job_parser *jpr)
 		 sqlite3_bind_text(stmt, 12, job->working_directory, -1, SQLITE_STATIC) == SQLITE_OK &&
 		 sqlite3_bind_int(stmt, 13, job->enable) == SQLITE_OK &&
 		 sqlite3_bind_text(stmt, 14, job->command, -1, SQLITE_STATIC) == SQLITE_OK &&
-		 sqlite3_bind_int(stmt, 15, job->exclusive) == SQLITE_OK;
+		 sqlite3_bind_int(stmt, 15, job->wait_flag) == SQLITE_OK;
 
 	if (!rv || sqlite3_step(stmt) != SQLITE_DONE) {
 		printlog(LOG_ERR, "error importing %s", job->id);

@@ -17,23 +17,19 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <pwd.h>
 
 #include "database.h"
 #include "logger.h"
 #include "job.h"
 #include "parser.h"
-
-static const char *select_sql = "SELECT job_id, description, gid, init_groups,"
-					  "keep_alive, root_directory, standard_error_path,"
-					  "standard_in_path, standard_out_path, umask, user_name,"
-					  "working_directory, id, enable, command, exclusive "
-					  "FROM jobs ";
 
 static int
 redirect_file_descriptor(int oldfd, const char *path, int flags, mode_t mode)
@@ -58,31 +54,95 @@ redirect_file_descriptor(int oldfd, const char *path, int flags, mode_t mode)
 	return (0);
 }
 
+static int
+parse_gid(gid_t *result, const char *group_name)
+{
+	struct group *grp;
+
+	if (!group_name || group_name[0] == '\0') {
+		*result = getgid();
+		return (0);
+	}
+
+	grp = getgrnam(group_name);
+	if (grp) {
+		*result = grp->gr_gid;
+		return (0);
+	} else {
+		printlog(LOG_ERR, "group not found: %s", group_name);
+		return (-1);
+	}
+}
+
 /* Run actions in the child after fork(2) but before execve(2) */
 static void
-_job_child_pre_exec(const struct job *job)
+_job_child_pre_exec(job_id_t jid)
 {
+	gid_t gid;
+	sqlite3_stmt *stmt;
 	sigset_t mask;
-	(void)setsid();
 
+	const char sql[] = "SELECT working_directory, root_directory, init_groups, "
+					   "user_name, gid, "
+					   "standard_error_path, standard_in_path, standard_out_path, "
+					   "umask "
+					   "FROM jobs WHERE id = ?";
+
+
+	if (db_query(&stmt, sql, "i", jid) < 0) {
+		printlog(LOG_ERR, "db_query() failed");
+		exit(EXIT_FAILURE);
+	}
+
+	int rv = sqlite3_step(stmt);
+	if (rv == SQLITE_DONE) {
+		printlog(LOG_ERR, "job no longer exists");
+		sqlite3_finalize(stmt);
+		exit(EXIT_FAILURE);
+	}
+	if (rv != SQLITE_ROW) {
+		printlog(LOG_ERR, "sqlite3_step() failed");
+		sqlite3_finalize(stmt);
+		exit(EXIT_FAILURE);
+	}
+
+	char *working_directory = (char *) sqlite3_column_text(stmt, 0);
+	char *root_directory = (char *) sqlite3_column_text(stmt, 1);
+	int init_groups = sqlite3_column_int(stmt, 2);
+	char *user_name = (char *) sqlite3_column_text(stmt, 3);
+	char *group_name = (char *) sqlite3_column_text(stmt, 4);
+	char *stderr_path = (char *) sqlite3_column_text(stmt, 5);
+	char *stdin_path = (char *) sqlite3_column_text(stmt, 6);
+	char *stdout_path = (char *) sqlite3_column_text(stmt, 7);
+	char *umask_str = (char *) sqlite3_column_text(stmt, 8);
+
+	if (parse_gid(&gid, group_name) < 0) {
+		printlog(LOG_ERR, "unable to resolve group name `%s'", group_name);
+		exit(EXIT_FAILURE);
+	}
+
+	(void)setsid();
 	sigfillset(&mask);
 	(void) sigprocmask(SIG_UNBLOCK, &mask, NULL);
 
 	//TODO: setrlimit
-	if (chdir(job->working_directory) < 0) {
-		printlog(LOG_ERR, "chdir(2) to %s: %s", job->working_directory, strerror(errno));
+
+	if (getuid() == 0) {
+		if (strcmp(root_directory, "/") && (chroot(root_directory) < 0)) {
+			printlog(LOG_ERR, "chroot(2) to %s: %s", root_directory, strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+	}
+	if (chdir(working_directory) < 0) {
+		printlog(LOG_ERR, "chdir(2) to %s: %s", working_directory, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	if (getuid() == 0) {
-		if (strcmp(job->root_directory, "/") && (chroot(job->root_directory) < 0)) {
-			printlog(LOG_ERR, "chroot(2) to %s: %s", job->root_directory, strerror(errno));
-			exit(EXIT_FAILURE);
-		}
-		if (job->init_groups && (initgroups(job->user_name, job->gid) < 0)) {
+		if (init_groups && (initgroups(user_name, gid) < 0)) {
 			printlog(LOG_ERR, "initgroups(3): %s", strerror(errno));
 			exit(EXIT_FAILURE);
 		}
-		if (setgid(job->gid) < 0) {
+		if (setgid(gid) < 0) {
 			printlog(LOG_ERR, "setgid(2): %s", strerror(errno));
 			exit(EXIT_FAILURE);
 		}
@@ -93,37 +153,47 @@ _job_child_pre_exec(const struct job *job)
 			exit(EXIT_FAILURE);
 		}
 #endif
-		if (setuid(job->uid) < 0) {
+		struct passwd *pwd = getpwnam(user_name);
+		if (!pwd) {
+			printlog(LOG_ERR, "user not found: %s", user_name);
+			exit(EXIT_FAILURE);
+		}
+		if (setuid(pwd->pw_uid) < 0) {
 			printlog(LOG_ERR, "setuid(2): %s", strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 	}
-	(void) umask(job->umask);
+
+	mode_t job_umask;
+	sscanf(umask_str, "%hi", (unsigned short *) &job_umask);
+	(void) umask(job_umask);
 
 	//TODO this->setup_environment();
 	//this->createDescriptors();
 
-	if (redirect_file_descriptor(STDIN_FILENO, job->standard_in_path, O_RDONLY, 0600) < 0) {
+	if (redirect_file_descriptor(STDIN_FILENO, stdin_path, O_RDONLY, 0600) < 0) {
 		printlog(LOG_ERR, "unable to redirect STDIN");
 		exit(EXIT_FAILURE);
 	}
-	if (redirect_file_descriptor(STDOUT_FILENO, job->standard_out_path, O_CREAT | O_WRONLY, 0600) < 0) {
+	if (redirect_file_descriptor(STDOUT_FILENO, stdout_path, O_CREAT | O_WRONLY, 0600) < 0) {
 		printlog(LOG_ERR, "unable to redirect STDOUT");
 		exit(EXIT_FAILURE);
 	}
-	if (redirect_file_descriptor(STDERR_FILENO, job->standard_error_path, O_CREAT | O_WRONLY, 0600) < 0) {
+	if (redirect_file_descriptor(STDERR_FILENO, stderr_path, O_CREAT | O_WRONLY, 0600) < 0) {
 		printlog(LOG_ERR, "unable to redirect STDERR");
 		exit(EXIT_FAILURE);
 	}
+	sqlite3_finalize(stmt);
 }
 
 static int
-job_command_exec(pid_t *child, const struct job *job, const char *command)
+job_command_exec(pid_t *child, job_id_t id, const char *command)
 {
 	pid_t pid;
 	char *filename;
 	char exec_command[JOB_ARG_MAX + sizeof("exec ")];
 	char *argv[5];
+	static char *envp_workaround[] = {NULL};
 	char **envp;
 	ssize_t rv;
 
@@ -140,21 +210,21 @@ job_command_exec(pid_t *child, const struct job *job, const char *command)
 	argv[1] = "-c";
 	argv[2] = exec_command;
 	argv[3] = NULL;
-	envp = string_array_data(job->environment_variables);
+	envp = (char **) &envp_workaround; //string_array_data(job->environment_variables);
 
 	pid = fork();
 	if (pid < 0) {
 		printlog(LOG_ERR, "fork(2): %s", strerror(errno));
 		return (-1);
 	} else if (pid == 0) {
-		_job_child_pre_exec(job);
+		_job_child_pre_exec(id);
 		if (execve(filename, argv, envp) < 0) {
 			printlog(LOG_ERR, "execve(2): %s", strerror(errno));
 			exit(EXIT_FAILURE);
     	}
 		/* NOTREACHED */
 	} else {
-		printlog(LOG_DEBUG, "job `%s': executing command as pid %d: %s", job->id, pid, exec_command);
+		printlog(LOG_DEBUG, "job `%s': executing command as pid %d: %s", job_id_to_str(id), pid, exec_command);
 		*child = pid;
 	}
 
@@ -162,8 +232,9 @@ job_command_exec(pid_t *child, const struct job *job, const char *command)
 }
 
 static int
-job_method_exec(pid_t *child, const struct job *job, const char *method_name)
+job_method_exec(pid_t *child, job_id_t jid, const char *method_name)
 {
+	const char **empty_envp = { NULL };
 	pid_t pid;
 	char *filename, *script = NULL;
 	char *argv[5];
@@ -171,9 +242,10 @@ job_method_exec(pid_t *child, const struct job *job, const char *method_name)
 
 	*child = 0;
 
-	script = job_get_method(job, method_name);
+	if (job_get_method(&script, jid, method_name) < 0)
+		return (-1);
 	if (!script) {
-		printlog(LOG_DEBUG, "job `%s': method not found: `%s'", job->id, method_name);
+		printlog(LOG_DEBUG, "job `%s': method not found: `%s'", job_id_to_str(jid), method_name);
 		return (0);
 	}
 
@@ -182,21 +254,21 @@ job_method_exec(pid_t *child, const struct job *job, const char *method_name)
 	argv[1] = "-c";
 	argv[2] = script;
 	argv[3] = NULL;
-	envp = string_array_data(job->environment_variables);
+	envp = (char **) empty_envp; //XXX-FIXME string_array_data(job->environment_variables);
 
 	pid = fork();
 	if (pid < 0) {
 		printlog(LOG_ERR, "fork(2): %s", strerror(errno));
 		goto err_out;
 	} else if (pid == 0) {
-		_job_child_pre_exec(job);
+		_job_child_pre_exec(jid);
 		if (execve(filename, argv, envp) < 0) {
 			printlog(LOG_ERR, "execve(2): %s", strerror(errno));
 			exit(EXIT_FAILURE);
     	}
 		/* NOTREACHED */
 	} else {
-		printlog(LOG_DEBUG, "job `%s': method `%s' running as pid %d: script=%s", job->id, method_name, pid, script);
+		printlog(LOG_DEBUG, "job `%s': method `%s' running as pid %d: script=%s", job_id_to_str(jid), method_name, pid, script);
 		*child = pid;
 	}
 
@@ -208,79 +280,91 @@ err_out:
 	return (-1);
 }
 
-// TODO: handle the ripple effects of scheduling jobs affected by changes in the current job state
-void
-job_solve(struct job *job)
+const char *job_state_to_str(enum job_state state)
 {
-	if (job->state != JOB_STATE_UNKNOWN) {
-		//FIXME: causes lots of noise right now: printlog(LOG_ERR, "bad usage");
-		return;
-	}
-
-	job->state = JOB_STATE_STOPPED;
-	if (job->enable) {
-		job_start(job);
+	switch (state) {
+		case JOB_STATE_UNKNOWN: return("unknown");
+		case JOB_STATE_STARTING: return("starting");
+		case JOB_STATE_RUNNING: return("running");
+		case JOB_STATE_STOPPING: return("stopping");
+		case JOB_STATE_STOPPED: return("stopped");
+		case JOB_STATE_ERROR: return("error");
+		default: return("invalid_state");
 	}
 }
 
 int
-job_start(struct job *job)
+job_start(pid_t *pid, job_id_t id)
 {
-	pid_t pid;
+    enum job_state state;
+    char command[JOB_ARG_MAX];
 
-	if (job->state != JOB_STATE_STOPPED) {
-		printlog(LOG_ERR, "job is in the wrong state");
-		return (-1);
-	}
+    if (job_get_state(&state, id) < 0) {
+        printlog(LOG_ERR, "unable to get job state");
+        return (-1);
+    }
+    if (job_get_command(command, id) < 0) {
+        printlog(LOG_ERR, "unable to get command");
+        return (-1);
+    }
 
-	if (job->command && job->command[0] != '\0') {
-		if (job_command_exec(&pid, job, job->command) < 0) {
-			printlog(LOG_ERR, "start command failed");
-			return (-1);			
-		}
-	} else {
-		if (job_method_exec(&pid, job, "start") < 0) {
-			printlog(LOG_ERR, "start method failed");
-			return (-1);
-		}
-	}
-	
-	/*
-		job->state = JOB_STATE_STARTING;
-		
-		TODO: allow the use of a check script that waits for the service to finish initializing.
-	*/
-	if (pid > 0) {
-		job->state = JOB_STATE_RUNNING;
-		printlog(LOG_DEBUG, "job %s started with pid %d", job->id, pid);
-		if (job_register_pid(job->row_id, pid) < 0)
-			return (-1);//TODO: LOG
-	}
+    if (state != JOB_STATE_STOPPED && state != JOB_STATE_UNKNOWN) {
+        printlog(LOG_ERR, "job is in the wrong state to be started: %s", job_state_to_str(state));
+        return (-1);
+    }
 
-	return (0);
+    if (command[0] != '\0') {
+        if (job_command_exec(pid, id, command) < 0) {
+            printlog(LOG_ERR, "start command failed");
+            return (-1);
+        }
+    } else {
+        if (job_method_exec(pid, id, "start") < 0) {
+            printlog(LOG_ERR, "start method failed");
+            return (-1);
+        }
+    }
+
+    /*
+        job->state = JOB_STATE_STARTING;
+
+        TODO: allow the use of a check script that waits for the service to finish initializing.
+    */
+    if (*pid > 0) {
+        if (job_set_state(id, JOB_STATE_RUNNING) < 0)
+            return (-1);
+        printlog(LOG_DEBUG, "job %s started with pid %d", job_id_to_str(id), *pid);
+        if (job_register_pid(id, *pid) < 0)
+            return (-1);//TODO: LOG
+    }
+
+    return (0);
 }
 
 int
-job_stop(struct job *job)
+job_stop(job_id_t id)
 {
 	pid_t pid, job_pid;
+	enum job_state state;
 
-	if (job->state == JOB_STATE_STOPPED) {
-		printlog(LOG_DEBUG, "job %s is already stopped", job->id);
+	if (job_get_state(&state, id) < 0) return (-1);
+
+	if (state == JOB_STATE_STOPPED) {
+		printlog(LOG_DEBUG, "job %s is already stopped", job_id_to_str(id));
 		return (0);
 	}
 
-	if (job->state != JOB_STATE_RUNNING) {
-		printlog(LOG_ERR, "job is in the wrong state");
+	if (state != JOB_STATE_RUNNING && state != JOB_STATE_STARTING) {
+		printlog(LOG_ERR, "job is in the wrong state to be stopped: %s", job_state_to_str(state));
 		return (-1);
 	}
 
-	if (job_method_exec(&pid, job, "stop") < 0) {
+	if (job_method_exec(&pid, id, "stop") < 0) {
 		printlog(LOG_ERR, "stop method failed");
 		return (-1);
 	}
 
-	if (job_get_pid(&job_pid, job->row_id) < 0) {
+	if (job_get_pid(&job_pid, id) < 0) {
 		printlog(LOG_ERR, "pid lookup failed");
 		return (-1);
 	}
@@ -288,18 +372,20 @@ job_stop(struct job *job)
 	if (pid > 0 && (job_pid == 0)) {
 		job_pid = pid;
 	} else if (!pid && (job_pid > 0)) {
-		printlog(LOG_DEBUG, "sending SIGTERM to job %s (pid %d)", job->id, job_pid);
+		printlog(LOG_DEBUG, "sending SIGTERM to job %s (pid %d)", job_id_to_str(id), job_pid);
 		if (kill(job_pid, SIGTERM) < 0) {
 			if (errno == ESRCH) {
 				/* Probably a harmless race condition, but note it anyway */
-				printlog(LOG_WARNING, "job %s (pid %d): no such process", job->id, job_pid);
-				job->state = JOB_STATE_STOPPED;
+				printlog(LOG_WARNING, "job %s (pid %d): no such process", job_id_to_str(id), job_pid);
+				if (job_set_state(id, JOB_STATE_STOPPED) < 0)
+					return (-1);
 			} else {
 				printlog(LOG_ERR, "kill(2): %s", strerror(errno));
 				return (-1);
 			}
 		}
-		job->state = JOB_STATE_STOPPING;
+		if (job_set_state(id, JOB_STATE_STOPPING) < 0)
+			return (-1);
 	} else {
 		/* FIXME: open design question: what about jobs with a PID *and* a stop method? */
 	}
@@ -356,260 +442,84 @@ job_free(struct job *job)
 	}
 }
 
-struct job *
-job_list_lookup(const struct job_list *jobs, const char *id)
-{
-	struct job *job;
-
-	LIST_FOREACH(job, jobs, entries) {
-		if (!strcmp(id, job->id)) {
-			return job;
-		}
-	}
-	return (NULL);
-}
-
-static int
-job_get_depends(struct job *job)
+int job_get_command(char dest[JOB_ARG_MAX], job_id_t jid)
 {
 	sqlite3_stmt *stmt;
-	char *sql;
-	int rv;
 
-	/* Get the job->after deps */
-	sql = "SELECT before_job_id FROM job_depends WHERE after_job_id = ?";
-	if ((rv = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK))
-		goto db_err;
-	if ((rv = sqlite3_bind_text(stmt, 1, job->id, -1, SQLITE_STATIC) != SQLITE_OK))
-		goto db_err;
-	if (db_select_into_string_array(job->after, stmt) < 0)
-		goto err_out;
-	sqlite3_finalize(stmt);
+	const char sql[] = "SELECT command FROM jobs WHERE id = ?";
 
-	/* Get the job->before deps */
-	sql = "SELECT after_job_id FROM job_depends WHERE before_job_id = ?";
-	if ((rv = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK))
-		goto db_err;
-	if ((rv = sqlite3_bind_text(stmt, 1, job->id, -1, SQLITE_STATIC) != SQLITE_OK))
-		goto db_err;
-	if (db_select_into_string_array(job->before, stmt) < 0)
-		goto err_out;
-	sqlite3_finalize(stmt);
+	if (db_query(&stmt, sql, "i", jid) < 0) {
+		printlog(LOG_ERR, "db_query() failed");
+		return -1;
+	}
 
-	return (0);
-
-db_err:
-	db_log_error(rv);
-
-err_out:
-	sqlite3_finalize(stmt);
-	return (-1);
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		strncpy(dest, (char *) sqlite3_column_text(stmt, 0), JOB_ARG_MAX - 2);
+		dest[JOB_ARG_MAX - 1] = '\0';
+		sqlite3_finalize(stmt);
+		return 0;
+	} else {
+		sqlite3_finalize(stmt);
+		dest[0] = '\0';
+		return -1;
+	}
 }
 
-static int
-_job_stmt_copyin(sqlite3_stmt *stmt, struct job *job)
-{
-	
-		if (!(job->id = strdup((char *)sqlite3_column_text(stmt, 0))))
-			goto os_err;
-		if (!(job->description = strdup((char *)sqlite3_column_text(stmt, 1))))
-			goto os_err;
-		if (!(job->group_name = strdup((char *)sqlite3_column_text(stmt, 2))))
-			goto os_err;
-		job->init_groups = sqlite3_column_int(stmt, 3);
-		job->keep_alive = sqlite3_column_int(stmt, 4);
-		if (!(job->root_directory = strdup((char *)sqlite3_column_text(stmt, 5))))
-			goto os_err;
-		if (!(job->standard_error_path = strdup((char *)sqlite3_column_text(stmt, 6))))
-			goto os_err;
-		if (!(job->standard_in_path = strdup((char *)sqlite3_column_text(stmt, 7))))
-			goto os_err;
-		if (!(job->standard_out_path = strdup((char *)sqlite3_column_text(stmt, 8))))
-			goto os_err;
-		if (!(job->umask_str = strdup((char *)sqlite3_column_text(stmt, 9))))
-			goto os_err;
-		if (!(job->user_name = strdup((char *)sqlite3_column_text(stmt, 10))))
-			goto os_err;
-		if (!(job->working_directory = strdup((char *)sqlite3_column_text(stmt, 11))))
-			goto os_err;
-		job->row_id = sqlite3_column_int64(stmt, 12);
-		job->enable = sqlite3_column_int(stmt, 13);
-		if (!(job->command = strdup((char *)sqlite3_column_text(stmt, 14))))
-			goto os_err;
-		job->exclusive = sqlite3_column_int(stmt, 15);
-
-		//FIXME - need to deal w/ gid, umask parsing
-
-		if (job_get_depends(job) < 0)
-			goto err_out;
-
-	return (0);
-
-os_err:
-	printlog(LOG_ERR, "OS error: %s", strerror(errno));
-	goto err_out;
-
-err_out:
-	sqlite3_finalize(stmt);
-	job_free(job);
-	return (-1);
-}
-
-// FIXME: This returns the wrong job!
 int
-job_find(struct job **result, const char *job_id)
+job_get_method(char **dest, job_id_t jid, const char *method_name)
 {
-	char sql[SQL_BUF_MAX];
-	sqlite3_stmt *stmt;
-	struct job *job = NULL;
-	int rv;
+	sqlite3_stmt *stmt = NULL;
+	int rv, result;
 
-	printlog(LOG_ERR,"FIXME: need to debug this");
-	return (-1);
-	*result = NULL;
-
-	rv = snprintf((char *)&sql, sizeof(sql),  "%s WHERE job_id = ?", select_sql);
-	if (rv >= (int)sizeof(sql) || rv < 0) {
-			printlog(LOG_ERR, "snprintf failed");
-			return (-1);
-	}
-
-	rv = sqlite3_prepare_v2(dbh, select_sql, -1, &stmt, 0);
-	if (rv != SQLITE_OK) {
-		db_log_error(rv);
+	if (jid == INVALID_ROW_ID || !method_name)
 		return (-1);
-	}
-
-	sqlite3_bind_text(stmt, 1, job_id, -1, SQLITE_STATIC); 
-	if (rv != SQLITE_OK) {
-		db_log_error(rv);
+	
+	const char *sql = "SELECT script FROM job_methods WHERE job_id = ? AND name = ?";
+	if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
+		sqlite3_bind_int64(stmt, 1, jid) != SQLITE_OK ||
+		sqlite3_bind_text(stmt, 2, method_name, -1, SQLITE_STATIC) != SQLITE_OK) 
+	{
+		db_log_error(sqlite3_finalize(stmt));
 		return (-1);
 	}
 
 	rv = sqlite3_step(stmt);
-	if (rv == SQLITE_DONE) {
-		sqlite3_finalize(stmt);
-		return (-1);
-	}
-
-	if (rv == SQLITE_ROW) {
-		job = job_new();
-		if (!job)
-			goto err_out;
-
-		if (_job_stmt_copyin(stmt, job) < 0)
-			goto err_out;
+  	if (rv == SQLITE_ROW) {
+		*dest = strdup((char *)sqlite3_column_text(stmt, 0));
+		result = 0;
+	} else if (rv == SQLITE_DONE) {
+		*dest = NULL;
+		result = 0;
 	} else {
-		db_log_error(rv);
-		return (-1);	
+		*dest = NULL;
+		result = -1;
 	}
-
 	sqlite3_finalize(stmt);
-	*result = job;
-
-	return (0);
-
-err_out:
-	sqlite3_finalize(stmt);
-	job_free(job);
-	return (-1);
+  	return (result);
 }
 
 int
-job_db_select_all(struct job_list *dest)
-{
-	sqlite3_stmt *stmt = NULL;
-	struct job *job = NULL;
-	int rv;
-
-	rv = sqlite3_prepare_v2(dbh, select_sql, -1, &stmt, 0);
-	if (rv != SQLITE_OK)
-		goto db_err;
-	
-	for (;;) {
-		rv = sqlite3_step(stmt);
-		if (rv == SQLITE_DONE)
-			break;
-		if (rv != SQLITE_ROW)
-			goto db_err;
-
-		job = job_new();
-		if (!job)
-			goto os_err;
-
-		if (_job_stmt_copyin(stmt, job) < 0)
-			goto os_err;
-
-		LIST_INSERT_HEAD(dest, job, entries);
-	}
-
-	sqlite3_finalize(stmt);
-	return (0);
-
-os_err:
-	printlog(LOG_ERR, "OS error: %s", strerror(errno));
-	goto err_out;
-
-db_err:
-	db_log_error(rv);
-
-err_out:
-	sqlite3_finalize(stmt);
-	job_free(job);
-	return (-1);
-}
-
-/* The caller must free the value returned by this function */
-char *
-job_get_method(const struct job *job, const char *method_name)
+job_enable(job_id_t id)
 {
 	sqlite3_stmt *stmt;
 	int success;
-	char *result;
-
-	if (!job)
-		return (NULL);
-	
-	const char *sql = "SELECT script FROM job_methods WHERE job_id = ? AND name = ?";
-	success = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
-		sqlite3_bind_int64(stmt, 1, job->row_id) == SQLITE_OK &&
-		sqlite3_bind_text(stmt, 2, method_name, -1, SQLITE_STATIC) == SQLITE_OK &&
-  	    sqlite3_step(stmt) == SQLITE_ROW &&
-		(result = strdup((char *)sqlite3_column_text(stmt, 0)));
-
-	sqlite3_finalize(stmt);
-
-	return (success ? result : NULL);
-}
-
-int
-job_enable(struct job *job)
-{
-	sqlite3_stmt *stmt;
-	int success;
-
-	if (!job)
-		return (-1);
-	
-	if (job->enable)
-		return (0);
 
 	const char *sql = "UPDATE jobs SET enable = 1 WHERE id = ?";
 	success = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
-		sqlite3_bind_int64(stmt, 1, job->row_id) == SQLITE_OK &&
+		sqlite3_bind_int64(stmt, 1, id) == SQLITE_OK &&
   	    sqlite3_step(stmt) == SQLITE_DONE;
 
 	sqlite3_finalize(stmt);
 
 	if (sqlite3_changes(dbh) == 0) {
-		printlog(LOG_ERR, "job %s does not exist", job->id);
+		printlog(LOG_ERR, "job %s does not exist", job_id_to_str(id));
 		return (-1);
 	}
 
 	if (success) {
-		printlog(LOG_DEBUG, "job %s has been enabled", job->id);
-		job->enable = true;
-		job_start(job);
+		printlog(LOG_DEBUG, "job %s has been enabled", job_id_to_str(id));
+		pid_t pid;
+		job_start(&pid, id);
 		return (0);
 	} else {
 		return (-1);
@@ -617,33 +527,26 @@ job_enable(struct job *job)
 }
 
 int
-job_disable(struct job *job)
+job_disable(job_id_t id)
 {
 	sqlite3_stmt *stmt;
 	int success;
 
-	if (!job)
-		return (-1);
-	
-	if (!job->enable)
-		return (0);
-
 	const char *sql = "UPDATE jobs SET enable = 0 WHERE id = ?";
 	success = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
-		sqlite3_bind_int64(stmt, 1, job->row_id) == SQLITE_OK &&
+		sqlite3_bind_int64(stmt, 1, id) == SQLITE_OK &&
   	    sqlite3_step(stmt) == SQLITE_DONE;
 
 	sqlite3_finalize(stmt);
 
 	if (sqlite3_changes(dbh) == 0) {
-		printlog(LOG_ERR, "job %s does not exist", job->id);
+		printlog(LOG_ERR, "job %s does not exist", job_id_to_str(id));
 		return (-1);
 	}
 
 	if (success) {
-		printlog(LOG_DEBUG, "job %s has been disabled (current_state=%d)", job->id, job->state);
-		job->enable = false;
-		job_stop(job);
+		printlog(LOG_DEBUG, "job %s has been disabled", job_id_to_str(id));
+		job_stop(id);
 		return (0);
 	} else {
 		return (-1);
@@ -668,8 +571,6 @@ job_register_pid(int64_t row_id, pid_t pid)
 		return (-1);
 	}
 
-	// TODO: set process_state_id
-
 	sqlite3_finalize(stmt);
 	return (0);
 }
@@ -677,33 +578,24 @@ job_register_pid(int64_t row_id, pid_t pid)
 int
 job_get_pid(pid_t *pid, int64_t row_id)
 {
-	sqlite3_stmt *stmt = NULL;
+	int64_t result;
 	const char *sql = "SELECT processes.pid FROM processes WHERE job_id = ?";
 
-	if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
-		sqlite3_bind_int64(stmt, 1, row_id) != SQLITE_OK)
-	{
-		db_log_error(sqlite3_finalize(stmt));
-		return (-1);
-	}
-
-	int rv = sqlite3_step(stmt);
-	if (rv == SQLITE_DONE) {
-		*pid = 0;
-	} else if (rv == SQLITE_ROW) {
-		*pid = (pid_t) sqlite3_column_int(stmt, 0);
-	} else {
-	  	db_log_error(sqlite3_finalize(stmt));
+	if (db_get_id(&result, sql, "i", row_id) < 0) {
+		printlog(LOG_ERR, "database error");
 		*pid = 0;
 		return (-1);
 	}
-	
-	sqlite3_finalize(stmt);
+	if (result == INVALID_ROW_ID) {
+		*pid = 0;
+		return (1);
+	}
+	*pid = (pid_t) result;
 	return (0);
 }
 
 int
-job_get_label_by_pid(char label[JOB_ID_MAX], pid_t pid, size_t sz)
+job_get_label_by_pid(char label[JOB_ID_MAX], pid_t pid)
 {
 	sqlite3_stmt *stmt = NULL;
 	const char *sql = "SELECT jobs.job_id "
@@ -723,9 +615,8 @@ job_get_label_by_pid(char label[JOB_ID_MAX], pid_t pid, size_t sz)
 	if (rv == SQLITE_DONE) {
 		label[0] = '\0';
 	} else if (rv == SQLITE_ROW) {
-		strncpy(label, (char *)sqlite3_column_text(stmt, 0), sz - 1);
-		if (sz > 0)
-			label[sz] = '\0';
+		strncpy(label, (char *)sqlite3_column_text(stmt, 0), JOB_ID_MAX - 1);
+		label[JOB_ID_MAX] = '\0';
 	} else {
 		db_log_error(sqlite3_finalize(stmt));
 		label[0] = '\0';
@@ -741,7 +632,7 @@ job_set_exit_status(pid_t pid, int status)
 {
 	sqlite3_stmt *stmt = NULL;
 	const char *sql = "UPDATE volatile.processes "
-					  "SET exited = 1, exit_status = ? "
+					  "SET exited = 1, exit_status = ?"
 					  "WHERE pid = ?";
 
 	if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
@@ -777,3 +668,87 @@ job_set_signal_status(pid_t pid, int signum)
 	sqlite3_finalize(stmt);
 	return (0);
 }
+
+int job_set_state(int64_t job_id, enum job_state state)
+{
+	sqlite3_stmt *stmt = NULL;
+	const char *sql = "UPDATE volatile.processes "
+					  "SET process_state_id = ? "
+					  "WHERE job_id = ?";
+
+	if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
+		sqlite3_bind_int64(stmt, 1, state) != SQLITE_OK ||
+		sqlite3_bind_int64(stmt, 2, job_id) != SQLITE_OK ||
+		sqlite3_step(stmt) != SQLITE_DONE)
+	{
+		db_log_error(sqlite3_finalize(stmt));
+		return (-1);
+	}
+
+	sqlite3_finalize(stmt);
+	return (0);
+}
+
+int job_get_state(enum job_state *state, job_id_t id)
+{
+	int64_t result;
+	const char *sql = "SELECT process_state_id "
+					  " FROM volatile.processes "
+					  "WHERE job_id = ?";
+
+	if (db_get_id(&result, sql, "i", id) < 0) {
+		printlog(LOG_ERR, "database error");
+		*state = JOB_STATE_UNKNOWN;
+		return (-1);
+	}
+	if (result == INVALID_ROW_ID) {
+		printlog(LOG_ERR, "job not found");
+		*state = JOB_STATE_UNKNOWN;
+		return (1);
+	}
+
+	*state = (enum job_state) result;
+	return (0);
+}
+
+
+const char *
+job_id_to_str(job_id_t jid)
+{
+    const char sql[] = "SELECT job_id FROM jobs WHERE id = ?";
+    static char label[JOB_ID_MAX + 1];
+    sqlite3_stmt *stmt;
+    int rv;
+
+    if (db_query(&stmt, sql, "i", jid) < 0) {
+        printlog(LOG_ERR, "db_query() failed");
+        strcpy(label, "__error__");
+        goto out;
+    }
+
+    rv = sqlite3_step(stmt);
+    if (rv == SQLITE_DONE) {
+        printlog(LOG_ERR, "job no longer exists");
+        strcpy(label, "__nonexistent__");
+        goto out;
+    }
+    if (rv != SQLITE_ROW) {
+        printlog(LOG_ERR, "sqlite3_step() failed");
+        strcpy(label, "__error__");
+        goto out;
+    }
+
+    /* TODO: prepend with job://, or surround with quotes? */
+    rv = snprintf((char *) &label, sizeof(label), "%s", sqlite3_column_text(stmt, 0));
+    if (rv >= (int) sizeof(label)) {
+        printlog(LOG_ERR, "buffer too small");
+        strcpy(label, "__error__");
+        goto out;
+    }
+
+out:
+    sqlite3_finalize(stmt);
+    label[sizeof(label) - 1] = '\0';
+    return ((const char *) &label);
+}
+

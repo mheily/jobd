@@ -57,7 +57,6 @@
 #include "job.h"
 #include "ipc.h"
 #include "pidfile.h"
-#include "tsort.h"
 
 static void sigchld_handler(int);
 static void sigalrm_handler(int);
@@ -67,7 +66,7 @@ static void reload_configuration(int);
 /* Max length of a job ID. Equivalent to FILE_MAX */
 #define JOB_ID_MAX 255
 
-static struct job *scheduler_lock = NULL;
+static pid_t sync_wait_pid;
 static struct pidfh *pidfile_fh;
 
 static const struct signal_handler {
@@ -100,8 +99,6 @@ static bool jobd_is_shutting_down = false;
 static volatile sig_atomic_t sigalrm_flag = 0;
 
 static void daemonize(void);
-static struct job_list all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
-
 static void schedule(void);
 
 static void
@@ -151,55 +148,102 @@ usage(void)
 }
 
 static int
-unspool(void)
+next_runnable_job(job_id_t *result)
 {
-	struct job_list tmpjobs;
+	job_id_t id;
+	const char *sql = "SELECT id FROM jobs "
+					  "WHERE id NOT IN (SELECT job_id AS id FROM volatile.processes) "
+					  " AND enable = 1 "
+					  "LIMIT 1";
 
-	LIST_INIT(&tmpjobs);
-
-	if (job_db_select_all(&tmpjobs) < 0)
-		return (-1);
-	
-	if (topological_sort(&all_jobs, &tmpjobs) < 0) {
+	if (db_get_id(&id, sql, "") < 0) {
+		printlog(LOG_ERR, "database error");
+		*result = INVALID_ROW_ID;
 		return (-1);
 	}
+	if (id == INVALID_ROW_ID)
+		*result = INVALID_ROW_ID;
+	else
+		*result = id;
 
 	return (0);
 }
 
+// rename to start_next_job() ?
 static void
 schedule(void)
 {
-	struct job *job;
+	job_id_t id;
+	pid_t pid;
 
-	printlog(LOG_DEBUG, "scheduling jobs");
-	
-	if (scheduler_lock) {
-		printlog(LOG_DEBUG, "will not run scheduler; an exclusive job is in progress");
+	if (sync_wait_pid > 0) {
+		printlog(LOG_DEBUG, "waiting for pid %d", sync_wait_pid);
 		return;
 	}
 
-	LIST_FOREACH(job, &all_jobs, entries) {
-		job_solve(job);
-		if (job->exclusive && job->state == JOB_STATE_RUNNING) {
-			printlog(LOG_DEBUG, "scheduler locked by %s", job->id);
-			scheduler_lock = job;
-			return;
+	job_id_t prev_job = INVALID_ROW_ID;
+	printlog(LOG_DEBUG, "scheduling jobs");
+	for (;;) {
+		if (next_runnable_job(&id) < 0) {
+			printlog(LOG_ERR, "unable to query runnable jobs");
+			break;
+		}
+		if (id == INVALID_ROW_ID) {
+			printlog(LOG_DEBUG, "no more runnable jobs");
+			break;
+		}
+		if (prev_job == id) {
+		    // KLUDGE
+			printlog(LOG_ERR, "infinite loop detected");
+			break;
+		} else {
+			prev_job = id;
+		}
+		printlog(LOG_DEBUG, "next job: `%s'", job_id_to_str(id));
+		int64_t wait_flag; //KLUDGE: want int instead
+		if (db_get_id(&wait_flag, "SELECT wait FROM jobs WHERE id = ?", "i", id) < 0) {
+			printlog(LOG_ERR, "database query failed");
+			wait_flag = 0;
+		}
+		if (wait_flag == INVALID_ROW_ID) {
+			printlog(LOG_ERR, "job no longer exists");
+			wait_flag = 0;
+		}
+		job_start(&pid, id);
+		if (wait_flag && pid) {
+			printlog(LOG_DEBUG, "will not start any more jobs until pid %d exits", pid);
+			sync_wait_pid = pid;
+			break;
 		}
 	}
+	printlog(LOG_DEBUG, "done scheduling jobs");
 }
 
 static void
 reaper(pid_t pid, int status)
 {
-	char job_id[JOB_ID_MAX];
+	char label[JOB_ID_MAX];
+	job_id_t job_id;
 	int last_exit_status, term_signal;
 
 	printlog(LOG_DEBUG, "reaping PID %d", pid);
 
-	if (job_get_label_by_pid(job_id, pid, sizeof(job_id)) < 0) {
+	const char *sql = "SELECT jobs.id "
+					  "  FROM jobs "
+					  "INNER JOIN processes ON processes.job_id = jobs.id "
+					  "  WHERE pid = ?";
+	if (db_get_id(&job_id, sql, "i", pid) < 0) {
+		printlog(LOG_ERR, "database lookup error; pid %d", pid);
+		return;
+	}
+	if (job_id < 0) {
 	 	printlog(LOG_ERR, "unable to find a process with pid %d", pid);
 		return;
+	}
+
+	if (job_get_label_by_pid(label, pid) < 0) {
+		printlog(LOG_ERR, "unable to lookup the label for pid %d", pid);
+		label[0] = '\0';
 	}
 
 	// if (job->state != JOB_STATE_STOPPING) {
@@ -210,34 +254,31 @@ reaper(pid_t pid, int status)
 	
 	if (WIFEXITED(status)) {
 		last_exit_status = WEXITSTATUS(status);
-		printlog(LOG_DEBUG, "job %s (pid %d) exited with status=%d", job_id, pid, last_exit_status);
+		printlog(LOG_DEBUG, "job %s (pid %d) exited with status=%d", label, pid, last_exit_status);
 		job_set_exit_status(pid, last_exit_status); // TODO: errcheck
 	} else if (WIFSIGNALED(status)) {
 		term_signal = WTERMSIG(status);
-		printlog(LOG_DEBUG, "job %s (pid %d) caught signal %d",	job_id, pid, term_signal);
+		printlog(LOG_DEBUG, "job %s (pid %d) caught signal %d",	label, pid, term_signal);
 		job_set_signal_status(pid, term_signal); // TODO: errcheck
 	} else {
 		// TODO: Handle sigstop/sigcont
 		printlog(LOG_ERR, "unhandled exit status type");
 	}
 
-	if (jobd_is_shutting_down) {
-			// Do not reschedule. 
-	} else {
-		//FIXME: locking sucks
-		//if (scheduler_lock == job) {
-	//		printlog(LOG_DEBUG, "unlocking the scheduler");
-			scheduler_lock = NULL;
-			schedule();
-	//	}
+	if (job_set_state(job_id, JOB_STATE_STOPPED) < 0) {
+	    printlog(LOG_ERR, "unable to set job state");
+	}
+
+	if (sync_wait_pid == pid) {
+		printlog(LOG_DEBUG, "starting the next job now that `%s' is finished", label);
+		sync_wait_pid = 0;
+		schedule();
 	}
 }
 
 static void
 shutdown_handler(int signum)
 {
-	struct job_list shutdown_list;
-	struct job *job, *tmpjob;
 	pid_t pid;
 	int status;
 
@@ -245,24 +286,40 @@ shutdown_handler(int signum)
     
 	jobd_is_shutting_down = true;
 
-	/* This has the effect of reversing the list, causing jobs to be
-	   stopped in the reverse order that they were started. */
-	LIST_INIT(&shutdown_list);
-	LIST_FOREACH_SAFE(job, &all_jobs, entries, tmpjob) {
-		LIST_REMOVE(job, entries);
-		if (job->state == JOB_STATE_RUNNING) {
-			LIST_INSERT_HEAD(&shutdown_list, job, entries);
-		} else {
-			job_free(job);
-		}	
- 	}
+    int64_t id;
+    const char *sql = "SELECT job_id FROM volatile.processes "
+ 					  " WHERE process_state_id IN (?,?,?) "
+	   "LIMIT 1";
 
-	LIST_FOREACH_SAFE(job, &shutdown_list, entries, tmpjob) {
-		if (job_stop(job) < 0) {
-			printlog(LOG_ERR, "unable to stop job: %s", job->id);
-			continue;
+    //FIXME: the above sql doesnt care about dependencies and will
+    // stop things in random order.
+
+    for (;;) {
+		if (db_get_id(&id, sql, "iii", JOB_STATE_RUNNING, JOB_STATE_STARTING, JOB_STATE_STOPPING) < 0) {
+			printlog(LOG_ERR, "database error");
+			break;
 		}
-		if (job->state == JOB_STATE_STOPPING) {
+		if (id == INVALID_ROW_ID) {
+			printlog(LOG_DEBUG, "no more stoppable jobs");
+			break;
+		}
+		enum job_state state;
+		if (job_get_state(&state, id) < 0) {
+			printlog(LOG_ERR, "unable to get job state");
+			break;
+		}
+		if (state == JOB_STATE_RUNNING || state == JOB_STATE_STARTING) {
+			if (job_stop(id) < 0) {
+				printlog(LOG_ERR, "unable to stop job: %s", job_id_to_str(id));
+				if (job_set_state(id, JOB_STATE_ERROR) < 0) {
+					printlog(LOG_ERR, "database error");
+					break; // should probably panic here
+				}
+				continue;
+			}
+		} else if (state == JOB_STATE_STOPPING) {
+            printlog(LOG_DEBUG, "waiting for a random job to stop"); // why not wait for specific job??
+			//FIXME: SIGALRM timeout isnt being set
 			pid = wait(&status);
 			if (pid > 0) {
 				reaper(pid, status);
@@ -275,15 +332,13 @@ shutdown_handler(int signum)
 					}
 				} else if (errno == ECHILD) {
 					printlog(LOG_WARNING, "no remaining children to wait for");
-					break;			
+					break;
 				} else {
 					printlog(LOG_ERR, "wait(2): %s", strerror(errno));
 				}
 				exit(EXIT_FAILURE);
 			}
 		}
-		LIST_REMOVE(job, entries);
-		job_free(job);
 	}
 
 	if (pidfile_fh)
@@ -299,7 +354,6 @@ shutdown_handler(int signum)
 static void
 reload_configuration(int signum __attribute__((unused)))
 {
-	unspool();
 	schedule();
 }
 
@@ -317,7 +371,7 @@ static int
 ipc_server_handler(event_t *ev __attribute__((unused)))
 {
 	struct ipc_session session;
-	struct job *job;
+	job_id_t id;
 
 	if (ipc_read_request(&session) < 0) {
 		printlog(LOG_ERR, "ipc_read_request() failed");
@@ -331,8 +385,14 @@ ipc_server_handler(event_t *ev __attribute__((unused)))
 	if (!strcmp(req->job_id, "jobd")) {
 		res->retcode = _jobd_ipc_request_handler(req->method);
 	} else {
-		job = job_list_lookup(&all_jobs, req->job_id);
-		if (!job) {
+	    if (db_get_id(&id, "SELECT id FROM jobs WHERE job_id = ?", "s", req->job_id) < 0) {
+			res->retcode = IPC_RESPONSE_ERROR;
+			if (ipc_send_response(&session) < 0) {
+				printlog(LOG_ERR, "ipc_read_request() failed");
+			}
+			return (-1);
+		}
+		if (id == INVALID_ROW_ID) {
 			res->retcode = IPC_RESPONSE_NOT_FOUND;
 			if (ipc_send_response(&session) < 0) {
 				printlog(LOG_ERR, "ipc_read_request() failed");
@@ -340,13 +400,14 @@ ipc_server_handler(event_t *ev __attribute__((unused)))
 			return (-1);
 		}
 		if (!strcmp(req->method, "start")) {
-			res->retcode = job_start(job);
+			pid_t pid;
+			res->retcode = job_start(&pid, id);
 		} else if (!strcmp(req->method, "stop")) {
-			res->retcode = job_stop(job);
+			res->retcode = job_stop(id);
 		} else if (!strcmp(req->method, "enable")) {
-			res->retcode = job_enable(job);
+			res->retcode = job_enable(id);
 		} else if (!strcmp(req->method, "disable")) {
-			res->retcode = job_disable(job);
+			res->retcode = job_disable(id);
 		} else {
 			res->retcode = IPC_RESPONSE_NOT_FOUND;		
 		}

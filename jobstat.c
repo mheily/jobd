@@ -29,15 +29,35 @@ usage(void)
 	printf("todo\n");
 }
 
+void print_header(const char *str) {
+	printf("\033[1m\033[4m%s\033[0m", str);
+}
+
 static int
 renderer(void *unused, int cols, char **values, char **names)
 {
 	int i;
+	static int print_headers = 1;
 
-	(void)unused; (void)names;
+	//printf("%s",(char *)unused);
+	(void)unused;
 
+	if (print_headers) {
+		for (i = 0; i < cols; i++) {
+			print_header(names[i]);
+			if ((i + 1) < cols)
+				printf(" ");
+			else
+				printf("\n");
+		}
+		print_headers = 0;
+	}
 	for (i = 0; i < cols; i++) {
-		printf("%s\n", values[i] ? values[i] : "NULL");
+		printf("%s", values[i] ? values[i] : "NULL");
+		if ((i + 1) < cols)
+			printf(" ");
+		else
+			printf("\n");
 	}
 	return (0);
 }
@@ -46,10 +66,12 @@ int
 print_all_jobs(void)
 {
 	int rv;
-	char *sql = "SELECT job_id FROM jobs ORDER BY job_id";
+	char *sql = "SELECT job_id AS ID, "
+				"  (SELECT job_id FROM jobs WHERE id = processes.job_id) AS Name, "
+				"  (SELECT name FROM volatile.process_states WHERE id = process_state_id) AS State "
+				"FROM volatile.processes "
+				"ORDER BY job_id";
 	char *err_msg = NULL;
-
-	printf("\033[1m\033[4m%s\033[0m\n", "JobID");
 
 	rv = sqlite3_exec(dbh, sql, renderer, "some stuff", &err_msg);
 	if (rv != SQLITE_OK) {

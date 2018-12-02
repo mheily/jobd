@@ -29,6 +29,8 @@
 
 #include "array.h"
 
+#define job_id_t int64_t
+
 /* Max length of a job ID. Equivalent to FILE_MAX */
 #define JOB_ID_MAX 255
 
@@ -50,56 +52,57 @@ enum job_state {
 struct job_parser;
 
 struct job {
-	LIST_ENTRY(job) entries;
-	enum job_state state;
-    size_t incoming_edges;
-    int64_t row_id;
+	int64_t row_id;
 
 	/* Items below here are parsed from the manifest */
-    struct string_array *before, *after;
-    char *id;
-    char *command;
-    char *description;
-    bool enable, exclusive;
-    struct string_array *environment_variables;
-    gid_t gid;
-    char *group_name;
-    bool init_groups;
-    bool keep_alive;
-    char *title;
-    char *root_directory;
-    char *standard_error_path;
-    char *standard_in_path;
-    char *standard_out_path;
-    mode_t umask;
-    char *umask_str;
-    uid_t uid;
+	struct string_array *before, *after;
+	char *id;
+	char *command;
+	char *description;
+	bool enable, wait_flag;
+	struct string_array *environment_variables;
+	gid_t gid;
+	char *group_name;
+	bool init_groups;
+	bool keep_alive;
+	char *title;
+	char *root_directory;
+	char *standard_error_path;
+	char *standard_in_path;
+	char *standard_out_path;
+	mode_t umask;
+	char *umask_str;
+	uid_t uid;
 	char *user_name;
-    char *working_directory;
-    char **options;
+	char *working_directory;
+	char **options;
 };
 
-LIST_HEAD(job_list, job);
-
-int job_start(struct job *job);
-int job_stop(struct job *job);
-int job_enable(struct job *job);
-int job_disable(struct job *job);
+int job_start(pid_t *pid, job_id_t id);
+int job_stop(job_id_t id);
+int job_enable(job_id_t id);
+int job_disable(job_id_t id);
 
 struct job *job_new(void);
 void job_free(struct job *);
-int job_find(struct job **result, const char *job_id);
-int job_db_select_all(struct job_list *dest);
-void job_solve(struct job *job);
 
-struct job * job_list_lookup(const struct job_list *jobs, const char *id);
-char * job_get_method(const struct job *job, const char *method_name);
+void job_solve(pid_t *pid, struct job *job);
+
+int job_get_method(char **dest, job_id_t jid, const char *method_name);
+
+const char * job_id_to_str(job_id_t jid);
 
 int job_register_pid(int64_t row_id, pid_t pid);
-int job_get_label_by_pid(char label[JOB_ID_MAX], pid_t pid, size_t sz);
+int job_get_label_by_pid(char label[JOB_ID_MAX], pid_t pid);
 int job_get_pid(pid_t *pid, int64_t row_id);
 
 int job_set_exit_status(pid_t pid, int status);
 int job_set_signal_status(pid_t pid, int signum);
+int job_get_command(char dest[JOB_ARG_MAX], job_id_t id);
+int job_get_label(char dest[JOB_ID_MAX], job_id_t id);
+int job_get_state(enum job_state *state, job_id_t id);
+int job_set_state(int64_t job_id, enum job_state state);
+const char *job_state_to_str(enum job_state state);
+const char *job_id_to_str(job_id_t id);
 
 #endif /* _JOB_H */

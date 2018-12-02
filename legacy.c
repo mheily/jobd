@@ -27,3 +27,15 @@ add to /etc/rc to divert to jobd:
 					    		
 first script is sysctl. replace /etc/sysctl.conf and /etc/sysctl.conf.local
 with jobcfg. need arbitrary key/val pairs for mib settings
+
+
+**** TODO:
+
+support multiple jobs that provide the same "service" like disks:
+
+   # PROVIDE: disks
+
+support nojail keyword?
+
+# KEYWORD: nojail
+

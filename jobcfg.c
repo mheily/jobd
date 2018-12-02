@@ -99,31 +99,48 @@ import_action(const char *path)
 	if (rv < 0)
 		err(1, "stat of %s", path);
 
-	rv = sqlite3_exec(dbh, "BEGIN TRANSACTION", NULL, NULL, NULL);
-	if (rv != SQLITE_OK) {
-		db_log_error(rv);
+	if (db_exec(dbh, "BEGIN TRANSACTION") < 0)
 		return (-1);
-	}
 
 	if (S_ISDIR(sb.st_mode)) 
 		rv = import_from_directory(path);
 	else
 		rv = import_from_file(path);
-	if (rv < 0) {
-		rv = sqlite3_exec(dbh, "ROLLBACK", NULL, NULL, NULL);
-		if (rv != SQLITE_OK)
-			db_log_error(rv);
-		return (-1);
-	}
 
-	rv = sqlite3_exec(dbh, "COMMIT", NULL, NULL, NULL);
-	if (rv != SQLITE_OK) {
-		db_log_error(rv);
+	if (rv == 0) {
+		if (db_exec(dbh, "COMMIT") < 0)
+			return (-1);
+		else
+			return (0);
+	} else {
+		(void) db_exec(dbh, "ROLLBACK");
 		return (-1);
 	}
-	
-	return (0);
 }
+
+//static int
+//sort_jobs(void)
+//{
+//	//int rv;
+//
+//	if (db_exec(dbh, "BEGIN TRANSACTION") < 0)
+//		return (-1);
+//
+//	if (db_exec(dbh, "DELETE FROM volatile.job_order") < 0)
+//		goto err_out;
+//
+//	if (db_exec(dbh, "INSERT INTO volatile.job_order SELECT jobs.id AS job_id, NULL AS wave FROM jobs WHERE enable = 1") < 0)
+//		goto err_out;
+//
+//	if (db_exec(dbh, "COMMIT") < 0)
+//		goto err_out;
+//
+//	return (0);
+//
+//err_out:
+//	(void) db_exec(dbh, "ROLLBACK");
+//	return (-1);
+//}
 
 int
 main(int argc, char *argv[])
@@ -180,6 +197,8 @@ main(int argc, char *argv[])
 	if (!strcmp(command, "import")) {
 		if (import_action(f_flag ? f_flag : "/dev/stdin") < 0)
 			exit(EXIT_FAILURE);
+//		if (sort_jobs() < 0)
+//			exit(EXIT_FAILURE);
 	}
 
 	exit(EXIT_SUCCESS);
