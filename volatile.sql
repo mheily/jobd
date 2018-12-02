@@ -5,7 +5,7 @@ BEGIN TRANSACTION;
 
 CREATE TABLE volatile.processes (
     pid INTEGER PRIMARY KEY,    -- matches kernel PID
-    job_id INTEGER NOT NULL,
+    job_id INTEGER UNIQUE NOT NULL,
     exited INTEGER CHECK (exited IN (0,1)),
     exit_status INTEGER,
     signaled INTEGER CHECK (signaled IN (0,1)),
@@ -19,12 +19,11 @@ CREATE TABLE volatile.process_states (
     id INTEGER PRIMARY KEY,
     name TEXT UNIQUE NOT NULL
 );
-INSERT INTO process_states (id, name) VALUES (1, 'uninitialized');
-INSERT INTO process_states (id, name) VALUES (2, 'starting');
-INSERT INTO process_states (id, name) VALUES (3, 'running');
-INSERT INTO process_states (id, name) VALUES (4, 'stopping');
-INSERT INTO process_states (id, name) VALUES (5, 'stopped');
-INSERT INTO process_states (id, name) VALUES (6, 'error');
+INSERT INTO process_states (id, name) VALUES (1, 'starting');
+INSERT INTO process_states (id, name) VALUES (2, 'running');
+INSERT INTO process_states (id, name) VALUES (3, 'stopping');
+INSERT INTO process_states (id, name) VALUES (4, 'stopped');
+INSERT INTO process_states (id, name) VALUES (5, 'error');
 
 -- CREATE VIEW IF NOT EXISTS volatile.process_table_view
 -- AS
@@ -58,4 +57,12 @@ CREATE TABLE volatile.pending_change_types (
 INSERT INTO pending_change_types VALUES(1, "enable");
 INSERT INTO pending_change_types VALUES(2, "disable");
 
+-- the order that jobs are started in
+CREATE TABLE volatile.job_order (
+    job_id INTEGER UNIQUE NOT NULL, -- FOREIGN KEY of jobs table
+    wave INTEGER
+);
+
 COMMIT;
+
+--CREATE TABLE volatile.jobs AS SELECT * FROM main.jobs;
