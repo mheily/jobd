@@ -1,3 +1,4 @@
+/.idea/
 /jobd
 /job
 *.o
@@ -11,3 +12,5 @@ test.log
 /config.h
 /config.mk
 /test/obj
+cmake-build-debug/
+/core
