@@ -148,7 +148,7 @@ _job_child_pre_exec(job_id_t jid)
 		}
 #ifndef __GLIBC__
 		/* KLUDGE: above is actually a test for BSD */
-		if (setlogin(job->user_name) < 0) {
+		if (setlogin(user_name) < 0) {
 			printlog(LOG_ERR, "setlogin(2): %s", strerror(errno));
 			exit(EXIT_FAILURE);
 		}

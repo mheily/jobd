@@ -18,6 +18,7 @@
 #define _DATABASE_H
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <sqlite3.h>
 
 #define DB_OPEN_CREATE_VOLATILE 0x10
