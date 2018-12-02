@@ -1,5 +1,5 @@
 name = 'exclusive'
-exclusive = true
+wait = true
 before = ["sleep1"]
 
 [methods]

@@ -1,0 +1,10 @@
+#
+# This job will be terminated by jobd.c:shutdown_handler()
+#
+
+name = 'shutdown_handler'
+
+[methods]
+
+start = 'sleep 999'
+

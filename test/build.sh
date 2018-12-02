@@ -9,4 +9,4 @@ grep -q './test/obj' config.mk || {
 }
 make all -j6
 make install
-$objdir/bin/jobcfg -v init
+$objdir/bin/jobcfg init

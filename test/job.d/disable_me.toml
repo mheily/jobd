@@ -1,2 +1,6 @@
+[job]
 name = 'disable_me'
-command = 'sleep 999'
+
+[methods]
+start = 'sleep 999'
+is_started = '/bin/true'

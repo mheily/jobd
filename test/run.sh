@@ -62,5 +62,9 @@ $objdir/bin/jobadm disable_me disable
 assert_contains 'job disable_me has been disabled'
 assert_contains 'sending SIGTERM to job disable_me'
 
+kill $jobd_pid
+jobd_pid=""
+assert_contains 'sending SIGTERM to job shutdown_handler'
+
 printf "\n\nSUCCESS: All tests passed.\n"
 exit 0
