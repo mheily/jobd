@@ -206,7 +206,6 @@ db_reopen(void)
 	}
 }
 
-
 int
 db_create(const char *path, const char *schemapath)
 {
@@ -347,6 +346,100 @@ db_err:
 	db_log_error(rv);
 
 err_out:
+	sqlite3_finalize(stmt);
+	return (-1);
+}
+
+int
+db_get_id(int64_t *result, const char *sql, const char *fmt, ...)
+{
+	va_list args;
+	sqlite3_stmt *stmt;
+
+	if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK) {
+		printlog(LOG_ERR, "prepare failed");
+		stmt = NULL;
+		goto err_out;
+	}
+
+	va_start(args, fmt);
+	if (db_statement_bind(stmt, fmt, args) < 0) {
+		printlog(LOG_ERR, "error binding statement");
+		va_end(args);
+		goto err_out;
+	}
+	va_end(args);
+
+	int rv = sqlite3_step(stmt);
+	if (rv == SQLITE_ROW) {
+		*result = sqlite3_column_int64(stmt, 0);
+	} else if (rv == SQLITE_DONE) {
+		*result = INVALID_ROW_ID;
+	} else {
+		goto err_out;
+	}
+
+	sqlite3_finalize(stmt);
+	return (0);
+
+err_out:
+	*result = INVALID_ROW_ID;
+	sqlite3_finalize(stmt);
+	return (-1);
+}
+
+int db_statement_bind(sqlite3_stmt *stmt, const char *fmt, va_list args)
+{
+	int col;
+	char *c = (char *)fmt;
+
+	for (col = 1; *c != '\0'; c++) {
+		if (*c == 'i') {
+			int64_t i = va_arg(args, int64_t);
+			if (sqlite3_bind_int64(stmt, col++, i) != SQLITE_OK) {
+				printlog(LOG_ERR, "bind_int64 failed");
+				return (-1);
+			}
+		} else if (*c == 's') {
+			char *s = va_arg(args, char *);
+			if (sqlite3_bind_text(stmt, col++, s, -1, SQLITE_STATIC) != SQLITE_OK) {
+				printlog(LOG_ERR, "bind_text failed");
+				return (-1);
+			}
+		} else {
+			printlog(LOG_ERR, "invalid format specifier: %c in %s", *c, fmt);
+			return (-1);
+		}
+		++fmt;
+	}
+	return (0);
+}
+
+/* Caller must free result */
+int db_query(sqlite3_stmt **result, const char *sql, const char *fmt, ...)
+{
+	va_list args;
+	sqlite3_stmt *stmt;
+
+	if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK) {
+		printlog(LOG_ERR, "prepare failed: sql=%s", sql);
+		stmt = NULL;
+		goto err_out;
+	}
+
+	va_start(args, fmt);
+	if (db_statement_bind(stmt, fmt, args) < 0) {
+		printlog(LOG_ERR, "error binding statement: sql=%s", sql);
+		va_end(args);
+		goto err_out;
+	}
+	va_end(args);
+
+	*result = stmt;
+	return (0);
+
+err_out:
+	*result = NULL;
 	sqlite3_finalize(stmt);
 	return (-1);
 }

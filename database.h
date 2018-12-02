@@ -22,6 +22,8 @@
 
 #define DB_OPEN_CREATE_VOLATILE 0x10
 
+#define INVALID_ROW_ID ((int64_t) -12345)
+
 /* Maximum length of a SQL string stored on the stack */
 #define SQL_BUF_MAX 2048
 
@@ -33,7 +35,7 @@
 		return (-1); \
 	}
 
-#define db_log_error(_rv) printlog(LOG_ERR, "database error: %d", _rv)
+#define db_log_error(_rv) printlog(LOG_ERR, "database error: %s", sqlite3_errstr(_rv))
 
 struct string_array;
 
@@ -47,6 +49,10 @@ bool db_exists(void);
 int db_exec(sqlite3 *, const char *sql);
 int db_exec_path(const char *);
 
+int db_statement_bind(sqlite3_stmt *stmt, const char *fmt, va_list args);
+int db_get_id(int64_t *result, const char *sql, const char *fmt, ...);
+int db_get_string(char *dst, size_t sz, const char *sql, const char *fmt, ...);
+int db_query(sqlite3_stmt **result, const char *sql, const char *fmt, ...);
 int db_select_into_string_array(struct string_array *strarr, sqlite3_stmt *stmt);
 
 #endif /* _DATABASE_H */
