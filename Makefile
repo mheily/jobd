@@ -73,6 +73,7 @@ distclean: clean
 	rm -f $(SQLITE_OBJ) config.mk config.h
 
 sloccount:
-	sloccount `ls *.[ch] | egrep -v '(toml|queue)\.'` | egrep ^ansic
+	cloc --by-file `ls *.[c] | egrep -v '(toml)\.'`
+	cloc --by-file `ls *.[ch] | egrep -v '(toml|queue)\.'`
 
 PHONY : sloccount
