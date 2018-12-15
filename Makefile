@@ -24,7 +24,10 @@ jobcfg_OBJS=jobcfg.o database.o ipc.o job.o logger.o parser.o toml.o $(SQLITE_OB
 jobadm_OBJS=jobadm.o database.o ipc.o logger.o $(SQLITE_OBJ)
 jobstat_OBJS=jobstat.o database.o ipc.o logger.o $(SQLITE_OBJ)
 
-all: jobd $(bin_BINS)
+all: jobd $(bin_BINS) init
+
+init: init.c config.h
+	$(CC) -O2 -Wall -Werror init.c -o init
 
 install: all config.mk
 	$(MAKE) -f Makefile -f config.mk install-stage2
@@ -62,9 +65,6 @@ jobcfg: $(jobcfg_OBJS)
 
 jobd: $(jobd_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(jobd_OBJS) -lrt
-
-init:
-	cd $(INIT_SRCDIR) && $(CC) $(INIT_CFLAGS) -o ../../init -I. init.c getmntopts.c $(INIT_LDADD)
 
 clean:
 	rm -f *.o vendor/*.o jobd $(bin_BINS) init
