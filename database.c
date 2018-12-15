@@ -50,7 +50,7 @@ _db_setup_volatile(void)
 	char path[PATH_MAX];
 	int rv;
 
-	rv = snprintf((char *)&path, sizeof(path),  "%s/jmf/volatile.sql", compile_time_option.datarootdir);
+	rv = snprintf((char *)&path, sizeof(path),  "%s/volatile.sql", compile_time_option.datarootdir);
 	if (rv >= (int)sizeof(path) || rv < 0) {
 			printlog(LOG_ERR, "snprintf failed");
 			return (-1);
@@ -112,14 +112,14 @@ db_init(void)
 {
 	memset(&db_default, 0, sizeof(db_default));
 
-	if (asprintf(&db_default.dbpath, "%s/jmf/repository.db", compile_time_option.localstatedir) < 0)
+	if (asprintf(&db_default.dbpath, "%s/repository.db", compile_time_option.localstatedir) < 0)
 		db_default.dbpath = NULL;
 	if (!db_default.dbpath) {
 		printlog(LOG_ERR, "asprintf: %s", strerror(errno));
 		return (-1);
 	}
 
-	if (asprintf(&db_default.schemapath, "%s/jmf/schema.sql", compile_time_option.datarootdir) < 0)
+	if (asprintf(&db_default.schemapath, "%s/schema.sql", compile_time_option.datarootdir) < 0)
 		db_default.schemapath = NULL;
 	if (!db_default.schemapath) {
 		printlog(LOG_ERR, "asprintf: %s", strerror(errno));

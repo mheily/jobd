@@ -35,15 +35,16 @@ install: all config.mk
 install-stage2:
 	$(INSTALL) -d -m 755 $(DESTDIR)$(PKGCONFIGDIR) \
 		$(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) \
-		$(DESTDIR)$(DATAROOTDIR)/jmf \
-		$(DESTDIR)$(DATAROOTDIR)/jmf/manifests \
-		$(DESTDIR)$(LOCALSTATEDIR)/jmf \
-		$(DESTDIR)$(RUNSTATEDIR)/jmf
-	$(INSTALL) -m 755 jobd $(DESTDIR)$(SBINDIR)/jobd
-	test ! -e init || $(INSTALL) -m 755 init $(DESTDIR)$(SBINDIR)
-	test ! -e init || $(INSTALL) -m 755 shutdown.sh $(DESTDIR)$(SBINDIR)/shutdown
-	$(INSTALL) -m 755 jobadm jobcfg jobstat $(DESTDIR)$(BINDIR)
-	$(INSTALL) -m 644 schema.sql volatile.sql $(DESTDIR)$(DATAROOTDIR)/jmf
+		$(DESTDIR)$(DATAROOTDIR) \
+		$(DESTDIR)$(DATAROOTDIR)/manifests \
+		$(DESTDIR)$(LOCALSTATEDIR) \
+		$(DESTDIR)$(RUNSTATEDIR) \
+		/run
+	$(INSTALL) -m 555 jobd $(DESTDIR)$(SBINDIR)/jobd
+	$(INSTALL) -m 555 init $(DESTDIR)$(PREFIX)/init
+	$(INSTALL) -m 555 shutdown.sh $(DESTDIR)$(PREFIX)/shutdown
+	$(INSTALL) -m 555 jobadm jobcfg jobstat $(DESTDIR)$(BINDIR)
+	$(INSTALL) -m 444 schema.sql volatile.sql $(DESTDIR)$(DATAROOTDIR)
 
 %.o: %.c *.h config.h
 	$(CC) -c $(CFLAGS) $< -o $@

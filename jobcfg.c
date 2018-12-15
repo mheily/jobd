@@ -178,7 +178,7 @@ main(int argc, char *argv[])
 		if (f_flag) {
 			schemapath = strdup(f_flag);
 		} else {
-			if (asprintf(&schemapath, "%s/jmf/schema.sql", compile_time_option.datarootdir) < 0)
+			if (asprintf(&schemapath, "%s/schema.sql", compile_time_option.datarootdir) < 0)
 				schemapath = NULL;
 		}
 		if (!schemapath)
