@@ -137,18 +137,12 @@ db_init(void)
 int
 db_open(const char *path, int flags)
 {
-	char volatile_dbpath[PATH_MAX];
+	char volatile_dbpath[] = "/run/jobd/volatile.db";
 	int rv, sqlite_flags;
 	
 	if (dbh) {
 		printlog(LOG_ERR, "database is already open");
 		return (-1);
-	}
-
-	rv = snprintf((char *)&volatile_dbpath, sizeof(volatile_dbpath), "%s/volatile.db", compile_time_option.runstatedir);
-	if (rv >= (int)sizeof(volatile_dbpath) || rv < 0) {
-			printlog(LOG_ERR, "snprintf failed");
-			return (-1);
 	}
 
 	if (!path)
@@ -158,12 +152,15 @@ db_open(const char *path, int flags)
 
 	rv = sqlite3_open_v2(path, &dbh, sqlite_flags, NULL);
 	if (rv != SQLITE_OK) {
-		//FIXME:printlog(LOG_ERR, "Error opening %s: %s", path, sqlite3_errmsg(dbh));
+		printlog(LOG_ERR, "Error opening %s: %s", path, sqlite3_errmsg(dbh));
 		return (-1);
 	}
 	printlog(LOG_DEBUG, "opened %s with flags %d", path, sqlite_flags);
 
-	if (access(volatile_dbpath, F_OK) == 0) {
+	//KLUDGE: should refactor volatile out of db_open() entirely
+	if (flags & DB_OPEN_NO_VOLATILE) {
+		/* NOOP */
+	} else if (access(volatile_dbpath, F_OK) == 0) {
 		if (_db_attach_volatile(volatile_dbpath) < 0)
 			return (-1);
 	} else if (flags & DB_OPEN_CREATE_VOLATILE) {
