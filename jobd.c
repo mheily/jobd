@@ -94,7 +94,6 @@ typedef struct kevent event_t;
 
 static int dequeue_signal(event_t *);
 
-static bool jobd_is_system_manager = false;
 static bool jobd_is_shutting_down = false;
 static volatile sig_atomic_t sigalrm_flag = 0;
 
@@ -635,76 +634,32 @@ create_pid_file(void)
 	printlog(LOG_DEBUG, "created pidfile %s", path);
 }
 
-
-//todo: move to sysmgr.c
-int
-mount_runstatedir(void)
-{
-#ifdef __FreeBSD__
-	char errmsg[255];
-
-	struct iovec iov[8] = {
-		{.iov_base = "fstype", .iov_len = sizeof("fstype")},
-		{.iov_base = "tmpfs", .iov_len = sizeof("tmpfs")},
-		{.iov_base = "from", .iov_len = sizeof("from")},
-		{.iov_base = "tmpfs", .iov_len = sizeof("tmpfs")},
-		{.iov_base = "errmsg", .iov_len = sizeof("errmsg")},
-		{.iov_base = &errmsg, .iov_len = sizeof(errmsg)},
-		{.iov_base = "fspath", .iov_len = sizeof("fspath")},
-		{.iov_base = __DECONST(void *, compile_time_option.runstatedir),
-		 .iov_len = (strlen(compile_time_option.runstatedir) + 1)}};
-
-	if (kldload("/boot/kernel/tmpfs.ko") < 0) {
-		if (errno != EEXIST) {
-			printlog(LOG_ERR, "kldload(2): %s", strerror(errno));
-			return (-1);
-		}
-	}
-
-	if (nmount(iov, 8, 0) < 0) {
-		printlog(LOG_ERR, "nmount(2): %s: %s", strerror(errno), (char*)errmsg);
-		return (-1);
-	}
-
-#else
-	//todo linux stuff
-#endif
-	return (0);
-}
-
 int
 main(int argc, char *argv[])
 {
 	int c, daemon, verbose;
 
-	/* TODO: pass this in as a command line option or env var instead. */
-	jobd_is_system_manager = ((getppid() == 1) && (getuid() == 0));
-
 	if (logger_init() < 0) {
 		errx(1, "logger_init");
 	}
-	if (jobd_is_system_manager) {
-		mount_runstatedir();
-	}
-// #error when running as system manager, filesystem is readonly. database conn does not get updated when fs goes
+
 	if (db_init() < 0) {
 		printlog(LOG_ERR, "unable to initialize the database routines");
 		exit(EXIT_FAILURE);
 	}
+
 	if (db_open(NULL, DB_OPEN_CREATE_VOLATILE) < 0) { 
 		printlog(LOG_ERR, "unable to open the database");
 		exit(EXIT_FAILURE);
 	}
+
 	if (ipc_init(NULL) < 0) {
 		printlog(LOG_ERR, "ipc_init() failed");
 		exit(EXIT_FAILURE);
 	}
 
-	if (getppid() == 1)
-		verbose = 1;		/* TEMPORARY: for debugging */
-	else
-		verbose = 0;
-	daemon = 1;
+	verbose = 0;
+	daemon = (getpid() != 1);
 	
 	while ((c = getopt(argc, argv, "fv")) != -1) {
 		switch (c) {
@@ -722,12 +677,11 @@ main(int argc, char *argv[])
 		}
 	}
 
-	create_pid_file();
-
-	if (daemon)
-        daemonize();
-	
-	pidfile_write(pidfile_fh);
+	if (daemon) {
+		create_pid_file();
+		daemonize();
+		pidfile_write(pidfile_fh);
+	}
 
 	logger_set_verbose(verbose);
 	if (ipc_bind() < 0) {
