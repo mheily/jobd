@@ -634,12 +634,26 @@ create_pid_file(void)
 	printlog(LOG_DEBUG, "created pidfile %s", path);
 }
 
+static const char *
+bootlog(void)
+{
+	static char path[PATH_MAX];
+	int rv;
+
+	rv = snprintf((char *) &path, sizeof(path), "%s/jobd/boot.log",
+				  compile_time_option.rundir);
+	if (rv >= (int) sizeof(path) || rv < 0)
+		abort();
+
+	return ((const char *) &path);
+}
+
 int
 main(int argc, char *argv[])
 {
 	int c, daemon, verbose;
 
-	if (logger_init() < 0) {
+	if (logger_init(bootlog()) < 0) {
 		errx(1, "logger_init");
 	}
 

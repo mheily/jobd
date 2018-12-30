@@ -47,15 +47,18 @@ logger_open(const char *path)
 }
 
 int
-logger_init(void)
+logger_init(const char *logfile)
 {
 	int fd;
 
-	if (getuid() == 0) {
-		logger_use_syslog = 1;
-		openlog("jobd", LOG_CONS, LOG_AUTH);
+	/* TODO: add support for syslog */
+	//logger_use_syslog = 1;
+	//openlog("jobd", LOG_CONS, LOG_AUTH);
+	logger_use_syslog = 0;
+
+	if (logfile) {
+	    return logger_open(logfile);
 	} else {
-		logger_use_syslog = 0;
 		fd = dup(STDERR_FILENO);
 		if (fd < 0)
 			return (-1);

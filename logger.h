@@ -28,7 +28,7 @@ extern int logger_use_syslog;
 int logger_verbose;
 FILE *logger_fh;
 
-int logger_init(void);
+int logger_init(const char *logfile);
 int logger_open(const char *);
 int __attribute__((format(printf, 2, 3))) logger_append(int level, const char *format, ...);
 void logger_set_verbose(int);

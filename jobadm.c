@@ -36,7 +36,7 @@ main(int argc, char *argv[])
 	char *job_id, *command;
 	int rv;
 
-	if (logger_init() < 0)
+	if (logger_init(NULL) < 0)
 		errx(1, "logger_init");
 
 	if (db_init() < 0)
