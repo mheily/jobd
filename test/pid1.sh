@@ -37,6 +37,10 @@ EOF
     exit
 fi
 
+# If there is a 'fresh' snapshot, revert to it.
+vagrant snapshot list 2>&1 | grep -q fresh && \
+    vagrant snapshot restore --no-provision fresh
+
 set -ex
 test -e Vagrantfile
 vagrant rsync
