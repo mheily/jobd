@@ -642,16 +642,6 @@ main(int argc, char *argv[])
 		errx(1, "logger_init");
 	}
 
-	if (db_init() < 0) {
-		printlog(LOG_ERR, "unable to initialize the database routines");
-		exit(EXIT_FAILURE);
-	}
-
-	if (db_open(NULL, DB_OPEN_CREATE_VOLATILE) < 0) { 
-		printlog(LOG_ERR, "unable to open the database");
-		exit(EXIT_FAILURE);
-	}
-
 	if (ipc_init(NULL) < 0) {
 		printlog(LOG_ERR, "ipc_init() failed");
 		exit(EXIT_FAILURE);
@@ -705,6 +695,17 @@ main(int argc, char *argv[])
 		printlog(LOG_ERR, "IPC bind failed");
 		abort();
 	}
+
+	if (db_init() < 0) {
+		printlog(LOG_ERR, "unable to initialize the database routines");
+		exit(EXIT_FAILURE);
+	}
+
+	if (db_open(NULL, DB_OPEN_CREATE_VOLATILE) < 0) {
+		printlog(LOG_ERR, "unable to open the database");
+		exit(EXIT_FAILURE);
+	}
+
 	become_a_subreaper();
 	create_event_queue();
 	register_signal_handlers();
