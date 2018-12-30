@@ -49,6 +49,12 @@ enum job_state {
 	JOB_STATE_ERROR
 };
 
+enum job_type {
+	JOB_TYPE_UNKNOWN,
+	JOB_TYPE_TASK,
+	JOB_TYPE_SERVICE
+};
+
 struct job_parser;
 
 struct job {
@@ -76,6 +82,7 @@ struct job {
 	char *user_name;
 	char *working_directory;
 	char **options;
+	enum job_type job_type;
 };
 
 int job_start(pid_t *pid, job_id_t id);
@@ -102,6 +109,7 @@ int job_get_command(char dest[JOB_ARG_MAX], job_id_t id);
 int job_get_label(char dest[JOB_ID_MAX], job_id_t id);
 int job_get_state(enum job_state *state, job_id_t id);
 int job_set_state(int64_t job_id, enum job_state state);
+int job_get_type(enum job_type *type, job_id_t id);
 const char *job_state_to_str(enum job_state state);
 const char *job_id_to_str(job_id_t id);
 

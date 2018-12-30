@@ -3,6 +3,7 @@
 #
 
 name = 'shutdown_handler'
+type = 'task'
 
 [methods]
 

@@ -1,4 +1,5 @@
 name = 'enable_me'
+type = 'task'
 enable = false
 
 [methods]

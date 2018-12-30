@@ -204,6 +204,7 @@ int
 parse_job(struct job_parser *jpr)
 {
 	struct job * const j = jpr->job;
+	char *buf;
 	toml_table_t * const tab = jpr->tab;
 
 #define goto_err(why) do { printlog(LOG_ERR, "error parsing "#why); goto err; } while (0)
@@ -240,7 +241,22 @@ parse_job(struct job_parser *jpr)
 		goto_err("standard_in_path");
 	if (parse_string(&j->standard_out_path, tab, "stdout", "/dev/null"))
 		goto_err("standard_out_path");
-	
+
+	if (parse_string(&buf, tab, "type", ""))
+		goto_err("type");
+	if (!buf)
+		j->job_type = JOB_TYPE_UNKNOWN;
+	else if (!strcmp(buf, "task"))
+		j->job_type = JOB_TYPE_TASK;
+	else if (!strcmp(buf, "service"))
+		j->job_type = JOB_TYPE_SERVICE;
+	else
+		j->job_type = JOB_TYPE_UNKNOWN;
+	free(buf);
+	buf = NULL;
+	if (j->job_type == JOB_TYPE_UNKNOWN)
+		goto_err("type-to-value");
+
 	if (parse_string(&j->umask_str, tab, "umask", "0077"))
 		goto_err("umask");
 	sscanf(j->umask_str, "%hi", (unsigned short *) &j->umask);
@@ -440,7 +456,7 @@ job_db_insert(struct job_parser *jpr)
 	const char *sql = "INSERT INTO jobs (job_id, description, gid, init_groups,"
 		"keep_alive, root_directory, standard_error_path,"
 		"standard_in_path, standard_out_path, umask, user_name,"
-		"working_directory, enable, command, wait) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+		"working_directory, enable, command, wait, job_type_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
 	rv = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
 		 sqlite3_bind_text(stmt, 1, job->id, -1, SQLITE_STATIC) == SQLITE_OK &&
@@ -457,7 +473,8 @@ job_db_insert(struct job_parser *jpr)
 		 sqlite3_bind_text(stmt, 12, job->working_directory, -1, SQLITE_STATIC) == SQLITE_OK &&
 		 sqlite3_bind_int(stmt, 13, job->enable) == SQLITE_OK &&
 		 sqlite3_bind_text(stmt, 14, job->command, -1, SQLITE_STATIC) == SQLITE_OK &&
-		 sqlite3_bind_int(stmt, 15, job->wait_flag) == SQLITE_OK;
+		 sqlite3_bind_int(stmt, 15, job->wait_flag) == SQLITE_OK &&
+		 sqlite3_bind_int(stmt, 16, job->job_type) == SQLITE_OK;
 
 	if (!rv || sqlite3_step(stmt) != SQLITE_DONE) {
 		printlog(LOG_ERR, "error importing %s", job->id);

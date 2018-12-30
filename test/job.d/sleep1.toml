@@ -1,4 +1,5 @@
 name = 'sleep1'
+type = 'task'
 
 [methods]
 

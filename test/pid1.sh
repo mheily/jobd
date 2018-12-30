@@ -18,6 +18,7 @@ if [ "$1" = "inside-the-box" ] ; then
 
     sudo jobcfg -v import <<EOF
 name = "sysctl"
+type = "task"
 wait = true
 
 [methods]
@@ -29,6 +30,7 @@ EOF
 
     sudo jobcfg -v import <<EOF
 name = "rc"
+type = "task"
 after = ["sysctl"]
 wait = true
 standard_out_path = "/dev/console"
@@ -41,6 +43,7 @@ EOF
    
     sudo jobcfg -v import <<EOF
 name = "jobd/db_reopen"
+type = "task"
 wait = true
 command = "$BINDIR/jobadm jobd reopen_database"
 after = "rc"

@@ -1,9 +1,21 @@
 -- NOTE: requires a compile-time setting to allow this
 PRAGMA foreign_keys = ON;
 
+CREATE TABLE job_types
+(
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL
+);
+
+INSERT INTO job_types (id, name)
+VALUES
+    (1, 'task'),
+    (2, 'service');
+
 CREATE TABLE jobs (
     id INTEGER PRIMARY KEY,
     job_id TEXT UNIQUE NOT NULL,
+    job_type_id INTEGER NOT NULL,
     command TEXT NOT NULL, -- DEADWOOD: should rip this out in favor of stop/start methods
     description VARCHAR,
     enable BOOLEAN NOT NULL DEFAULT 1 CHECK (enable IN (0,1)),
@@ -18,8 +30,8 @@ CREATE TABLE jobs (
     start_order INT,
     umask VARCHAR,
     user_name VARCHAR,
-    working_directory VARCHAR NOT NULL DEFAULT '/'
-    --char **options;
+    working_directory VARCHAR NOT NULL DEFAULT '/',
+    FOREIGN KEY (job_type_id) REFERENCES job_types (id) ON DELETE RESTRICT
 );
 
 CREATE TABLE job_methods (

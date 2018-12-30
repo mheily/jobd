@@ -1,4 +1,5 @@
 name = 'exclusive'
+type = 'task'
 wait = true
 before = ["sleep1"]
 

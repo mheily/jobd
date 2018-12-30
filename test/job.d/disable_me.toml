@@ -1,5 +1,5 @@
-[job]
 name = 'disable_me'
+type = 'task'
 
 [methods]
 start = 'sleep 999'
