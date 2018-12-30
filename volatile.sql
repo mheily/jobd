@@ -45,7 +45,7 @@ CREATE TABLE volatile.processes (
     exit_status INTEGER,
     signaled INTEGER CHECK (signaled IN (0,1)),
     signal_number INTEGER,
-    FOREIGN KEY (job_id) REFERENCES jobs (id) ON DELETE RESTRICT
+    FOREIGN KEY (job_id) REFERENCES active_jobs (id) ON DELETE RESTRICT
 );
 
 -- CREATE VIEW IF NOT EXISTS volatile.process_table_view
