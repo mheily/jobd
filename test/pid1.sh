@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -x
 #
 # Assumes "vagrant up" has run, and the box is accessible.
 #
@@ -10,9 +10,10 @@ if [ "$1" = "inside-the-box" ] ; then
 
     make distclean
     ./configure
+    . ./config.inc
     make
     sudo make install
-    sudo rm -f /lib/jobd/repository.db
+    sudo rm -f $LOCALSTATEDIR/repository.db
     sudo jobcfg init
     sudo jobcfg -v import <<EOF
 name = "rc"
@@ -28,11 +29,11 @@ EOF
     sudo jobcfg -v import <<EOF
 name = "jobd/db_reopen"
 exclusive = true
-command = "/bin/jobadm jobd reopen_database"
+command = "$BINDIR/jobadm jobd reopen_database"
 after = "rc"
 EOF
 
-    echo 'init_path="/lib/jobd/init"' | sudo tee /boot/loader.conf.local
+    echo "init_path=\"$LIBEXECDIR/init\"" | sudo tee /boot/loader.conf.local
     exit
 fi
 

@@ -14,10 +14,10 @@ assert_contains() {
 	msg="$*"
 	echo "assert_contains: waiting for: ${msg}"
 	for x in $(seq 1 10) ; do
-		grep -q "$msg" test.log && break || true
+		grep -q "$msg" $logfile && break || true
 		sleep 1
 	done
-	grep -q "$msg" test.log || err "unexpected response"
+	grep -q "$msg" $logfile || err "unexpected response"
 	echo "assert_contains: success: ${msg}"
 }
 
@@ -30,19 +30,18 @@ ulimit -S -c unlimited >/dev/null
 objdir="./test/obj"
 ./test/build.sh
 
-install test/job.d/* ./test/obj/share/jmf/manifests
-$objdir/bin/jobcfg -f test/job.d -v import
-#sqlite3 ~/.local/share/jmf/repository.db .schema
-#sqlite3 ~/.local/share/jmf/repository.db .dump
-#sqlite3 -header ~/.local/share/jmf/repository.db 'select * from jobs'
-#sqlite3 -header ~/.local/share/jmf/repository.db 'select * from job_methods'
+. ./config.inc
 
+logfile="$RUNDIR/jobd/boot.log"
+
+install test/job.d/* $DATAROOTDIR/manifests
+$BINDIR/jobcfg -f test/job.d -v import
 
 set +x
-echo "# Test log started on $(date)" > test.log
-tail -f test.log &
+touch $logfile
+tail -f $logfile &
 tail_pid=$!
-$objdir/sbin/jobd -fv >>test.log 2>&1 &
+$objdir/sbin/jobd -fv &
 jobd_pid=$!
 
 

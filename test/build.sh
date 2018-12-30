@@ -1,12 +1,20 @@
-#!/bin/sh
+#!/bin/sh -ex
 
 objdir="./test/obj"
 rm -rf $objdir
-mkdir -p $objdir
+mkdir -p $objdir $objdir/libexec $objdir/run/jobd
 grep -q './test/obj' config.mk || {
 	make distclean
-	PREFIX=$objdir ./configure
+	export PREFIX=$objdir
+	export EXEC_PREFIX=$objdir
+	export BINDIR=$objdir/bin
+	export SBINDIR=$objdir/sbin
+	export PKGCONFIGDIR=$objdir/etc/jobd
+	export RUNSTATEDIR=$objdir/var/run/jobd
+	export RUNDIR=$objdir/run
+	./configure
 }
 make all -j6
 make install
-$objdir/bin/jobcfg init
+. ./config.inc
+$BINDIR/jobcfg init
