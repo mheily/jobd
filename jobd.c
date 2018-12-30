@@ -658,7 +658,7 @@ main(int argc, char *argv[])
 	}
 
 	pid = getpid();
-	verbose = 0;
+	verbose = (pid == 1);
 	daemon = (pid != 1);
 	
 	while ((c = getopt(argc, argv, "fv")) != -1) {
