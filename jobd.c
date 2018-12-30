@@ -270,8 +270,8 @@ shutdown_handler(int signum)
 	jobd_is_shutting_down = true;
 
     int64_t id;
-    const char *sql = "SELECT job_id FROM volatile.processes "
- 					  " WHERE process_state_id IN (?,?,?) "
+    const char *sql = "SELECT id FROM volatile.active_jobs "
+ 					  " WHERE job_state_id IN (?,?,?) "
 	   "LIMIT 1";
 
     //FIXME: the above sql doesnt care about dependencies and will

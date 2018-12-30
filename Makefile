@@ -45,7 +45,7 @@ install-stage2:
 	$(INSTALL) -m 555 init $(DESTDIR)$(LIBEXECDIR)/init
 	$(INSTALL) -m 555 shutdown.sh $(DESTDIR)$(LIBEXECDIR)/shutdown
 	$(INSTALL) -m 555 jobadm jobcfg jobstat $(DESTDIR)$(BINDIR)
-	$(INSTALL) -m 444 schema.sql volatile.sql $(DESTDIR)$(DATAROOTDIR)
+	$(INSTALL) -m 444 schema.sql volatile.sql views.sql $(DESTDIR)$(DATAROOTDIR)
 
 %.o: %.c *.h config.h
 	$(CC) -c $(CFLAGS) $< -o $@
