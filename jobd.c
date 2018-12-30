@@ -103,8 +103,6 @@ static void schedule(void);
 static void
 daemonize(void)
 {
-    int fd;
-
     switch (fork())
     {
     case -1:
@@ -123,20 +121,6 @@ daemonize(void)
         break;
     default:
         _exit(0);
-    }
-
-    if (setsid() == -1)
-        abort();
-
-    (void)chdir("/");
-
-    if ((fd = open("/dev/null", O_RDWR, 0)) != -1)
-    {
-        (void)dup2(fd, STDIN_FILENO);
-        (void)dup2(fd, STDOUT_FILENO);
-        (void)dup2(fd, STDERR_FILENO);
-        if (fd > 2)
-            (void)close(fd);
     }
 }
 
@@ -651,7 +635,8 @@ bootlog(void)
 int
 main(int argc, char *argv[])
 {
-	int c, daemon, verbose;
+	pid_t pid;
+	int c, fd, daemon, verbose;
 
 	if (logger_init(bootlog()) < 0) {
 		errx(1, "logger_init");
@@ -672,8 +657,9 @@ main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	pid = getpid();
 	verbose = 0;
-	daemon = (getpid() != 1);
+	daemon = (pid != 1);
 	
 	while ((c = getopt(argc, argv, "fv")) != -1) {
 		switch (c) {
@@ -697,10 +683,27 @@ main(int argc, char *argv[])
 		pidfile_write(pidfile_fh);
 	}
 
+	if (setsid() == -1) {
+		if (errno != EPERM || getsid(0) != 1) {
+			printlog(LOG_ERR, "setsid(2): %s", strerror(errno));
+		}
+	}
+
+    (void)chdir("/");
+
+    if ((fd = open("/dev/null", O_RDWR, 0)) != -1)
+    {
+        (void)dup2(fd, STDIN_FILENO);
+        (void)dup2(fd, STDOUT_FILENO);
+        (void)dup2(fd, STDERR_FILENO);
+        if (fd > 2)
+            (void)close(fd);
+    }
+
 	logger_set_verbose(verbose);
 	if (ipc_bind() < 0) {
 		printlog(LOG_ERR, "IPC bind failed");
-		//FIXME: IPC is broken here, maybe try to fix it later?
+		abort();
 	}
 	become_a_subreaper();
 	create_event_queue();
