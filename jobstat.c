@@ -29,8 +29,10 @@ usage(void)
 	printf("todo\n");
 }
 
-void print_header(const char *str) {
-	printf("\033[1m\033[4m%s\033[0m", str);
+void print_header(const char *str, const char *specifier) {
+    char buf[512];
+    sprintf((char *)buf, "%s%s%s", "\033[1m\033[4m", specifier, "\033[0m");
+	printf(buf, str);
 }
 
 static int
@@ -38,13 +40,14 @@ renderer(void *unused, int cols, char **values, char **names)
 {
 	int i;
 	static int print_headers = 1;
+	const char *specifiers[] = {"%-4s", "%-18s", "%-9s", "%-8s"};
 
 	//printf("%s",(char *)unused);
 	(void)unused;
 
 	if (print_headers) {
 		for (i = 0; i < cols; i++) {
-			print_header(names[i]);
+			print_header(names[i], specifiers[i]);
 			if ((i + 1) < cols)
 				printf(" ");
 			else
@@ -53,7 +56,7 @@ renderer(void *unused, int cols, char **values, char **names)
 		print_headers = 0;
 	}
 	for (i = 0; i < cols; i++) {
-		printf("%s", values[i] ? values[i] : "NULL");
+		printf(specifiers[i], values[i] ? values[i] : "NULL");
 		if ((i + 1) < cols)
 			printf(" ");
 		else
@@ -66,11 +69,7 @@ int
 print_all_jobs(void)
 {
 	int rv;
-	char *sql = "SELECT job_id AS ID, "
-				"  (SELECT job_id FROM jobs WHERE id = processes.job_id) AS Name, "
-				"  (SELECT name FROM volatile.process_states WHERE id = process_state_id) AS State "
-				"FROM volatile.processes "
-				"ORDER BY job_id";
+	char *sql = "SELECT * FROM temp.job_table_view";
 	char *err_msg = NULL;
 
 	rv = sqlite3_exec(dbh, sql, renderer, "some stuff", &err_msg);
@@ -108,7 +107,7 @@ main(int argc, char *argv[])
 	if (db_init() < 0)
 		errx(1, "logger_init");
 
-	if (db_open(NULL, true))
+	if (db_open(NULL, DB_OPEN_WITH_VIEWS))
 		errx(1, "db_open");
 
 	if (print_all_jobs() < 0)

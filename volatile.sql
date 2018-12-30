@@ -3,6 +3,41 @@
 
 BEGIN TRANSACTION;
 
+CREATE TABLE volatile.job_states (
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL
+);
+
+-- Keep this in sync with enum job_state.
+INSERT INTO job_states (id, name)
+VALUES
+    (1, 'disabled'),
+    (2, 'pending'),
+    (3, 'starting'),
+    (4, 'running'),
+    (5, 'stopping'),
+    (6, 'stopped'),
+    (7, 'complete'),
+    (8, 'error');
+
+CREATE TABLE volatile.active_jobs
+(
+    id           INTEGER PRIMARY KEY,
+    job_id       TEXT UNIQUE NOT NULL,
+    job_state_id INTEGER,
+    FOREIGN KEY (job_state_id) REFERENCES job_states (id) ON DELETE RESTRICT
+);
+
+INSERT INTO volatile.active_jobs (id, job_id, job_state_id)
+SELECT id, job_id, (SELECT id FROM job_states WHERE name = 'disabled') AS job_state_id
+FROM main.jobs
+WHERE jobs.enable = 0;
+
+INSERT INTO volatile.active_jobs (id, job_id, job_state_id)
+SELECT id, job_id, (SELECT id FROM job_states WHERE name = 'pending') AS job_state_id
+FROM main.jobs
+WHERE jobs.enable = 1;
+
 CREATE TABLE volatile.processes (
     pid INTEGER PRIMARY KEY,    -- matches kernel PID
     job_id INTEGER UNIQUE NOT NULL,
@@ -10,20 +45,8 @@ CREATE TABLE volatile.processes (
     exit_status INTEGER,
     signaled INTEGER CHECK (signaled IN (0,1)),
     signal_number INTEGER,
-    process_state_id INTEGER NOT NULL DEFAULT 1,
-    FOREIGN KEY (process_state_id) REFERENCES process_states (id) ON DELETE RESTRICT
-    -- FIXME: will not work due to sqlite limitation: FOREIGN KEY (job_id) REFERENCES main.jobs (id) ON DELETE RESTRICT
+    FOREIGN KEY (job_id) REFERENCES jobs (id) ON DELETE RESTRICT
 );
-
-CREATE TABLE volatile.process_states (
-    id INTEGER PRIMARY KEY,
-    name TEXT UNIQUE NOT NULL
-);
-INSERT INTO process_states (id, name) VALUES (1, 'starting');
-INSERT INTO process_states (id, name) VALUES (2, 'running');
-INSERT INTO process_states (id, name) VALUES (3, 'stopping');
-INSERT INTO process_states (id, name) VALUES (4, 'stopped');
-INSERT INTO process_states (id, name) VALUES (5, 'error');
 
 -- CREATE VIEW IF NOT EXISTS volatile.process_table_view
 -- AS
