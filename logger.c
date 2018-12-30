@@ -23,6 +23,7 @@
 
 FILE *logger_fh;
 int logger_use_syslog;
+int logger_verbose;
 
 int
 logger_open(const char *path)

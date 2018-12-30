@@ -25,7 +25,6 @@
 extern FILE *logger_fh;
 extern int logger_use_syslog;
 
-int logger_verbose;
 FILE *logger_fh;
 
 int logger_init(const char *logfile);

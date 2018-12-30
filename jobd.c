@@ -638,15 +638,6 @@ main(int argc, char *argv[])
 	pid_t pid;
 	int c, fd, daemon, verbose;
 
-	if (logger_init(bootlog()) < 0) {
-		errx(1, "logger_init");
-	}
-
-	if (ipc_init(NULL) < 0) {
-		printlog(LOG_ERR, "ipc_init() failed");
-		exit(EXIT_FAILURE);
-	}
-
 	pid = getpid();
 	verbose = (pid == 1);
 	daemon = (pid != 1);
@@ -667,10 +658,32 @@ main(int argc, char *argv[])
 		}
 	}
 
+	(void)chdir("/");
+
+	if (daemon || pid == 1) {
+		if ((fd = open("/dev/null", O_RDWR, 0)) != -1) {
+			(void) dup2(fd, STDIN_FILENO);
+			(void) dup2(fd, STDOUT_FILENO);
+			(void) dup2(fd, STDERR_FILENO);
+			if (fd > 2)
+				(void) close(fd);
+		}
+	}
+
 	if (daemon) {
 		create_pid_file();
 		daemonize();
 		pidfile_write(pidfile_fh);
+	}
+
+	if (logger_init(bootlog()) < 0) {
+		errx(1, "logger_init");
+	}
+	logger_set_verbose(verbose);
+
+	if (ipc_init(NULL) < 0) {
+		printlog(LOG_ERR, "ipc_init() failed");
+		exit(EXIT_FAILURE);
 	}
 
 	if (setsid() == -1) {
@@ -679,18 +692,6 @@ main(int argc, char *argv[])
 		}
 	}
 
-    (void)chdir("/");
-
-    if ((fd = open("/dev/null", O_RDWR, 0)) != -1)
-    {
-        (void)dup2(fd, STDIN_FILENO);
-        (void)dup2(fd, STDOUT_FILENO);
-        (void)dup2(fd, STDERR_FILENO);
-        if (fd > 2)
-            (void)close(fd);
-    }
-
-	logger_set_verbose(verbose);
 	if (ipc_bind() < 0) {
 		printlog(LOG_ERR, "IPC bind failed");
 		abort();
