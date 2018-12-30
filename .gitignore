@@ -11,6 +11,7 @@
 test.log
 /.vagrant/
 /config.h
+/config.inc
 /config.mk
 /test/obj
 cmake-build-debug/
