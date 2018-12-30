@@ -15,14 +15,6 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-#if [ "$1" = "--as-system-manager" ] ; then
-#    shift
-#    export PREFIX=/lib/jmf
-#    export BINDIR=/bin
-#    export RUNSTATEDIR=/lib/jmf/run
-#    exec ./configure $*
-#fi
-
 if [ "$1" = "--as-current-user" ] ; then
     shift
     export PREFIX=$HOME/.local
@@ -35,11 +27,14 @@ if [ "$1" = "--as-current-user" ] ; then
 fi
 
 prefix=${PREFIX:-/lib/jobd}
+exec_prefix=${EXEC_PREFIX:-${prefix}}
 bindir=${BINDIR:-/bin}
 sbindir=${SBINDIR:-/sbin}
 pkgconfigdir=${PKGCONFIGDIR:-/etc/jobd}
 datarootdir=${DATAROOTDIR:-${prefix}}
+libexecdir=${LIBEXECDIR:-${exec_prefix}/libexec}
 localstatedir=${LOCALSTATEDIR:-${prefix}}
+rundir=${RUNDIR:-/run}
 runstatedir=${RUNSTATEDIR:-/var/run/jobd}
 
 cat >config.mk <<EOF
@@ -50,7 +45,9 @@ BINDIR := $bindir
 SBINDIR := $sbindir
 PKGCONFIGDIR := $pkgconfigdir
 DATAROOTDIR := $datarootdir
+LIBEXECDIR := $libexecdir
 LOCALSTATEDIR := $localstatedir
+RUNDIR := $rundir
 RUNSTATEDIR := $runstatedir
 EOF
 
@@ -68,7 +65,9 @@ static const struct {
     const char *sbindir;
     const char *pkgconfigdir;
     const char *datarootdir;
+    const char *libexecdir;
     const char *localstatedir;
+    const char *rundir;
     const char *runstatedir;
 } compile_time_option = {
     .prefix = "${prefix}",
@@ -76,7 +75,9 @@ static const struct {
     .sbindir = "${sbindir}",
     .pkgconfigdir = "${pkgconfigdir}",
     .datarootdir = "${datarootdir}",
+    .libexecdir = "${libexecdir}",
     .localstatedir = "${localstatedir}",
+    .rundir = "${rundir}",
     .runstatedir = "${runstatedir}"
 };
 

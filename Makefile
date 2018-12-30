@@ -37,12 +37,13 @@ install-stage2:
 		$(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) \
 		$(DESTDIR)$(DATAROOTDIR) \
 		$(DESTDIR)$(DATAROOTDIR)/manifests \
+		$(DESTDIR)$(LIBEXECDIR) \
 		$(DESTDIR)$(LOCALSTATEDIR) \
 		$(DESTDIR)$(RUNSTATEDIR) \
-		/run
+		$(DESTDIR)$(RUNDIR)
 	$(INSTALL) -m 555 jobd $(DESTDIR)$(SBINDIR)/jobd
-	$(INSTALL) -m 555 init $(DESTDIR)$(PREFIX)/init
-	$(INSTALL) -m 555 shutdown.sh $(DESTDIR)$(PREFIX)/shutdown
+	$(INSTALL) -m 555 init $(DESTDIR)$(LIBEXECDIR)/init
+	$(INSTALL) -m 555 shutdown.sh $(DESTDIR)$(LIBEXECDIR)/shutdown
 	$(INSTALL) -m 555 jobadm jobcfg jobstat $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 444 schema.sql volatile.sql $(DESTDIR)$(DATAROOTDIR)
 
@@ -71,7 +72,7 @@ clean:
 	rm -f *.o vendor/*.o jobd $(bin_BINS) init
 
 distclean: clean
-	rm -f $(SQLITE_OBJ) config.mk config.h
+	rm -f $(SQLITE_OBJ) config.mk config.h config.inc
 
 sloccount:
 	cloc --by-file `ls *.[c] | egrep -v '(toml)\.'`
