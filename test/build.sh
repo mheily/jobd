@@ -1,6 +1,6 @@
 #!/bin/sh -ex
 
-objdir="./test/obj"
+objdir="$(pwd)/test/obj"
 rm -rf $objdir
 mkdir -p $objdir $objdir/libexec $objdir/run/jobd
 grep -q './test/obj' config.mk || {
