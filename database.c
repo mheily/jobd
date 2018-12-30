@@ -107,6 +107,27 @@ _db_attach_volatile(const char *path)
 	return (0);
 }
 
+static int
+_db_load_views(void)
+{
+	char path[PATH_MAX];
+	int rv;
+
+	rv = snprintf((char *)&path, sizeof(path),  "%s/views.sql", compile_time_option.datarootdir);
+	if (rv >= (int)sizeof(path) || rv < 0) {
+		printlog(LOG_ERR, "snprintf failed");
+		return (-1);
+	}
+
+	rv = db_exec_path(path);
+	if (rv < 0) {
+		printlog(LOG_ERR, "Error executing SQL from %s", path);
+		return (-1);
+	}
+
+	return (0);
+}
+
 int
 db_init(void)
 {
@@ -188,6 +209,11 @@ db_open(const char *path, int flags)
 
 	dbpath = strdup(path);
 	if (!dbpath) abort(); //FIXME
+
+	if (flags & DB_OPEN_WITH_VIEWS) {
+		if (_db_load_views() < 0)
+			abort();
+	}
 
 	return (0);
 }
@@ -447,3 +473,4 @@ err_out:
 	sqlite3_finalize(stmt);
 	return (-1);
 }
+

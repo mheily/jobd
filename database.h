@@ -23,6 +23,7 @@
 
 #define DB_OPEN_CREATE_VOLATILE 0x1
 #define DB_OPEN_NO_VOLATILE 0x2
+#define DB_OPEN_WITH_VIEWS 0x4
 
 #define INVALID_ROW_ID ((int64_t) -12345)
 
