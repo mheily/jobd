@@ -137,9 +137,16 @@ db_init(void)
 int
 db_open(const char *path, int flags)
 {
-	char volatile_dbpath[] = "/run/jobd/volatile.db";
+	char volatile_dbpath[PATH_MAX];
 	int rv, sqlite_flags;
-	
+
+	rv = snprintf((char *)&volatile_dbpath, sizeof(volatile_dbpath),  "%s/jobd/volatile.db",
+			compile_time_option.rundir);
+	if (rv >= (int)sizeof(volatile_dbpath) || rv < 0) {
+			printlog(LOG_ERR, "snprintf failed");
+			return (-1);
+	}
+
 	if (dbh) {
 		printlog(LOG_ERR, "database is already open");
 		return (-1);
