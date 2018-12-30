@@ -15,9 +15,22 @@ if [ "$1" = "inside-the-box" ] ; then
     sudo make install
     sudo rm -f $LOCALSTATEDIR/repository.db
     sudo jobcfg init
+
+    sudo jobcfg -v import <<EOF
+name = "sysctl"
+wait = true
+
+[methods]
+
+start = """
+    /sbin/sysctl -f /etc/sysctl.conf -f /etc/sysctl.conf.local
+    test ! -r /etc/sysctl.conf.local || /sbin/sysctl -f /etc/sysctl.conf.local"""
+EOF
+
     sudo jobcfg -v import <<EOF
 name = "rc"
-exclusive = true
+after = ["sysctl"]
+wait = true
 standard_out_path = "/dev/console"
 standard_error_path = "/dev/console"
 
@@ -28,12 +41,14 @@ EOF
    
     sudo jobcfg -v import <<EOF
 name = "jobd/db_reopen"
-exclusive = true
+wait = true
 command = "$BINDIR/jobadm jobd reopen_database"
 after = "rc"
 EOF
 
     echo "init_path=\"$LIBEXECDIR/init\"" | sudo tee /boot/loader.conf.local
+
+
     exit
 fi
 
