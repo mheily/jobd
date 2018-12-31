@@ -24,7 +24,7 @@ CREATE TABLE volatile.active_jobs
 (
     id           INTEGER PRIMARY KEY,
     job_id       TEXT UNIQUE NOT NULL,
-    job_state_id INTEGER,
+    job_state_id INTEGER     NOT NULL,
     FOREIGN KEY (job_state_id) REFERENCES job_states (id) ON DELETE RESTRICT
 );
 
@@ -38,13 +38,16 @@ SELECT id, job_id, (SELECT id FROM job_states WHERE name = 'pending') AS job_sta
 FROM main.jobs
 WHERE jobs.enable = 1;
 
-CREATE TABLE volatile.processes (
-    pid INTEGER PRIMARY KEY,    -- matches kernel PID
-    job_id INTEGER UNIQUE NOT NULL,
-    exited INTEGER CHECK (exited IN (0,1)),
-    exit_status INTEGER,
-    signaled INTEGER CHECK (signaled IN (0,1)),
+CREATE TABLE volatile.processes
+(
+    pid           INTEGER PRIMARY KEY, -- matches kernel PID
+    job_id        INTEGER UNIQUE NOT NULL,
+    exited        INTEGER CHECK (exited IN (0, 1)),
+    exit_status   INTEGER,
+    signaled      INTEGER CHECK (signaled IN (0, 1)),
     signal_number INTEGER,
+    start_time    INTEGER        NOT NULL DEFAULT 0,
+    end_time      INTEGER        NOT NULL DEFAULT 0,
     FOREIGN KEY (job_id) REFERENCES active_jobs (id) ON DELETE RESTRICT
 );
 

@@ -40,7 +40,7 @@ renderer(void *unused, int cols, char **values, char **names)
 {
 	int i;
 	static int print_headers = 1;
-	const char *specifiers[] = {"%-4s", "%-18s", "%-9s", "%-8s", "%-10s"};
+	const char *specifiers[] = {"%-4s", "%-18s", "%-9s", "%-8s", "%-10s", "%-8s"};
 
 	//printf("%s",(char *)unused);
 	(void)unused;

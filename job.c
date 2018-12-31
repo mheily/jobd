@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <time.h>
 
 #include "database.h"
 #include "logger.h"
@@ -349,6 +350,7 @@ job_start(pid_t *pid, job_id_t id)
     if (*pid > 0) {
         if (job_set_state(id, JOB_STATE_RUNNING) < 0)
             return (-1);
+
         printlog(LOG_DEBUG, "job %s started with pid %d", job_id_to_str(id), *pid);
         if (job_register_pid(id, *pid) < 0)
             return (-1);//TODO: LOG
@@ -613,13 +615,14 @@ job_register_pid(int64_t row_id, pid_t pid)
 {
     sqlite3_stmt *stmt = NULL;
     const char *sql = "INSERT INTO volatile.processes "
-                      " (pid, job_id) "
+                      " (pid, job_id, start_time) "
                       "VALUES "
-                      " (?, ?)";
+                      " (?, ?, ?)";
 
     if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
         sqlite3_bind_int64(stmt, 1, pid) != SQLITE_OK ||
         sqlite3_bind_int64(stmt, 2, row_id) != SQLITE_OK ||
+        sqlite3_bind_int64(stmt, 3, time(NULL)) != SQLITE_OK ||
         sqlite3_step(stmt) != SQLITE_DONE) {
         db_log_error(sqlite3_finalize(stmt));
         return (-1);
@@ -685,12 +688,13 @@ job_set_exit_status(pid_t pid, int status)
 {
     sqlite3_stmt *stmt = NULL;
     const char *sql = "UPDATE volatile.processes "
-                      "SET exited = 1, exit_status = ?"
+                      "SET exited = 1, exit_status = ?, end_time = ?"
                       "WHERE pid = ?";
 
     if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
         sqlite3_bind_int64(stmt, 1, status) != SQLITE_OK ||
-        sqlite3_bind_int64(stmt, 2, pid) != SQLITE_OK ||
+        sqlite3_bind_int64(stmt, 2, time(NULL)) != SQLITE_OK ||
+        sqlite3_bind_int64(stmt, 3, pid) != SQLITE_OK ||
         sqlite3_step(stmt) != SQLITE_DONE) {
         db_log_error(sqlite3_finalize(stmt));
         return (-1);
@@ -705,12 +709,13 @@ job_set_signal_status(pid_t pid, int signum)
 {
     sqlite3_stmt *stmt = NULL;
     const char *sql = "UPDATE volatile.processes "
-                      "SET signaled = 1, signal_number = ? "
+                      "SET signaled = 1, signal_number = ?, end_time = ?"
                       "WHERE pid = ?";
 
     if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
         sqlite3_bind_int64(stmt, 1, signum) != SQLITE_OK ||
-        sqlite3_bind_int64(stmt, 2, pid) != SQLITE_OK ||
+        sqlite3_bind_int64(stmt, 2, time(NULL)) != SQLITE_OK ||
+        sqlite3_bind_int64(stmt, 3, pid) != SQLITE_OK ||
         sqlite3_step(stmt) != SQLITE_DONE) {
         db_log_error(sqlite3_finalize(stmt));
         return (-1);

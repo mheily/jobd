@@ -8,7 +8,11 @@ AS
              WHEN processes.exited = 1 THEN 'exit(' || processes.exit_status || ')'
              WHEN processes.signaled = 1 THEN 'kill(' || processes.signal_number || ')'
              ELSE '-'
-           END Terminated
+           END Terminated,
+           CASE
+             WHEN processes.end_time = 0 THEN (strftime('%s','now') - processes.start_time) || 's'
+             ELSE (processes.end_time - processes.start_time) || 's'
+           END Duration
     FROM volatile.active_jobs
     INNER JOIN main.jobs ON jobs.id = active_jobs.id
     LEFT JOIN volatile.processes ON processes.job_id = active_jobs.id
