@@ -1,0 +1,10 @@
+name = "rc"
+type = "task"
+after = ["sysctl"]
+wait = true
+standard_out_path = "/dev/console"
+standard_error_path = "/dev/console"
+
+[methods]
+start = "/bin/sh -x /etc/rc autoboot"
+stop = "/bin/sh -x /etc/rc.shutdown"

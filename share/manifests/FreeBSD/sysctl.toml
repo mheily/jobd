@@ -1,0 +1,9 @@
+name = "sysctl"
+type = "task"
+wait = true
+
+[methods]
+
+start = """
+    /sbin/sysctl -f /etc/sysctl.conf -f /etc/sysctl.conf.local
+    test ! -r /etc/sysctl.conf.local || /sbin/sysctl -f /etc/sysctl.conf.local"""

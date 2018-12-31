@@ -46,6 +46,7 @@ install-stage2:
 	$(INSTALL) -m 555 shutdown.sh $(DESTDIR)$(LIBEXECDIR)/shutdown
 	$(INSTALL) -m 555 jobadm jobcfg jobstat $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 444 schema.sql volatile.sql views.sql $(DESTDIR)$(DATAROOTDIR)
+	test ! -d share/manifests/`uname` || $(INSTALL) -m 444 share/manifests/`uname`/* $(DESTDIR)$(DATAROOTDIR)/manifests
 
 %.o: %.c *.h config.h
 	$(CC) -c $(CFLAGS) $< -o $@

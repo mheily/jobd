@@ -1,0 +1,5 @@
+name = "jobd/db_reopen"
+type = "task"
+wait = true
+command = "jobadm jobd reopen_database"
+after = "rc"
