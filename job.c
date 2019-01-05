@@ -430,7 +430,6 @@ job_new(void)
     if (!j)
         return (NULL);
 
-    j->enable = 1;
     if (!(j->after = string_array_new()))
         goto err_out;
     if (!(j->before = string_array_new()))
@@ -540,7 +539,7 @@ job_enable(job_id_t id)
         return (0);
     }
 
-    const char *sql = "UPDATE jobs SET enable = 1 WHERE id = ?";
+    const char *sql = "UPDATE properties SET current_value = 1 WHERE job_id = ? AND name = 'enabled'";
     success = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
               sqlite3_bind_int64(stmt, 1, id) == SQLITE_OK &&
               sqlite3_step(stmt) == SQLITE_DONE;
@@ -582,7 +581,7 @@ job_disable(job_id_t id)
         return (0);
     }
 
-    const char *sql = "UPDATE jobs SET enable = 0 WHERE id = ?";
+    const char *sql = "UPDATE properties SET current_value = 0 WHERE job_id = ? AND name = 'enabled'";
     success = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
               sqlite3_bind_int64(stmt, 1, id) == SQLITE_OK &&
               sqlite3_step(stmt) == SQLITE_DONE;

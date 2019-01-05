@@ -25,4 +25,8 @@ int parse_job_file(struct job_parser *jpr, const char *path);
 struct job_parser * job_parser_new(void);
 void job_parser_free(struct job_parser *jpr);
 
+#define PROPERTY_TYPE_INT 1
+#define PROPERTY_TYPE_STRING 2
+#define PROPERTY_TYPE_BOOL 3
+
 #endif /* _PARSER_H */

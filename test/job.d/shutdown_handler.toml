@@ -9,3 +9,5 @@ type = 'task'
 
 start = 'sleep 999'
 
+[properties]
+enabled = true

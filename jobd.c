@@ -134,9 +134,9 @@ static int
 next_runnable_job(job_id_t *result)
 {
 	job_id_t id;
-	const char *sql = "SELECT id FROM jobs "
+	const char *sql = "SELECT id FROM active_jobs "
 					  "WHERE id NOT IN (SELECT job_id AS id FROM volatile.processes) "
-					  " AND enable = 1 "
+					  " AND job_state_id = (SELECT id FROM volatile.job_states WHERE name = 'pending') "
 					  "LIMIT 1";
 
 	if (db_get_id(&id, sql, "") < 0) {

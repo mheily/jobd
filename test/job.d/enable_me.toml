@@ -1,7 +1,10 @@
 name = 'enable_me'
 type = 'task'
-enable = false
 
 [methods]
 
 start = 'sleep 1' 
+
+[properties]
+enabled = false
+

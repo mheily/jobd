@@ -29,14 +29,16 @@ CREATE TABLE volatile.active_jobs
 );
 
 INSERT INTO volatile.active_jobs (id, job_id, job_state_id)
-SELECT id, job_id, (SELECT id FROM job_states WHERE name = 'disabled') AS job_state_id
-FROM main.jobs
-WHERE jobs.enable = 0;
-
-INSERT INTO volatile.active_jobs (id, job_id, job_state_id)
-SELECT id, job_id, (SELECT id FROM job_states WHERE name = 'pending') AS job_state_id
-FROM main.jobs
-WHERE jobs.enable = 1;
+SELECT jobs.id,
+       jobs.job_id,
+       CASE properties.current_value
+           WHEN '0' THEN (SELECT id FROM volatile.job_states WHERE name = 'disabled')
+           WHEN '1' THEN (SELECT id FROM volatile.job_states WHERE name = 'pending')
+       END job_state_id
+FROM jobs
+LEFT JOIN properties
+WHERE properties.job_id = jobs.id
+  AND properties.name = 'enabled';
 
 CREATE TABLE volatile.processes
 (
@@ -50,7 +52,6 @@ CREATE TABLE volatile.processes
     end_time      INTEGER        NOT NULL DEFAULT 0,
     FOREIGN KEY (job_id) REFERENCES active_jobs (id) ON DELETE RESTRICT
 );
-
 
 -- the order that jobs are started in
 CREATE TABLE volatile.job_order (

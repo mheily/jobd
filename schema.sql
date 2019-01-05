@@ -18,7 +18,6 @@ CREATE TABLE jobs (
     job_type_id INTEGER NOT NULL,
     command TEXT NOT NULL, -- DEADWOOD: should rip this out in favor of stop/start methods
     description VARCHAR,
-    enable BOOLEAN NOT NULL DEFAULT 1 CHECK (enable IN (0,1)),
     wait BOOLEAN NOT NULL DEFAULT 0 CHECK (wait IN (0,1)),
     gid VARCHAR,
     init_groups BOOLEAN NOT NULL DEFAULT 1 CHECK (init_groups IN (0,1)),
@@ -61,36 +60,48 @@ CREATE TABLE jobs_environment (
     FOREIGN KEY (job_id) REFERENCES jobs (id) ON DELETE CASCADE 
 );
 
---- names for datatypes
-CREATE TABLE datatypes (
-    id INTEGER PRIMARY KEY,
+
+---
+--- JOB PROPERTIES
+---
+
+--- names for datatypes. Keep this in sync with parser.h datatypes.
+CREATE TABLE datatypes
+(
+    id   INTEGER PRIMARY KEY,
     name TEXT UNIQUE NOT NULL
 );
-INSERT INTO datatypes (id, name) VALUES (1, 'integer');
-INSERT INTO datatypes (id, name) VALUES (2, 'string');
-INSERT INTO datatypes (id, name) VALUES (3, 'boolean');
+INSERT INTO datatypes (id, name)
+VALUES
+    (1, 'integer'),
+    (2, 'string'),
+    (3, 'boolean');
 
---- scope of a property in properties table.
---- scopes with higher IDs override values at lower scopes.
-CREATE TABLE property_scopes (
-    id INTEGER PRIMARY KEY,
-    name TEXT UNIQUE NOT NULL
-);
-INSERT INTO property_scopes (id, name) VALUES (1, 'service');
-INSERT INTO property_scopes (id, name) VALUES (2, 'instance');
-INSERT INTO property_scopes (id, name) VALUES (3, 'admin');
-
---- variables that can be configured by a sysadmin
-CREATE TABLE properties (
-    id INTEGER PRIMARY KEY,
-    job_id INTEGER NOT NULL,
-    datatype_id INTEGER NOT NULL,
-    scope_id INTEGER NOT NULL,
-    name TEXT UNIQUE NOT NULL,
-    value TEXT NOT NULL,
-    UNIQUE(scope_id, name),
+CREATE TABLE properties
+(
+    id            INTEGER PRIMARY KEY,
+    job_id        INTEGER NOT NULL,
+    datatype_id   INTEGER NOT NULL,
+    name          TEXT    NOT NULL,
+    default_value TEXT    NOT NULL,
+    current_value TEXT    NOT NULL,
+    UNIQUE (job_id, name),
     FOREIGN KEY (datatype_id) REFERENCES datatypes (id) ON DELETE RESTRICT,
-    FOREIGN KEY (scope_id) REFERENCES property_scopes (id) ON DELETE RESTRICT,
     FOREIGN KEY (job_id) REFERENCES jobs (id) ON DELETE CASCADE
 );
 
+CREATE VIEW properties_view
+AS
+SELECT id,
+       job_id,
+       (SELECT jobs.job_id FROM jobs WHERE jobs.id = properties.job_id) AS job_name,
+       (SELECT name FROM datatypes WHERE datatypes.id = datatype_id)    AS datatype,
+       name,
+       current_value AS value,
+    CASE
+    WHEN current_value = default_value THEN 'default'
+    ELSE 'custom'
+END
+source
+FROM
+properties;

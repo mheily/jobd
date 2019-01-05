@@ -5,3 +5,7 @@ type = 'task'
 
 start = 'sleep 1' 
 stop = 'sleep 1'
+
+[properties]
+enabled = true
+

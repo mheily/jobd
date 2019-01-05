@@ -219,8 +219,6 @@ parse_job(struct job_parser *jpr)
 		goto_err("after");
 	if (parse_array_of_strings(j->before, tab, "before"))
 		goto_err("before");
-	if (parse_bool(&j->enable, tab, "enable", true))
-		goto_err("enable");
 	if (parse_bool(&j->wait_flag, tab, "wait", false))
 		goto_err("wait");
 	if (parse_environment_variables(j, tab))
@@ -446,53 +444,120 @@ job_db_insert_methods(struct job_parser *jpr)
 	return (0);
 }
 
+static int
+job_db_insert_properties(struct job_parser *jpr)
+{
+    toml_table_t *subtab;
+    const char *key;
+    char *val;
+    const char *raw;
+    int i, datatype;
+
+    subtab = toml_table_in(jpr->tab, "properties");
+    if (!subtab) {
+        return (0);
+    }
+
+    for (i = 0; (key = toml_key_in(subtab, i)) != 0; i++) {
+        raw = toml_raw_in(subtab, key);
+        if (!raw) {
+            printlog(LOG_ERR, "error parsing `%s' into raw", key);
+            return (-1);
+        }
+
+        if (!strncmp(raw, "true", 4)) {
+            datatype = PROPERTY_TYPE_BOOL;
+            val = strdup("1");
+        } else if (!strncmp(raw, "false", 5)) {
+            datatype = PROPERTY_TYPE_BOOL;
+            val = strdup("0");
+        } else if (*raw == '\'' || *raw == '"') {
+            datatype = PROPERTY_TYPE_STRING;
+            if (toml_rtos(raw, &val)) {
+                printlog(LOG_ERR, "error parsing %s", key);
+                return (-1);
+            }
+        } else {
+            printlog(LOG_ERR, "unable to determine datatype of `%s'", key);
+            return (-1);
+        }
+
+        int success;
+        sqlite3_stmt *stmt;
+        const char *sql =
+                "INSERT INTO properties "
+                "(job_id, datatype_id, name, default_value, current_value) "
+                "VALUES (?, ?, ?, ?, ?)";
+
+        success = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
+                  sqlite3_bind_int64(stmt, 1, jpr->job->row_id) == SQLITE_OK &&
+                  sqlite3_bind_int(stmt, 2, datatype) == SQLITE_OK &&
+                  sqlite3_bind_text(stmt, 3, key, -1, SQLITE_STATIC) == SQLITE_OK &&
+                  sqlite3_bind_text(stmt, 4, val, -1, SQLITE_STATIC) == SQLITE_OK &&
+                  sqlite3_bind_text(stmt, 5, val, -1, SQLITE_STATIC) == SQLITE_OK &&
+                  sqlite3_step(stmt) == SQLITE_DONE;
+
+        sqlite3_finalize(stmt);
+        free(val);
+
+        if (!success)
+            return (-1);
+    }
+
+    return (0);
+}
+
 int
 job_db_insert(struct job_parser *jpr)
 {
-	int rv;
-	sqlite3_stmt *stmt;
-	struct job *job = jpr->job;
+    int rv;
+    sqlite3_stmt *stmt;
+    struct job *job = jpr->job;
 
-	const char *sql = "INSERT INTO jobs (job_id, description, gid, init_groups,"
-		"keep_alive, root_directory, standard_error_path,"
-		"standard_in_path, standard_out_path, umask, user_name,"
-		"working_directory, enable, command, wait, job_type_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    const char *sql = "INSERT INTO jobs (job_id, description, gid, init_groups, "
+                      "keep_alive, root_directory, standard_error_path, "
+                      "standard_in_path, standard_out_path, umask, user_name, "
+                      "working_directory, command, wait, job_type_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
-	rv = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
-		 sqlite3_bind_text(stmt, 1, job->id, -1, SQLITE_STATIC) == SQLITE_OK &&
-		 sqlite3_bind_text(stmt, 2, job->description, -1, SQLITE_STATIC) == SQLITE_OK &&
-		 sqlite3_bind_text(stmt, 3, job->group_name, -1, SQLITE_STATIC) == SQLITE_OK &&
-		 sqlite3_bind_int(stmt, 4, job->init_groups) == SQLITE_OK &&
-		 sqlite3_bind_int(stmt, 5, job->keep_alive) == SQLITE_OK &&
-		 sqlite3_bind_text(stmt, 6, job->root_directory, -1, SQLITE_STATIC) == SQLITE_OK &&
-		 sqlite3_bind_text(stmt, 7, job->standard_error_path, -1, SQLITE_STATIC) == SQLITE_OK &&
-		 sqlite3_bind_text(stmt, 8, job->standard_in_path, -1, SQLITE_STATIC) == SQLITE_OK &&
-		 sqlite3_bind_text(stmt, 9, job->standard_out_path, -1, SQLITE_STATIC) == SQLITE_OK &&
-		 sqlite3_bind_text(stmt, 10, job->umask_str, -1, SQLITE_STATIC) == SQLITE_OK &&
-		 sqlite3_bind_text(stmt, 11, job->user_name, -1, SQLITE_STATIC) == SQLITE_OK &&
-		 sqlite3_bind_text(stmt, 12, job->working_directory, -1, SQLITE_STATIC) == SQLITE_OK &&
-		 sqlite3_bind_int(stmt, 13, job->enable) == SQLITE_OK &&
-		 sqlite3_bind_text(stmt, 14, job->command, -1, SQLITE_STATIC) == SQLITE_OK &&
-		 sqlite3_bind_int(stmt, 15, job->wait_flag) == SQLITE_OK &&
-		 sqlite3_bind_int(stmt, 16, job->job_type) == SQLITE_OK;
+    rv = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
+         sqlite3_bind_text(stmt, 1, job->id, -1, SQLITE_STATIC) == SQLITE_OK &&
+         sqlite3_bind_text(stmt, 2, job->description, -1, SQLITE_STATIC) == SQLITE_OK &&
+         sqlite3_bind_text(stmt, 3, job->group_name, -1, SQLITE_STATIC) == SQLITE_OK &&
+         sqlite3_bind_int(stmt, 4, job->init_groups) == SQLITE_OK &&
+         sqlite3_bind_int(stmt, 5, job->keep_alive) == SQLITE_OK &&
+         sqlite3_bind_text(stmt, 6, job->root_directory, -1, SQLITE_STATIC) == SQLITE_OK &&
+         sqlite3_bind_text(stmt, 7, job->standard_error_path, -1, SQLITE_STATIC) == SQLITE_OK &&
+         sqlite3_bind_text(stmt, 8, job->standard_in_path, -1, SQLITE_STATIC) == SQLITE_OK &&
+         sqlite3_bind_text(stmt, 9, job->standard_out_path, -1, SQLITE_STATIC) == SQLITE_OK &&
+         sqlite3_bind_text(stmt, 10, job->umask_str, -1, SQLITE_STATIC) == SQLITE_OK &&
+         sqlite3_bind_text(stmt, 11, job->user_name, -1, SQLITE_STATIC) == SQLITE_OK &&
+         sqlite3_bind_text(stmt, 12, job->working_directory, -1, SQLITE_STATIC) == SQLITE_OK &&
+         sqlite3_bind_text(stmt, 13, job->command, -1, SQLITE_STATIC) == SQLITE_OK &&
+         sqlite3_bind_int(stmt, 14, job->wait_flag) == SQLITE_OK &&
+         sqlite3_bind_int(stmt, 15, job->job_type) == SQLITE_OK;
 
-	if (!rv || sqlite3_step(stmt) != SQLITE_DONE) {
-		printlog(LOG_ERR, "error importing %s", job->id);
-		sqlite3_finalize(stmt);
-		return (-1);
-  	}
-	jpr->job->row_id = sqlite3_last_insert_rowid(dbh);
-	sqlite3_finalize(stmt);
+    if (!rv || sqlite3_step(stmt) != SQLITE_DONE) {
+        printlog(LOG_ERR, "error importing %s", job->id);
+        sqlite3_finalize(stmt);
+        return (-1);
+    }
+    jpr->job->row_id = sqlite3_last_insert_rowid(dbh);
+    sqlite3_finalize(stmt);
 
-	if (job_db_insert_depends(job) < 0) {
-		printlog(LOG_ERR, "error importing %s dependencies", job->id);
-		return (-1);
-	}
+    if (job_db_insert_depends(job) < 0) {
+        printlog(LOG_ERR, "error importing %s dependencies", job->id);
+        return (-1);
+    }
 
-	if (job_db_insert_methods(jpr) < 0) {
-		printlog(LOG_ERR, "error importing %s methods", job->id);
-		return (-1);
-	}
+    if (job_db_insert_methods(jpr) < 0) {
+        printlog(LOG_ERR, "error importing %s methods", job->id);
+        return (-1);
+    }
 
-	return (0);
+    if (job_db_insert_properties(jpr) < 0) {
+        printlog(LOG_ERR, "error importing %s properties", job->id);
+        return (-1);
+    }
+
+    return (0);
 }
