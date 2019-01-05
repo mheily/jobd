@@ -51,37 +51,6 @@ CREATE TABLE volatile.processes
     FOREIGN KEY (job_id) REFERENCES active_jobs (id) ON DELETE RESTRICT
 );
 
--- CREATE VIEW IF NOT EXISTS volatile.process_table_view
--- AS
--- SELECT 
---   main.jobs.id,
---   main.jobs.job_id,
---   processes.pid AS pid,
---   processes.process_state_id AS state_id,
---   process_states.name AS state,
---   processes.exit_status,
---   processes.signal_number
--- FROM main.jobs 
--- INNER JOIN processes ON jobs.id = processes.job_id 
--- INNER JOIN process_states on processes.process_state_id = process_states.id
--- ORDER BY jobs.job_id;
- 
---- configuration changes requested via jobadm(1)
-
-CREATE TABLE volatile.pending_changes (
-    id INTEGER PRIMARY KEY,
-    job_id INTEGER NOT NULL,
-    change_type_id INTEGER NOT NULL,
-    -- FIXME: will not work due to sqlite limitation: FOREIGN KEY (job_id) REFERENCES jobs (id) ON DELETE CASCADE,
-    FOREIGN KEY (change_type_id) REFERENCES pending_change_types (id) ON DELETE RESTRICT
-);
-
-CREATE TABLE volatile.pending_change_types (
-    id INTEGER PRIMARY KEY,
-    name TEXT UNIQUE NOT NULL
-);
-INSERT INTO pending_change_types VALUES(1, "enable");
-INSERT INTO pending_change_types VALUES(2, "disable");
 
 -- the order that jobs are started in
 CREATE TABLE volatile.job_order (
@@ -90,5 +59,3 @@ CREATE TABLE volatile.job_order (
 );
 
 COMMIT;
-
---CREATE TABLE volatile.jobs AS SELECT * FROM main.jobs;
