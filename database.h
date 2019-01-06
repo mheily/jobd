@@ -27,17 +27,6 @@
 
 #define INVALID_ROW_ID ((int64_t) -12345)
 
-/* Maximum length of a SQL string stored on the stack */
-#define SQL_BUF_MAX 2048
-
-#define db_check_result(_rv, _stmt) \
-	if ((_rv) != SQLITE_OK) { \
-		printlog(LOG_ERR, "Database error: %s", sqlite3_errmsg(dbh)); \
-		sqlite3_finalize(_stmt); \
-		(_stmt) = NULL; \
-		return (-1); \
-	}
-
 #define db_error printlog(LOG_ERR, "database error: %s", sqlite3_errmsg(dbh))
 
 struct string_array;
