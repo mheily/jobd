@@ -98,6 +98,7 @@ SELECT id,
        (SELECT name FROM datatypes WHERE datatypes.id = datatype_id)    AS datatype,
        name,
        current_value AS value,
+       (name || '=''' || replace(current_value, '''', '''"''"''') || '''') AS shellcode,
     CASE
     WHEN current_value = default_value THEN 'default'
     ELSE 'custom'

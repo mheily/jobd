@@ -499,10 +499,18 @@ job_get_method(char **dest, job_id_t jid, const char *method_name)
     if (jid == INVALID_ROW_ID || !method_name)
         return (-1);
 
-    const char *sql = "SELECT script FROM job_methods WHERE job_id = ? AND name = ?";
+    const char *sql = "SELECT "
+                      "(SELECT group_concat(shellcode, char(10)) "
+                      "   FROM properties_view"
+                      "   WHERE job_id = ?) || char(10) || script "
+                      "FROM job_methods "
+                      "WHERE job_id = ? "
+                      "AND name = ?";
+
     if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
         sqlite3_bind_int64(stmt, 1, jid) != SQLITE_OK ||
-        sqlite3_bind_text(stmt, 2, method_name, -1, SQLITE_STATIC) != SQLITE_OK) {
+        sqlite3_bind_int64(stmt, 2, jid) != SQLITE_OK ||
+        sqlite3_bind_text(stmt, 3, method_name, -1, SQLITE_STATIC) != SQLITE_OK) {
         db_log_error(sqlite3_finalize(stmt));
         return (-1);
     }
@@ -519,6 +527,7 @@ job_get_method(char **dest, job_id_t jid, const char *method_name)
         result = -1;
     }
     sqlite3_finalize(stmt);
+
     return (result);
 }
 

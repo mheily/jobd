@@ -1,0 +1,15 @@
+#
+# Test setting a custom property and accessing the value from within a method.
+#
+
+name = 'property_vars'
+type = 'service'
+
+[methods]
+
+start = 'test "${hello}" = "world"'
+
+[properties]
+enabled = true
+hello = "world"
+
