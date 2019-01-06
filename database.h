@@ -38,7 +38,7 @@
 		return (-1); \
 	}
 
-#define db_log_error(_rv) printlog(LOG_ERR, "database error: %s", sqlite3_errstr(_rv))
+#define db_error printlog(LOG_ERR, "database error: %s", sqlite3_errmsg(dbh))
 
 struct string_array;
 

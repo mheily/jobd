@@ -231,8 +231,7 @@ db_reopen(void)
 		dbh = NULL;
 		return (db_open(dbpath, 0));
 	} else {
-		db_log_error(rv);
-		return (-1);
+		return printlog(LOG_ERR, "database error: %s", sqlite3_errstr(rv));
 	}
 }
 
