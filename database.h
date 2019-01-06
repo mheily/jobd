@@ -56,6 +56,8 @@ int db_statement_bind(sqlite3_stmt *stmt, const char *fmt, va_list args);
 int db_get_id(int64_t *result, const char *sql, const char *fmt, ...);
 int db_get_string(char *dst, size_t sz, const char *sql, const char *fmt, ...);
 int db_query(sqlite3_stmt **result, const char *sql, const char *fmt, ...);
-int db_select_into_string_array(struct string_array *strarr, sqlite3_stmt *stmt);
+
+#define CLEANUP_STMT __attribute__((__cleanup__(db_statement_free)))
+void db_statement_free(sqlite3_stmt **stmt);
 
 #endif /* _DATABASE_H */

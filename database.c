@@ -347,40 +347,6 @@ db_exec_path(const char *path)
 }
 
 int
-db_select_into_string_array(struct string_array *strarr, sqlite3_stmt *stmt)
-{
-	int rv;
-	char *val;
-
-	for (;;) {
-		rv = sqlite3_step(stmt);
-		if (rv == SQLITE_DONE)
-			break;
-		if (rv != SQLITE_ROW)
-			goto db_err;
-
-		val = strdup((char *)sqlite3_column_text(stmt, 0));
-		if (!val)
-			goto os_err;
-
-		if (string_array_push_back(strarr, val) < 0)
-			goto err_out;
-	}
-	return (0);
-
-os_err:
-	printlog(LOG_ERR, "OS error: %s", strerror(errno));
-	goto err_out;
-
-db_err:
-	db_log_error(rv);
-
-err_out:
-	sqlite3_finalize(stmt);
-	return (-1);
-}
-
-int
 db_get_id(int64_t *result, const char *sql, const char *fmt, ...)
 {
 	va_list args;
