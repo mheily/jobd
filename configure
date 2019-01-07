@@ -23,6 +23,7 @@ if [ "$1" = "--as-current-user" ] ; then
     export PKGCONFIGDIR=$HOME/.config
     export LOCALSTATEDIR=$HOME/.config
     export RUNSTATEDIR=/run/user/$(id -u)
+    export MANDIR=$HOME/.local/share/man
     exec ./configure $*
 fi
 
@@ -34,6 +35,7 @@ pkgconfigdir=${PKGCONFIGDIR:-/etc/jobd}
 datarootdir=${DATAROOTDIR:-${prefix}}
 libexecdir=${LIBEXECDIR:-${exec_prefix}/libexec}
 localstatedir=${LOCALSTATEDIR:-${prefix}}
+mandir=${MANDIR:-/usr/share/man}
 rundir=${RUNDIR:-/run}
 runstatedir=${RUNSTATEDIR:-/var/run/jobd}
 
@@ -47,6 +49,7 @@ PKGCONFIGDIR := $pkgconfigdir
 DATAROOTDIR := $datarootdir
 LIBEXECDIR := $libexecdir
 LOCALSTATEDIR := $localstatedir
+MANDIR := $mandir
 RUNDIR := $rundir
 RUNSTATEDIR := $runstatedir
 EOF

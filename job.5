@@ -25,33 +25,57 @@
 The 
 .Nm
 configuration file format is a TOML document with the following
-fields:
+top-level fields:
 .Bl -column "EnvironmentVariables" "dictionary" "Description"
 .It Sy Name Ta Sy Type Ta Sy Description
-.It After Ta array Ta "Jobs that this job must run after."
-.It Before Ta array Ta "Jobs that this job must run before."
-.It Description Ta string Ta "A multi-line description of the job."
-.It Enable Ta boolean Ta "Whether to enable the job."
-.It EnvironmentVariables Ta dictionary Ta "Environment variable key/value pairs"
-.It Group Ta string Ta "The group name for setgid(2)"
-.It InitGroups Ta boolean Ta "Whether to call initgroups(3)"
-.It KeepAlive Ta boolean Ta "Whether to restart the job if it exits"
-.It Program Ta array Ta "The program to execute"
-.It RootDirectory Ta string Ta "The directory to chroot(2) into"
-.It StandardErrorPath Ta string Ta "The path to redirect STDERR into"
-.It StandardInPath Ta string Ta "The path to redirect STDIN into"
-.It StandardOutPath Ta string Ta "The path to redirect STDOUT into"
-.It Title Ta string Ta "A one-line title to display"
-.It Umask Ta string Ta "An octal value for umask(2)"
-.It User Ta string Ta "The username for setuid(2)"
-.It WorkingDirectory Ta string Ta "The path to set via chdir(2)"
+.It after Ta array Ta "Jobs that this job must run after."
+.It before Ta array Ta "Jobs that this job must run before."
+.It command Ta string Ta "The command to be executed."
+.It description Ta string Ta "A multi-line description."
+.It environment Ta dictionary Ta "Environment variables"
+.It group Ta string Ta "The group name for setgid(2)"
+.It init_groups Ta boolean Ta "Whether to call initgroups(3)"
+.It keep_alive Ta boolean Ta "Restart the job if it dies"
+.It name Ta string Ta "The short name of the job"
+.It root_directory Ta string Ta "The directory to chroot(2) into"
+.It standard_error_path Ta string Ta "The path to redirect STDERR into"
+.It standard_in_path Ta string Ta "The path to redirect STDIN into"
+.It standard_out_path Ta string Ta "The path to redirect STDOUT into"
+.It title Ta string Ta "A one-line title to display"
+.It type Ta string Ta "The type of job"
+.It umask Ta string Ta "An octal value for umask(2)"
+.It user Ta string Ta "The username for setuid(2)"
+.It working_directory Ta string Ta "The path to set via chdir(2)"
+.It wait Ta boolean Ta "Wait for the job to finish?"
 
+.El
+There are additional sections:
+.Bl -column "----------" "-----------------"
+.It Sy Section Ta Sy Purpose Ta
+.It methods Ta "Shell scripts to manage the job"
+.It properties Ta "Variables that can be customized"
 .El
 .Sh FILES
 .Bl -tag -width "/etc/job.d/*XXXX" -compact
 .It Pa /etc/job.d/*
 The directory containing all enabled jobs.
 .El
+.Sh EXAMPLES
+.Bd -literal
+name = "rc"
+type = "task"
+after = ["sysctl"]
+wait = true
+standard_out_path = "/dev/console"
+standard_error_path = "/dev/console"
+
+[methods]
+start = "/bin/sh -x /etc/rc autoboot"
+stop = "/bin/sh -x /etc/rc.shutdown"
+
+[properties]
+enabled = true
+.Ed
 .\" .Sh ERRORS
 .Sh SEE ALSO
 .Xr job 8

@@ -9,6 +9,7 @@ grep -q './test/obj' config.mk || {
 	export EXEC_PREFIX=$objdir
 	export BINDIR=$objdir/bin
 	export SBINDIR=$objdir/sbin
+	export MANDIR=$objdir/man
 	export PKGCONFIGDIR=$objdir/etc/jobd
 	export RUNSTATEDIR=$objdir/var/run/jobd
 	export RUNDIR=$objdir/run

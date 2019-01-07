@@ -39,15 +39,10 @@ Increase the verbosity of log messages.
 .\" .Sh ENVIRONMENT
 .Sh FILES
 .Bl -tag -width "/var/run/jobd.sock" -compact
-.It Pa /etc/jobd.conf
-Default configuration file.
 .It Pa /etc/job.d/*
 The directory containing all enabled jobs.
-.It Pa /var/run/jobd.sock
-.Ux Ns -domain
-socket used for communication between
-.Xr job 8 and
-.Xr jobd 8 .
+.It Pa /run/jobd/jobd.sock
+A socket used for interprocess communication
 .El
 .\" .Sh ERRORS
 .Sh SEE ALSO
