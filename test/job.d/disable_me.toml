@@ -4,6 +4,3 @@ type = 'task'
 [methods]
 start = 'sleep 999'
 is_started = '/bin/true'
-
-[properties]
-enabled = true

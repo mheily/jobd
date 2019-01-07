@@ -6,8 +6,4 @@ name = 'shutdown_handler'
 type = 'task'
 
 [methods]
-
 start = 'sleep 999'
-
-[properties]
-enabled = true

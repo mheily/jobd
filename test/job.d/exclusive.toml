@@ -5,6 +5,3 @@ before = ["sleep1"]
 
 [methods]
 start = 'sleep 2'
-
-[properties]
-enabled = true

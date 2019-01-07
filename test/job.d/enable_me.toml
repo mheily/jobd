@@ -2,9 +2,7 @@ name = 'enable_me'
 type = 'task'
 
 [methods]
-
 start = 'sleep 1' 
 
 [properties]
 enabled = false
-

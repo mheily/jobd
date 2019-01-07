@@ -2,9 +2,4 @@ name = 'sleep1'
 type = 'task'
 
 [methods]
-
 start = 'sleep 1' 
-
-[properties]
-enabled = true
-
