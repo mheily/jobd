@@ -71,6 +71,9 @@ import_from_directory(const char *configdir)
             break;
 		if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, ".."))
 			continue;
+		char *extension = strrchr(entry->d_name, '.');
+		if (!extension || strcmp(extension, ".toml"))
+			continue;
 		if (asprintf(&path, "%s/%s", configdir, entry->d_name) < 0)
 			err(1, "asprintf");
 		printlog(LOG_DEBUG, "parsing %s", path);
