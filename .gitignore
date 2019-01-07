@@ -5,6 +5,7 @@
 *.o
 /jobadm
 /jobcfg
+/jobprop
 /jobstat
 /.vscode/
 /Attic/

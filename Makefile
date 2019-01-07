@@ -17,12 +17,13 @@ CFLAGS+=-g -O0
 # for asprintf()
 CFLAGS+=-D_GNU_SOURCE
 
-bin_BINS := jobcfg jobstat jobadm
+bin_BINS := jobcfg jobstat jobadm jobprop
 
 jobd_OBJS=jobd.o database.o ipc.o job.o logger.o parser.o vendor/pidfile.o vendor/flopen.o toml.o $(SQLITE_OBJ)
 jobcfg_OBJS=jobcfg.o database.o ipc.o job.o logger.o parser.o toml.o $(SQLITE_OBJ)
 jobadm_OBJS=jobadm.o database.o ipc.o logger.o $(SQLITE_OBJ)
 jobstat_OBJS=jobstat.o database.o ipc.o logger.o $(SQLITE_OBJ)
+jobprop_OBJS=jobprop.o database.o ipc.o logger.o $(SQLITE_OBJ)
 
 all: jobd $(bin_BINS) init
 
@@ -44,7 +45,7 @@ install-stage2:
 	$(INSTALL) -m 555 jobd $(DESTDIR)$(SBINDIR)/jobd
 	$(INSTALL) -m 555 init $(DESTDIR)$(LIBEXECDIR)/init
 	$(INSTALL) -m 555 shutdown.sh $(DESTDIR)$(LIBEXECDIR)/shutdown
-	$(INSTALL) -m 555 jobadm jobcfg jobstat $(DESTDIR)$(BINDIR)
+	$(INSTALL) -m 555 jobadm jobcfg jobstat jobprop $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 444 schema.sql volatile.sql views.sql $(DESTDIR)$(DATAROOTDIR)
 	test ! -d share/manifests/`uname` || $(INSTALL) -m 444 share/manifests/`uname`/* $(DESTDIR)$(DATAROOTDIR)/manifests
 
@@ -65,6 +66,9 @@ jobstat: $(jobstat_OBJS)
 
 jobcfg: $(jobcfg_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(jobcfg_OBJS)
+
+jobprop: $(jobprop_OBJS)
+	$(CC) $(CFLAGS) -o $@ $(jobprop_OBJS)
 
 jobd: $(jobd_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(jobd_OBJS) -lrt
