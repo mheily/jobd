@@ -53,9 +53,9 @@ logger_init(const char *logfile)
 	int fd;
 
 	/* TODO: add support for syslog */
-	//logger_use_syslog = 1;
-	//openlog("jobd", LOG_CONS, LOG_AUTH);
-	logger_use_syslog = 0;
+	logger_use_syslog = 1;
+	openlog("jobd", LOG_CONS, LOG_AUTH);
+	//logger_use_syslog = 0;
 
 	if (logfile) {
 	    return logger_open(logfile);
@@ -89,15 +89,19 @@ logger_append(int level, const char *format, ...)
 	va_list args;
     va_start(args, format);
 	if (logger_use_syslog) {
-		vsyslog(level, format, args);
-	} else if (logger_verbose || level != LOG_DEBUG) {
+	    va_list syslog_args;
+	    va_copy(syslog_args, args);
+		vsyslog(level, format, syslog_args);
+		va_end(syslog_args);
+	}
+    if (logger_verbose || level != LOG_DEBUG) {
 		fprintf(logger_fh, "%d ", level);
 		vfprintf(logger_fh, format, args);
 		fflush(logger_fh);
 	}
 	va_end(args);
 	if (level <= LOG_ERR)
-		return (-1);
+		return -1;
 	else
-		return (0);
+		return 0;
 }
