@@ -30,6 +30,13 @@
 #include "parser.h"
 #include "database.h"
 
+static void
+usage(const char *progname)
+{
+    fprintf(stderr, "usage: %s [-v] [-f path] import|init\n", progname);
+    exit(EXIT_FAILURE);
+}
+
 static int
 import_from_file(const char *path)
 {
@@ -121,61 +128,43 @@ import_action(const char *path)
 	}
 }
 
-//static int
-//sort_jobs(void)
-//{
-//	//int rv;
-//
-//	if (db_exec(dbh, "BEGIN TRANSACTION") < 0)
-//		return (-1);
-//
-//	if (db_exec(dbh, "DELETE FROM volatile.job_order") < 0)
-//		goto err_out;
-//
-//	if (db_exec(dbh, "INSERT INTO volatile.job_order SELECT jobs.id AS job_id, NULL AS wave FROM jobs WHERE enable = 1") < 0)
-//		goto err_out;
-//
-//	if (db_exec(dbh, "COMMIT") < 0)
-//		goto err_out;
-//
-//	return (0);
-//
-//err_out:
-//	(void) db_exec(dbh, "ROLLBACK");
-//	return (-1);
-//}
-
 int
 main(int argc, char *argv[])
 {
 	int c;
 	char *command = NULL;
 	char *f_flag = NULL;
+	char *progname = argv[0];
 
 	if (logger_init(NULL) < 0)
 		errx(1, "unable to initialize logging");
 	if (db_init() < 0)
 		errx(1, "unable to initialize database functions");
 
-  	while ((c = getopt (argc, argv, "f:v")) != -1) {
+  	while ((c = getopt (argc, argv, "f:hv")) != -1) {
 		switch (c) {
 			case 'f':
 				f_flag = strdup(optarg);
 				if (!f_flag)
 					err(1, "strdup");
 				break;
+            case 'h':
+                usage(progname);
+                break;
 			case 'v': 
 				logger_set_verbose(1);
 				break;
 			default:
-				errx(1, "unsupported option");
+			    usage(progname);
 		}
 	}
 	argc -= optind;
 	argv += optind;
 	command = argv[0];
 
-	printlog(LOG_DEBUG, "command=%s", command);
+	if (!command)
+		usage(progname);
+
 	if (!strcmp(command, "init")) {
 		char *schemapath;
 		if (f_flag) {
@@ -200,8 +189,6 @@ main(int argc, char *argv[])
 	if (!strcmp(command, "import")) {
 		if (import_action(f_flag ? f_flag : "/dev/stdin") < 0)
 			exit(EXIT_FAILURE);
-//		if (sort_jobs() < 0)
-//			exit(EXIT_FAILURE);
 	}
 
 	exit(EXIT_SUCCESS);
