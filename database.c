@@ -349,38 +349,32 @@ int
 db_get_id(int64_t *result, const char *sql, const char *fmt, ...)
 {
 	va_list args;
-	sqlite3_stmt *stmt;
+	sqlite3_stmt CLEANUP_STMT *stmt = NULL;
 
-	if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK) {
-		printlog(LOG_ERR, "prepare failed");
-		stmt = NULL;
-		goto err_out;
-	}
+	*result = INVALID_ROW_ID;
+
+	if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK)
+		return printlog(LOG_ERR, "prepare failed");
 
 	va_start(args, fmt);
 	if (db_statement_bind(stmt, fmt, args) < 0) {
-		printlog(LOG_ERR, "error binding statement");
 		va_end(args);
-		goto err_out;
+		return printlog(LOG_ERR, "error binding statement");
 	}
 	va_end(args);
 
-	int rv = sqlite3_step(stmt);
-	if (rv == SQLITE_ROW) {
-		*result = sqlite3_column_int64(stmt, 0);
-	} else if (rv == SQLITE_DONE) {
-		*result = INVALID_ROW_ID;
-	} else {
-		goto err_out;
+	switch (sqlite3_step(stmt)) {
+		case SQLITE_ROW:
+			*result = sqlite3_column_int64(stmt, 0);
+			break;
+		case SQLITE_DONE:
+			*result = INVALID_ROW_ID;
+			break;
+		default:
+			return db_error;
 	}
 
-	sqlite3_finalize(stmt);
-	return (0);
-
-err_out:
-	*result = INVALID_ROW_ID;
-	sqlite3_finalize(stmt);
-	return (-1);
+	return 0;
 }
 
 int db_statement_bind(sqlite3_stmt *stmt, const char *fmt, va_list args)
@@ -439,3 +433,8 @@ err_out:
 	return (-1);
 }
 
+void db_statement_free(sqlite3_stmt **stmt)
+{
+    sqlite3_finalize(*stmt);
+    *stmt = NULL;
+}

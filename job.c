@@ -80,7 +80,7 @@ static void
 _job_child_pre_exec(job_id_t jid)
 {
     gid_t gid;
-    sqlite3_stmt *stmt;
+    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
     sigset_t mask;
 
     const char sql[] = "SELECT working_directory, root_directory, init_groups, "
@@ -88,7 +88,6 @@ _job_child_pre_exec(job_id_t jid)
                        "standard_error_path, standard_in_path, standard_out_path, "
                        "umask "
                        "FROM jobs WHERE id = ?";
-
 
     if (db_query(&stmt, sql, "i", jid) < 0) {
         printlog(LOG_ERR, "db_query() failed");
@@ -98,12 +97,10 @@ _job_child_pre_exec(job_id_t jid)
     int rv = sqlite3_step(stmt);
     if (rv == SQLITE_DONE) {
         printlog(LOG_ERR, "job no longer exists");
-        sqlite3_finalize(stmt);
         exit(EXIT_FAILURE);
     }
     if (rv != SQLITE_ROW) {
         printlog(LOG_ERR, "sqlite3_step() failed");
-        sqlite3_finalize(stmt);
         exit(EXIT_FAILURE);
     }
 
@@ -184,7 +181,6 @@ _job_child_pre_exec(job_id_t jid)
         printlog(LOG_ERR, "unable to redirect STDERR");
         exit(EXIT_FAILURE);
     }
-    sqlite3_finalize(stmt);
 }
 
 static int
@@ -469,36 +465,30 @@ job_free(struct job *job)
 
 int job_get_command(char dest[JOB_ARG_MAX], job_id_t jid)
 {
-    sqlite3_stmt *stmt;
-
+    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
     const char sql[] = "SELECT command FROM jobs WHERE id = ?";
 
-    if (db_query(&stmt, sql, "i", jid) < 0) {
-        printlog(LOG_ERR, "db_query() failed");
-        return -1;
-    }
+    dest[0] = '\0';
 
-    if (sqlite3_step(stmt) == SQLITE_ROW) {
-        strncpy(dest, (char *) sqlite3_column_text(stmt, 0), JOB_ARG_MAX - 2);
-        dest[JOB_ARG_MAX - 1] = '\0';
-        sqlite3_finalize(stmt);
-        return 0;
-    } else {
-        sqlite3_finalize(stmt);
-        dest[0] = '\0';
-        return -1;
+    if (db_query(&stmt, sql, "i", jid) < 0)
+        return printlog(LOG_ERR, "db_query() failed");
+
+    switch (sqlite3_step(stmt)) {
+        case SQLITE_ROW:
+            strncpy(dest, (char *) sqlite3_column_text(stmt, 0), JOB_ARG_MAX - 2);
+            dest[JOB_ARG_MAX - 1] = '\0';
+            return 0;
+        case SQLITE_DONE:
+            return -1; //lame
+        default:
+            return db_error;
     }
 }
 
 int
 job_get_method(char **dest, job_id_t jid, const char *method_name)
 {
-    sqlite3_stmt *stmt = NULL;
-    int rv, result;
-
-    if (jid == INVALID_ROW_ID || !method_name)
-        return (-1);
-
+    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
     const char *sql = "SELECT "
                       "(SELECT group_concat(shellcode, char(10)) "
                       "   FROM properties_view"
@@ -507,137 +497,119 @@ job_get_method(char **dest, job_id_t jid, const char *method_name)
                       "WHERE job_id = ? "
                       "AND name = ?";
 
-    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
-        sqlite3_bind_int64(stmt, 1, jid) != SQLITE_OK ||
-        sqlite3_bind_int64(stmt, 2, jid) != SQLITE_OK ||
-        sqlite3_bind_text(stmt, 3, method_name, -1, SQLITE_STATIC) != SQLITE_OK) {
-        db_log_error(sqlite3_finalize(stmt));
-        return (-1);
-    }
+    if (jid == INVALID_ROW_ID || !method_name)
+        return -1;
 
-    rv = sqlite3_step(stmt);
-    if (rv == SQLITE_ROW) {
-        *dest = strdup((char *) sqlite3_column_text(stmt, 0));
-        result = 0;
-    } else if (rv == SQLITE_DONE) {
-        *dest = NULL;
-        result = 0;
-    } else {
-        *dest = NULL;
-        result = -1;
-    }
-    sqlite3_finalize(stmt);
+    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 1, jid) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 2, jid) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_text(stmt, 3, method_name, -1, SQLITE_STATIC) != SQLITE_OK)
+        return db_error;
 
-    return (result);
+    switch (sqlite3_step(stmt)) {
+        case SQLITE_ROW:
+            *dest = strdup((char *) sqlite3_column_text(stmt, 0));
+            return 0;
+        case SQLITE_DONE:
+            *dest = NULL;
+            return 0;
+        default:
+            *dest = NULL;
+            return db_error;
+    }
 }
 
 int
 job_enable(job_id_t id)
 {
-    sqlite3_stmt *stmt;
-    int success;
+    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
+    const char *sql = "UPDATE properties SET current_value = 1 WHERE job_id = ? AND name = 'enabled'";
     enum job_state state;
+    pid_t pid;
 
-    if (job_get_state(&state, id) < 0) {
-        printlog(LOG_ERR, "unable to get job state");
-        return (-1);
-    }
+    if (job_get_state(&state, id) < 0)
+        return printlog(LOG_ERR, "unable to get job state");
 
     if (state == JOB_STATE_PENDING) {
         printlog(LOG_DEBUG, "job is already enabled");
-        return (0);
+        return 0;
     }
 
-    const char *sql = "UPDATE properties SET current_value = 1 WHERE job_id = ? AND name = 'enabled'";
-    success = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
-              sqlite3_bind_int64(stmt, 1, id) == SQLITE_OK &&
-              sqlite3_step(stmt) == SQLITE_DONE;
+    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 1, id) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_step(stmt) != SQLITE_DONE)
+        return db_error;
+    if (sqlite3_changes(dbh) == 0)
+        return printlog(LOG_ERR, "job %s does not exist", job_id_to_str(id));
 
-    sqlite3_finalize(stmt);
+    if (job_set_state(id, JOB_STATE_PENDING) < 0)
+        return -1;
 
-    if (sqlite3_changes(dbh) == 0) {
-        printlog(LOG_ERR, "job %s does not exist", job_id_to_str(id));
-        return (-1);
-    }
-
-    if (success) {
-        if (job_set_state(id, JOB_STATE_PENDING) < 0)
-            return (-1);
-
-        printlog(LOG_DEBUG, "job %s has been enabled", job_id_to_str(id));
-        pid_t pid;
-        job_start(&pid, id);
-        return (0);
-    } else {
-        return (-1);
-    }
+    printlog(LOG_DEBUG, "job %s has been enabled", job_id_to_str(id));
+    job_start(&pid, id);
+    return 0;
 }
 
 int
 job_disable(job_id_t id)
 {
-    sqlite3_stmt *stmt;
-    int success;
+    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
     enum job_state state;
 
-    if (job_get_state(&state, id) < 0) {
-        printlog(LOG_ERR, "unable to get job state");
-        return (-1);
-    }
+    if (job_get_state(&state, id) < 0)
+        return printlog(LOG_ERR, "unable to get job state");
 
     if (state == JOB_STATE_DISABLED) {
         printlog(LOG_DEBUG, "job is already disabled");
-        return (0);
+        return 0;
     }
 
     const char *sql = "UPDATE properties SET current_value = 0 WHERE job_id = ? AND name = 'enabled'";
-    success = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
-              sqlite3_bind_int64(stmt, 1, id) == SQLITE_OK &&
-              sqlite3_step(stmt) == SQLITE_DONE;
+    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 1, id) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_step(stmt) != SQLITE_DONE)
+        return db_error;
+    if (sqlite3_changes(dbh) == 0)
+        return printlog(LOG_ERR, "job %s does not exist", job_id_to_str(id));
 
-    sqlite3_finalize(stmt);
-
-
-    if (sqlite3_changes(dbh) == 0) {
-        printlog(LOG_ERR, "job %s does not exist", job_id_to_str(id));
-        return (-1);
+    printlog(LOG_DEBUG, "job %s has been disabled", job_id_to_str(id));
+    if (state == JOB_STATE_STARTING ||
+        state == JOB_STATE_RUNNING ||
+        state == JOB_STATE_STOPPING) {
+        job_stop(id);
+        //FIXME: this will reset the state to STOPPING, but will we remember to disable it when it terminates?
     }
-
-    if (success) {
-        printlog(LOG_DEBUG, "job %s has been disabled", job_id_to_str(id));
-        if (state == JOB_STATE_STARTING ||
-            state == JOB_STATE_RUNNING ||
-            state == JOB_STATE_STOPPING)
-        {
-            job_stop(id);
-            //FIXME: this will reset the state to STOPPING, but will we remember to disable it when it terminates?
-        }
-        return (0);
-    } else {
-        return (-1);
-    }
+    return 0;
 }
 
 int
 job_register_pid(int64_t row_id, pid_t pid)
 {
-    sqlite3_stmt *stmt = NULL;
+    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
     const char *sql = "INSERT INTO volatile.processes "
                       " (pid, job_id, start_time) "
                       "VALUES "
                       " (?, ?, ?)";
 
-    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
-        sqlite3_bind_int64(stmt, 1, pid) != SQLITE_OK ||
-        sqlite3_bind_int64(stmt, 2, row_id) != SQLITE_OK ||
-        sqlite3_bind_int64(stmt, 3, time(NULL)) != SQLITE_OK ||
-        sqlite3_step(stmt) != SQLITE_DONE) {
-        db_log_error(sqlite3_finalize(stmt));
-        return (-1);
-    }
+    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 1, pid) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 2, row_id) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 3, time(NULL)) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_step(stmt) != SQLITE_DONE)
+        return db_error;
 
-    sqlite3_finalize(stmt);
-    return (0);
+    return 0;
 }
 
 int
@@ -662,102 +634,95 @@ job_get_pid(pid_t *pid, int64_t row_id)
 int
 job_get_label_by_pid(char label[JOB_ID_MAX], pid_t pid)
 {
-    sqlite3_stmt *stmt = NULL;
+    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
     const char *sql = "SELECT jobs.job_id "
                       "  FROM jobs "
                       "INNER JOIN processes ON processes.job_id = jobs.id "
                       "  WHERE pid = ?";
 
-    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
-        sqlite3_bind_int64(stmt, 1, pid) != SQLITE_OK) {
-        db_log_error(sqlite3_finalize(stmt));
-        label[0] = '\0';
-        return (-1);
-    }
+    label[0] = '\0';
+    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 1, pid) != SQLITE_OK)
+        return db_error;
 
     int rv = sqlite3_step(stmt);
     if (rv == SQLITE_DONE) {
         label[0] = '\0';
+        //FIXME: INDICATE NO RESULT
     } else if (rv == SQLITE_ROW) {
         strncpy(label, (char *) sqlite3_column_text(stmt, 0), JOB_ID_MAX - 1);
         label[JOB_ID_MAX] = '\0';
     } else {
-        db_log_error(sqlite3_finalize(stmt));
-        label[0] = '\0';
-        return (-1);
+        return db_error;
     }
 
-    sqlite3_finalize(stmt);
-    return (0);
+    return 0;
 }
 
 int
 job_set_exit_status(pid_t pid, int status)
 {
-    sqlite3_stmt *stmt = NULL;
+    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
     const char *sql = "UPDATE volatile.processes "
                       "SET exited = 1, exit_status = ?, end_time = ?"
                       "WHERE pid = ?";
 
-    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
-        sqlite3_bind_int64(stmt, 1, status) != SQLITE_OK ||
-        sqlite3_bind_int64(stmt, 2, time(NULL)) != SQLITE_OK ||
-        sqlite3_bind_int64(stmt, 3, pid) != SQLITE_OK ||
-        sqlite3_step(stmt) != SQLITE_DONE) {
-        db_log_error(sqlite3_finalize(stmt));
-        return (-1);
-    }
+    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 1, status) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 2, time(NULL)) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 3, pid) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_step(stmt) != SQLITE_DONE)
+        return db_error;
 
-    sqlite3_finalize(stmt);
-    return (0);
+    return 0;
 }
 
 int
 job_set_signal_status(pid_t pid, int signum)
 {
-    sqlite3_stmt *stmt = NULL;
+    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
     const char *sql = "UPDATE volatile.processes "
                       "SET signaled = 1, signal_number = ?, end_time = ?"
                       "WHERE pid = ?";
 
-    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
-        sqlite3_bind_int64(stmt, 1, signum) != SQLITE_OK ||
-        sqlite3_bind_int64(stmt, 2, time(NULL)) != SQLITE_OK ||
-        sqlite3_bind_int64(stmt, 3, pid) != SQLITE_OK ||
-        sqlite3_step(stmt) != SQLITE_DONE) {
-        db_log_error(sqlite3_finalize(stmt));
-        return (-1);
-    }
+    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 1, signum) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 2, time(NULL)) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 3, pid) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_step(stmt) != SQLITE_DONE)
+        return db_error;
 
-    sqlite3_finalize(stmt);
-    return (0);
+    return 0;
 }
 
 int job_set_state(int64_t job_id, enum job_state state)
 {
-    sqlite3_stmt *stmt = NULL;
-    int rv;
+    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
     const char *sql = "UPDATE volatile.active_jobs "
                       "SET job_state_id = ? "
                       "WHERE id = ?";
 
-    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK ||
-        sqlite3_bind_int64(stmt, 1, state) != SQLITE_OK ||
-        sqlite3_bind_int64(stmt, 2, job_id) != SQLITE_OK ||
-        sqlite3_step(stmt) != SQLITE_DONE) {
-        db_log_error(sqlite3_finalize(stmt));
-        return (-1);
-    }
+    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 1, state) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 2, job_id) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_step(stmt) != SQLITE_DONE)
+        return db_error;
+    if (sqlite3_changes(dbh) == 0)
+        return printlog(LOG_ERR, "job %s does not exist", job_id_to_str(job_id));
 
-    if (sqlite3_changes(dbh) == 0) {
-        printlog(LOG_ERR, "job %s does not exist", job_id_to_str(job_id));
-        rv = -1;
-    } else {
-        rv = 0;
-    }
-
-    sqlite3_finalize(stmt);
-    return (rv);
+    return 0;
 }
 
 int job_get_state(enum job_state *state, job_id_t id)
@@ -807,7 +772,7 @@ job_id_to_str(job_id_t jid)
 {
     const char sql[] = "SELECT job_id FROM jobs WHERE id = ?";
     static char label[JOB_ID_MAX + 1];
-    sqlite3_stmt *stmt;
+    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
     int rv;
 
     if (db_query(&stmt, sql, "i", jid) < 0) {
@@ -837,7 +802,6 @@ job_id_to_str(job_id_t jid)
     }
 
 out:
-    sqlite3_finalize(stmt);
     label[sizeof(label) - 1] = '\0';
     return ((const char *) &label);
 }

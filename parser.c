@@ -372,7 +372,7 @@ job_db_insert_depends(const struct job *job)
 					  "VALUES "
 					  "  (?,?)";
 	uint32_t i;
-	sqlite3_stmt *stmt;
+	sqlite3_stmt CLEANUP_STMT *stmt = NULL;
 	int rv;
 
 	for (i = 0; i < string_array_len(job->before); i++) {
@@ -381,7 +381,6 @@ job_db_insert_depends(const struct job *job)
 			 sqlite3_bind_text(stmt, 1, job->id, -1, SQLITE_STATIC) == SQLITE_OK &&
 			 sqlite3_bind_text(stmt, 2, string_array_data(job->before)[i], -1, SQLITE_STATIC) == SQLITE_OK &&
 			 sqlite3_step(stmt) == SQLITE_DONE;
-		sqlite3_finalize(stmt);
 		if (!rv)
 			return (-1);
 	}
@@ -392,7 +391,6 @@ job_db_insert_depends(const struct job *job)
 			 sqlite3_bind_text(stmt, 1, string_array_data(job->after)[i], -1, SQLITE_STATIC) == SQLITE_OK &&
 			 sqlite3_bind_text(stmt, 2, job->id, -1, SQLITE_STATIC) == SQLITE_OK &&
 			 sqlite3_step(stmt) == SQLITE_DONE;
-		sqlite3_finalize(stmt);
 		if (!rv)
 			return (-1);
 	}
@@ -422,7 +420,7 @@ job_db_insert_methods(struct job_parser *jpr)
 		}
 
 		int success;
-		sqlite3_stmt *stmt;
+		sqlite3_stmt CLEANUP_STMT *stmt = NULL;
 		const char *sql =
 			"INSERT INTO job_methods "
 			"(job_id, name, script) "
@@ -434,7 +432,6 @@ job_db_insert_methods(struct job_parser *jpr)
 				sqlite3_bind_text(stmt, 3, val, -1, SQLITE_STATIC) == SQLITE_OK &&
             	sqlite3_step(stmt) == SQLITE_DONE;
 
-        sqlite3_finalize(stmt);
 		free(val);
 
 		if (!success)
@@ -455,6 +452,7 @@ job_db_insert_properties(struct job_parser *jpr)
 
     subtab = toml_table_in(jpr->tab, "properties");
     if (!subtab) {
+    	goto insert_default_values;
         return (0);
     }
 
@@ -483,7 +481,7 @@ job_db_insert_properties(struct job_parser *jpr)
         }
 
         int success;
-        sqlite3_stmt *stmt;
+        sqlite3_stmt CLEANUP_STMT *stmt = NULL;
         const char *sql =
                 "INSERT INTO properties "
                 "(job_id, datatype_id, name, default_value, current_value) "
@@ -497,12 +495,26 @@ job_db_insert_properties(struct job_parser *jpr)
                   sqlite3_bind_text(stmt, 5, val, -1, SQLITE_STATIC) == SQLITE_OK &&
                   sqlite3_step(stmt) == SQLITE_DONE;
 
-        sqlite3_finalize(stmt);
         free(val);
 
         if (!success)
             return (-1);
     }
+
+insert_default_values:
+    if (!subtab || toml_raw_in(subtab, "enabled") == 0) {
+		sqlite3_stmt CLEANUP_STMT *stmt = NULL;
+		const char *sql =
+				"INSERT INTO properties "
+				"(job_id, datatype_id, name, default_value, current_value) "
+				"VALUES (?, (SELECT id FROM datatypes WHERE name = 'boolean'), 'enabled', 1, 1)";
+		if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK)
+			return db_error;
+		if (sqlite3_bind_int64(stmt, 1, jpr->job->row_id) != SQLITE_OK)
+			return db_error;
+		if (sqlite3_step(stmt) != SQLITE_DONE)
+			return db_error;
+	}
 
     return (0);
 }
@@ -511,7 +523,7 @@ int
 job_db_insert(struct job_parser *jpr)
 {
     int rv;
-    sqlite3_stmt *stmt;
+    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
     struct job *job = jpr->job;
 
     const char *sql = "INSERT INTO jobs (job_id, description, gid, init_groups, "
@@ -536,28 +548,19 @@ job_db_insert(struct job_parser *jpr)
          sqlite3_bind_int(stmt, 14, job->wait_flag) == SQLITE_OK &&
          sqlite3_bind_int(stmt, 15, job->job_type) == SQLITE_OK;
 
-    if (!rv || sqlite3_step(stmt) != SQLITE_DONE) {
-        printlog(LOG_ERR, "error importing %s", job->id);
-        sqlite3_finalize(stmt);
-        return (-1);
-    }
+    if (!rv || sqlite3_step(stmt) != SQLITE_DONE)
+        return printlog(LOG_ERR, "error importing %s", job->id);
+
     jpr->job->row_id = sqlite3_last_insert_rowid(dbh);
-    sqlite3_finalize(stmt);
 
-    if (job_db_insert_depends(job) < 0) {
-        printlog(LOG_ERR, "error importing %s dependencies", job->id);
-        return (-1);
-    }
+    if (job_db_insert_depends(job) < 0)
+        return printlog(LOG_ERR, "error importing %s dependencies", job->id);
 
-    if (job_db_insert_methods(jpr) < 0) {
-        printlog(LOG_ERR, "error importing %s methods", job->id);
-        return (-1);
-    }
+    if (job_db_insert_methods(jpr) < 0)
+        return printlog(LOG_ERR, "error importing %s methods", job->id);
 
-    if (job_db_insert_properties(jpr) < 0) {
-        printlog(LOG_ERR, "error importing %s properties", job->id);
-        return (-1);
-    }
+    if (job_db_insert_properties(jpr) < 0)
+        return printlog(LOG_ERR, "error importing %s properties", job->id);
 
-    return (0);
+    return 0;
 }
