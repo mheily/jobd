@@ -24,46 +24,54 @@
 #include "logger.h"
 #include "ipc.h"
 
+static char *progname;
+
 static void
-usage(void) 
+usage(void)
 {
-	printf("todo\n");
+    fprintf(stderr, "usage: %s job method\n", progname);
+    exit(EXIT_FAILURE);
 }
 
 int
 main(int argc, char *argv[])
 {
-	char *job_id, *command;
-	int rv;
+    char *job_id, *command;
+    int c, rv;
 
-	if (logger_init(NULL) < 0)
-		errx(1, "logger_init");
+    progname = basename(argv[0]);
+    while ((c = getopt(argc, argv, "h")) != -1) {
+        switch (c) {
+            case 'h':
+                usage();
+                break;
+            default:
+                usage();
+        }
+    }
+    argc -= optind;
+    argv += optind;
+    if (argc != 0) {
+        usage();
+    }
 
-	if (db_init() < 0)
-		errx(1, "unable to initialize the database routines");
+    if (logger_init(NULL) < 0)
+        errx(1, "logger_init");
 
-	if (db_open(NULL, false) < 0)
-		errx(1, "unable to open the database");
+    if (ipc_init(NULL) < 0)
+        errx(1, "ipc_init");
 
-	if (ipc_init(NULL) < 0)
-		errx(1, "ipc_init");
+    if (ipc_connect() < 0)
+        errx(1, "ipc_connect");
 
-	if (ipc_connect() < 0)
-		errx(1, "ipc_connect");
+    job_id = argv[0];
+    command = argv[1];
 
-	if (argc < 2) {
-		usage();
-		exit(1);
-	}
-	
-	job_id = argv[1];
-	command = argv[2];
+    rv = ipc_client_request(job_id, command);
+    if (rv != IPC_RESPONSE_OK) {
+        fprintf(stderr, "ERROR: Request failed with retcode %d\n", rv);
+        exit(EXIT_FAILURE);
+    }
 
-	rv = ipc_client_request(job_id, command);
-	if (rv != IPC_RESPONSE_OK) {
-		fprintf(stderr, "ERROR: Request failed with retcode %d\n", rv);
-		exit(EXIT_FAILURE);
-	}
-
-	exit(EXIT_SUCCESS);
+    exit(EXIT_SUCCESS);
 }

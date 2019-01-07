@@ -30,8 +30,10 @@
 #include "parser.h"
 #include "database.h"
 
+static char *progname;
+
 static void
-usage(const char *progname)
+usage(void)
 {
     fprintf(stderr, "usage: %s [-v] [-f path] import|init\n", progname);
     exit(EXIT_FAILURE);
@@ -134,13 +136,13 @@ main(int argc, char *argv[])
 	int c;
 	char *command = NULL;
 	char *f_flag = NULL;
-	char *progname = argv[0];
 
 	if (logger_init(NULL) < 0)
 		errx(1, "unable to initialize logging");
 	if (db_init() < 0)
 		errx(1, "unable to initialize database functions");
 
+    progname = basename(argv[0]);
   	while ((c = getopt (argc, argv, "f:hv")) != -1) {
 		switch (c) {
 			case 'f':
@@ -149,22 +151,22 @@ main(int argc, char *argv[])
 					err(1, "strdup");
 				break;
             case 'h':
-                usage(progname);
+                usage();
                 break;
 			case 'v': 
 				logger_set_verbose(1);
 				break;
 			default:
-			    usage(progname);
+			    usage();
 		}
 	}
 	argc -= optind;
 	argv += optind;
+
+	if (argc != 1)
+		usage();
+
 	command = argv[0];
-
-	if (!command)
-		usage(progname);
-
 	if (!strcmp(command, "init")) {
 		char *schemapath;
 		if (f_flag) {

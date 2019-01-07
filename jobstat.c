@@ -23,10 +23,13 @@
 #include "job.h"
 #include "logger.h"
 
+static char *progname;
+
 static void
-usage(void) 
+usage(void)
 {
-	printf("todo\n");
+	fprintf(stderr, "usage: %s\n", progname);
+	exit(EXIT_FAILURE);
 }
 
 void print_header(const char *str, const char *specifier) {
@@ -87,19 +90,28 @@ main(int argc, char *argv[])
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "fv")) != -1) {
-		switch (c) {
-		case 'f':
-				break;
-		case 'v':
-				break;
-		default:
-				fputs("unrecognized command option", stderr);
-				usage();
-				exit(EXIT_FAILURE);
-				break;
-		}
-	}
+    progname = basename(argv[0]);
+    while ((c = getopt(argc, argv, "fhv")) != -1) {
+        switch (c) {
+            case 'f':
+                break;
+            case 'h':
+                usage();
+                break;
+            case 'v':
+                break;
+            default:
+                usage();
+                break;
+        }
+    }
+
+    argc -= optind;
+    argv += optind;
+
+    if (argc != 0) {
+        usage();
+    }
 
 	if (logger_init(NULL) < 0)
 		errx(1, "logger_init");

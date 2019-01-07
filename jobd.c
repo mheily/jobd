@@ -58,6 +58,8 @@
 #include "ipc.h"
 #include "pidfile.h"
 
+static char *progname;
+
 static void sigchld_handler(int);
 static void sigalrm_handler(int);
 static void shutdown_handler(int);
@@ -125,9 +127,10 @@ daemonize(void)
 }
 
 static void
-usage(void) 
+usage(void)
 {
-	printf("todo\n");
+	fprintf(stderr, "usage: %s [-fv]\n", progname);
+	exit(EXIT_FAILURE);
 }
 
 static int
@@ -641,21 +644,28 @@ main(int argc, char *argv[])
 	pid = getpid();
 	verbose = (pid == 1);
 	daemon = (pid != 1);
-	
-	while ((c = getopt(argc, argv, "fv")) != -1) {
-		switch (c) {
-		case 'f':
-				daemon = 0;
-				break;
-		case 'v':
-				verbose = 1;
-				break;
-		default:
-				fputs("unrecognized command option", stderr);
-				usage();
-				exit(EXIT_FAILURE);
-				break;
-		}
+
+	progname = basename(argv[0]);
+    while ((c = getopt(argc, argv, "fhv")) != -1) {
+        switch (c) {
+            case 'f':
+                daemon = 0;
+                break;
+            case 'h':
+                usage();
+                break;
+            case 'v':
+                verbose = 1;
+                break;
+            default:
+                usage();
+        }
+    }
+	argc -= optind;
+	argv += optind;
+
+	if (argc != 0) {
+		usage();
 	}
 
 	(void)chdir("/");
