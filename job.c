@@ -869,3 +869,9 @@ out:
     return ((const char *) &label);
 }
 
+int job_get_id(int64_t *jid, const char *label)
+{
+    const char *sql = "SELECT id FROM jobs WHERE job_id = ?";
+    return db_get_id(jid, sql, "s", label);
+}
+

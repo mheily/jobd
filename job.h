@@ -104,6 +104,7 @@ const char * job_id_to_str(job_id_t jid);
 
 int job_register_pid(int64_t row_id, pid_t pid);
 int job_get_label_by_pid(char label[JOB_ID_MAX], pid_t pid);
+int job_get_id(int64_t *jid, const char *label);
 int job_get_pid(pid_t *pid, int64_t row_id);
 int job_get_property(char **value, const char *key, int64_t jid);
 
