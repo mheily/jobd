@@ -24,11 +24,14 @@
 #include "logger.h"
 
 static char *progname;
+static int H_flag;
 
 static void
 usage(void)
 {
-    fprintf(stderr, "usage: %s [-a]\n", progname);
+    fprintf(stderr, "usage: %s [-aH]\n", progname);
+    fprintf(stderr, "         or\n");
+    fprintf(stderr, "       %s job property[=value]\n", progname);
     exit(EXIT_FAILURE);
 }
 
@@ -46,10 +49,9 @@ renderer(void *unused, int cols, char **values, char **names)
 	static int print_headers = 1;
 	const char *specifiers[] = {"%-24s", "%-16s", "%-16s"};
 
-	//printf("%s",(char *)unused);
 	(void) unused;
 
-	if (print_headers) {
+	if (print_headers && !H_flag) {
 		for (i = 0; i < cols; i++) {
 			print_header(names[i], specifiers[i]);
 			if ((i + 1) < cols)
@@ -89,14 +91,17 @@ print_all_properties(void)
 int
 main(int argc, char *argv[])
 {
-	int c;
-	int a_flag = 0;
+    int c;
+    int a_flag = 0;
 
     progname = basename(argv[0]);
-    while ((c = getopt(argc, argv, "ah")) != -1) {
+    while ((c = getopt(argc, argv, "aHh")) != -1) {
         switch (c) {
             case 'a':
                 a_flag = 1;
+                break;
+            case 'H':
+                H_flag = 1;
                 break;
             case 'h':
                 usage();
@@ -109,28 +114,69 @@ main(int argc, char *argv[])
     argc -= optind;
     argv += optind;
 
-    if (argc != 0) {
+    if (argc == 0 || argc > 1) {
         usage();
     }
 
-	if (logger_init(NULL) < 0)
-		errx(1, "logger_init");
-	
-	if (db_init() < 0)
-		errx(1, "logger_init");
+    if (logger_init(NULL) < 0)
+        errx(1, "logger_init");
 
-	if (db_open(NULL, DB_OPEN_WITH_VIEWS))
-		errx(1, "db_open");
+    if (db_init() < 0)
+        errx(1, "logger_init");
 
-	if (a_flag) {
-		if (print_all_properties() < 0)
-			exit(EXIT_FAILURE);
-		else
-			exit(EXIT_SUCCESS);
-	}
+    if (db_open(NULL, DB_OPEN_WITH_VIEWS))
+        errx(1, "db_open");
 
+    if (a_flag) {
+        if (print_all_properties() < 0)
+            exit(EXIT_FAILURE);
+        else
+            exit(EXIT_SUCCESS);
+    }
 
-	errx(1, "TODO -- implement me");
+    /* Determine if we are getting or setting a property */
+    char *delim = strchr(argv[0], '=');
+    char *key = argv[0];
+    char *val;
+    if (delim) {
+        *delim = '\0';
+        val = delim + 1;
+    } else {
+        val = NULL;
+    }
 
-	exit(EXIT_SUCCESS);
+    /* Parse the label and property name */
+    char *label = key;
+    char *property;
+    delim = strrchr(key, '.');
+    if (delim) {
+        *delim = '\0';
+        property = delim + 1;
+    } else {
+        errx(1, "invalid property name");
+    }
+
+    /* Lookup the job ID */
+    char *result = NULL;
+    int64_t jid;
+    if (job_get_id(&jid, label) < 0)
+        errx(1, "database lookup error");
+    if (!jid)
+        errx(1, "job not found: %s", label);
+
+    /* Get or set the value of the property */
+    if (val) {
+        // FIXME - should probably use IPC to have jobd make the actual change
+        // or notify jobd after we make the change.
+        if (job_set_property(jid, property, val) < 0)
+            errx(1, "error setting property");
+    } else {
+        if (job_get_property(&result, property, jid) < 0)
+            errx(1, "error getting property");
+        if (!result)
+            errx(1, "property does not exist");
+        puts(result);
+    }
+
+    exit(EXIT_SUCCESS);
 }
