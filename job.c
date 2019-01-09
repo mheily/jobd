@@ -485,6 +485,69 @@ int job_get_command(char dest[JOB_ARG_MAX], job_id_t jid)
     }
 }
 
+// caller must free value
+int job_get_property(char **value, const char *key, int64_t jid)
+{
+    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
+    const char *sql = "SELECT current_value FROM properties "
+                      "WHERE job_id = ? "
+                      "AND name = ?";
+
+    if (jid == INVALID_ROW_ID || !key)
+        return -1;
+
+    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 1, jid) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_text(stmt, 2, key, -1, SQLITE_STATIC) != SQLITE_OK)
+        return db_error;
+
+    switch (sqlite3_step(stmt)) {
+        case SQLITE_ROW:
+            *value = strdup((char *) sqlite3_column_text(stmt, 0));
+            return 0;
+        case SQLITE_DONE:
+            *value = NULL;
+            return 0;
+        default:
+            *value = NULL;
+            return db_error;
+    }
+}
+
+int job_set_property(int64_t jid, const char *key, const char *value)
+{
+    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
+    const char *sql = "UPDATE properties "
+                      "SET current_value = ? "
+                      "WHERE job_id = ? AND name = ?";
+
+    if (jid == INVALID_ROW_ID || !key || !value)
+        return printlog(LOG_ERR, "invalid parameters");
+
+    // XXX-FIXME implement type checking here
+
+    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_text(stmt, 1, value, -1, SQLITE_STATIC) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 2, jid) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_text(stmt, 3, key, -1, SQLITE_STATIC) != SQLITE_OK)
+        return db_error;
+
+    switch (sqlite3_step(stmt)) {
+        case SQLITE_DONE:
+            if (sqlite3_changes(dbh) == 1)
+                return 0;
+            else
+                return printlog(LOG_ERR, "update had no effect");
+        default:
+            return db_error;
+    }
+}
+
 int
 job_get_method(char **dest, job_id_t jid, const char *method_name)
 {
