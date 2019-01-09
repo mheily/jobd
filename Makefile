@@ -23,7 +23,7 @@ jobd_OBJS=jobd.o database.o ipc.o job.o logger.o parser.o vendor/pidfile.o vendo
 jobcfg_OBJS=jobcfg.o database.o ipc.o job.o logger.o parser.o toml.o $(SQLITE_OBJ)
 jobadm_OBJS=jobadm.o database.o ipc.o logger.o $(SQLITE_OBJ)
 jobstat_OBJS=jobstat.o database.o ipc.o logger.o $(SQLITE_OBJ)
-jobprop_OBJS=jobprop.o database.o ipc.o logger.o $(SQLITE_OBJ)
+jobprop_OBJS=jobprop.o database.o ipc.o job.o logger.o $(SQLITE_OBJ)
 
 all: jobd $(bin_BINS) init
 

@@ -81,3 +81,13 @@ add_executable(jobstat
         logger.c)
 
 target_link_libraries(jobstat static_sqlite)
+
+add_executable(jobprop
+        jobprop.c
+        database.c
+        ipc.c
+        job.c
+        logger.c
+        )
+
+target_link_libraries(jobprop static_sqlite)
