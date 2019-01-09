@@ -96,26 +96,24 @@ int job_disable(job_id_t id);
 struct job *job_new(void);
 void job_free(struct job *);
 
-void job_solve(pid_t *pid, struct job *job);
-
-int job_get_method(char **dest, job_id_t jid, const char *method_name);
-
 const char * job_id_to_str(job_id_t jid);
 
-int job_register_pid(int64_t row_id, pid_t pid);
 int job_get_label_by_pid(char label[JOB_ID_MAX], pid_t pid);
 int job_get_id(int64_t *jid, const char *label);
 int job_get_pid(pid_t *pid, int64_t row_id);
 int job_get_property(char **value, const char *key, int64_t jid);
-
-int job_set_exit_status(pid_t pid, int status);
-int job_set_signal_status(pid_t pid, int signum);
 int job_get_command(char dest[JOB_ARG_MAX], job_id_t id);
-int job_get_label(char dest[JOB_ID_MAX], job_id_t id);
+int job_get_method(char **dest, job_id_t jid, const char *method_name);
 int job_get_state(enum job_state *state, job_id_t id);
 int job_set_property(int64_t jid, const char *key, const char *value);
 int job_set_state(int64_t job_id, enum job_state state);
 int job_get_type(enum job_type *type, job_id_t id);
+
+int job_register_pid(int64_t row_id, pid_t pid);
+
+int job_set_exit_status(pid_t pid, int status);
+int job_set_signal_status(pid_t pid, int signum);
+
 const char *job_state_to_str(enum job_state state);
 const char *job_id_to_str(job_id_t id);
 
