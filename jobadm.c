@@ -15,6 +15,7 @@
  */
 
 #include <err.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -51,7 +52,7 @@ main(int argc, char *argv[])
     }
     argc -= optind;
     argv += optind;
-    if (argc != 0) {
+    if (argc != 2) {
         usage();
     }
 

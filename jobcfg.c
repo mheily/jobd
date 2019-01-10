@@ -17,6 +17,7 @@
 #include <dirent.h>
 #include <err.h>
 #include <errno.h>
+#include <libgen.h>
 #include <sqlite3.h>
 #include <stdlib.h>
 #include <stdio.h>
