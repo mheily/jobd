@@ -6,5 +6,5 @@ standard_out_path = "/dev/console"
 standard_error_path = "/dev/console"
 
 [methods]
-start = "/bin/sh -x /etc/rc autoboot"
-stop = "/bin/sh -x /etc/rc.shutdown"
+start = "/usr/bin/sed 's,rcorder,/lib/jobd/libexec/rcorder,g' < /etc/rc | /bin/sh /dev/stdin autoboot"
+stop = "/usr/bin/sed 's,rcorder,/lib/jobd/libexec/rcorder,g' < /etc/rc.shutdown | /bin/sh /dev/stdin autoboot"
