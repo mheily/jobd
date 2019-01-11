@@ -169,20 +169,8 @@ main(int argc, char *argv[])
 
 	command = argv[0];
 	if (!strcmp(command, "init")) {
-		char *schemapath;
-		if (f_flag) {
-			schemapath = strdup(f_flag);
-		} else {
-			if (asprintf(&schemapath, "%s/schema.sql", compile_time_option.datarootdir) < 0)
-				schemapath = NULL;
-		}
-		if (!schemapath)
-			err(1, "memory error");
-
-		printlog(LOG_INFO, "creating database at %s", schemapath);
-		if (db_create(NULL, schemapath) < 0)
+		if (db_create(NULL, f_flag) < 0)
 			errx(1, "unable to create the database");
-		free(schemapath);
 		exit(EXIT_SUCCESS);
 	}
 
