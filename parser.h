@@ -24,6 +24,7 @@ int job_db_insert(struct job_parser *jpr);
 int parse_job_file(struct job_parser *jpr, const char *path);
 struct job_parser * job_parser_new(void);
 void job_parser_free(struct job_parser *jpr);
+int parser_import(const char *path);
 
 #define PROPERTY_TYPE_INT 1
 #define PROPERTY_TYPE_STRING 2
