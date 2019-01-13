@@ -76,12 +76,12 @@ main(int argc, char *argv[])
 
 	command = argv[0];
 	if (!strcmp(command, "init")) {
-		if (db_create(NULL, f_flag) < 0)
+		if (db_open(NULL, DB_OPEN_CREATE_MAIN) < 0)
 			errx(1, "unable to create the database");
 		exit(EXIT_SUCCESS);
 	}
 
-	if (db_open(NULL, DB_OPEN_NO_VOLATILE) < 0)
+	if (db_open(NULL, 0) < 0)
 		errx(1, "unable to open the database");
 
 	if (!strcmp(command, "import")) {

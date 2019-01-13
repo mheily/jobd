@@ -51,7 +51,7 @@ install-stage2:
 	$(INSTALL) -m 555 jobadm jobcfg jobstat jobprop $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 444 jobd.8 $(DESTDIR)$(MANDIR)/man8/jobd.8
 	$(INSTALL) -m 444 job.5 $(DESTDIR)$(MANDIR)/man5/job.5
-	$(INSTALL) -m 444 schema.sql volatile.sql views.sql $(DESTDIR)$(DATAROOTDIR)
+	$(INSTALL) -m 444 schema.sql $(DESTDIR)$(DATAROOTDIR)
 	test ! -d share/manifests/`uname` || $(INSTALL) -m 444 share/manifests/`uname`/* $(DESTDIR)$(DATAROOTDIR)/manifests
 
 %.o: %.c *.h config.h

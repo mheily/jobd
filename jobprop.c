@@ -125,7 +125,7 @@ main(int argc, char *argv[])
     if (db_init() < 0)
         errx(1, "logger_init");
 
-    if (db_open(NULL, DB_OPEN_WITH_VIEWS))
+    if (db_open(NULL, 0))
         errx(1, "db_open");
 
     if (a_flag) {
