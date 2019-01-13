@@ -100,7 +100,7 @@ _job_child_pre_exec(job_id_t jid)
         exit(EXIT_FAILURE);
     }
     if (rv != SQLITE_ROW) {
-        printlog(LOG_ERR, "sqlite3_step() failed");
+        printlog(LOG_ERR, "sqlite3_step() failed: %s", sqlite3_errmsg(dbh));
         exit(EXIT_FAILURE);
     }
 
@@ -345,11 +345,11 @@ job_start(pid_t *pid, job_id_t id)
     */
     if (*pid > 0) {
         if (job_set_state(id, JOB_STATE_RUNNING) < 0)
-            return (-1);
+            return printlog(LOG_ERR, "unable to set state");
 
         printlog(LOG_DEBUG, "job %s started with pid %d", job_id_to_str(id), *pid);
         if (job_register_pid(id, *pid) < 0)
-            return (-1);//TODO: LOG
+            return printlog(LOG_ERR, "unable to register pid");
     }
 
     return (0);
