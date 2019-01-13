@@ -39,7 +39,7 @@ int db_open(const char *, int);
 int db_reopen();
 bool db_exists(void);
 int db_exec(sqlite3 *, const char *sql);
-int db_exec_path(const char *);
+int db_exec_path(sqlite3 *, const char *);
 
 int db_statement_bind(sqlite3_stmt *stmt, const char *fmt, va_list args);
 int db_get_id(int64_t *result, const char *sql, const char *fmt, ...);

@@ -296,53 +296,46 @@ db_exec(sqlite3 *conn, const char *sql)
 }
 
 int 
-db_exec_path(const char *path)
+db_exec_path(sqlite3 *conn, const char *path)
 {
 	char *sql;
 	struct stat sb;
 	int rv, fd;
 	ssize_t bytes;
 
-	if (!dbh) {
-		printlog(LOG_ERR, "database is not open");
-		return (-1);
-	}
+	if (!conn)
+		return printlog(LOG_ERR, "database is not open");
 
 	fd = open(path, O_RDONLY);
-	if (fd < 0) {
-		printlog(LOG_ERR, "open of %s: %s", path, strerror(errno));
-		return (-1);
-	}
+	if (fd < 0)
+		return printlog(LOG_ERR, "open of %s: %s", path, strerror(errno));
 
 	rv = fstat(fd, &sb);
 	if (rv < 0) {
-		printlog(LOG_ERR, "fstat: %s", strerror(errno));
 		close(fd);
-		return (-1);
+		return printlog(LOG_ERR, "fstat: %s", strerror(errno));
 	}
 
 	sql = malloc(sb.st_size + 1);
 	if (!sql) {
-		printlog(LOG_ERR, "malloc: %s", strerror(errno));
 		close(fd);
-		return (-1);
+		return printlog(LOG_ERR, "malloc: %s", strerror(errno));
 	}
 
 	bytes = read(fd, sql, sb.st_size);
 	if (bytes < 0 || bytes != sb.st_size) {
-		printlog(LOG_ERR, "read: %s", strerror(errno));
 		close(fd);
 		free(sql);
-		return (-1);	
+		return printlog(LOG_ERR, "read: %s", strerror(errno));
 	}
 	sql[sb.st_size] = '\0';
 
 	close(fd);
 
-	rv = db_exec(dbh, sql);
+	rv = db_exec(conn, sql);
 	free(sql);
 
-	return (rv);
+	return rv;
 }
 
 int
