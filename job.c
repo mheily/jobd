@@ -32,6 +32,76 @@
 #include "job.h"
 #include "parser.h"
 
+struct child_context {
+    char *working_directory;
+    char *root_directory;
+    int init_groups;
+    char *user_name;
+    char *group_name;
+    char *stderr_path;
+    char *stdin_path;
+    char *stdout_path;
+    char *umask_str;
+};
+
+static int
+get_child_context(struct child_context *ctx, int64_t jid)
+{
+    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
+    const char sql[] = "SELECT working_directory, root_directory, init_groups, "
+                       "user_name, gid, "
+                       "standard_error_path, standard_in_path, standard_out_path, "
+                       "umask "
+                       "FROM jobs WHERE id = ?";
+
+    if (db_query(&stmt, sql, "i", jid) < 0)
+        return db_error;
+
+    switch (sqlite3_step(stmt)) {
+        case SQLITE_ROW:
+            break;
+        case SQLITE_DONE:
+            return printlog(LOG_ERR, "job no longer exists");
+        default:
+            return db_error;
+    }
+
+    // FIXME: need to error check strdup() calls
+    ctx->working_directory = strdup((char *) sqlite3_column_text(stmt, 0));
+    ctx->root_directory = strdup((char *) sqlite3_column_text(stmt, 1));
+    ctx->init_groups = sqlite3_column_int(stmt, 2);
+    ctx->user_name = strdup((char *) sqlite3_column_text(stmt, 3));
+    ctx->group_name = strdup((char *) sqlite3_column_text(stmt, 4));
+    ctx->stderr_path = strdup((char *) sqlite3_column_text(stmt, 5));
+    ctx->stdin_path = strdup((char *) sqlite3_column_text(stmt, 6));
+    ctx->stdout_path = strdup((char *) sqlite3_column_text(stmt, 7));
+    ctx->umask_str = strdup((char *) sqlite3_column_text(stmt, 8));
+
+    return 0;
+}
+
+static void free_child_context(struct child_context *ctx)
+{
+    if (ctx) {
+        free(ctx->working_directory);
+        free(ctx->root_directory);
+        free(ctx->user_name);
+        free(ctx->group_name);
+        free(ctx->stderr_path);
+        free(ctx->stdin_path);
+        free(ctx->stdout_path);
+        free(ctx->umask_str);
+        free(ctx);
+    }
+}
+
+#define CLEANUP_CHILD_CTX __attribute__((__cleanup__(autofree_child_context)))
+void autofree_child_context(struct child_context **ctx)
+{
+    free_child_context(*ctx);
+    *ctx = NULL;
+}
+
 static int
 redirect_file_descriptor(int oldfd, const char *path, int flags, mode_t mode)
 {
@@ -76,48 +146,14 @@ parse_gid(gid_t *result, const char *group_name)
 }
 
 /* Run actions in the child after fork(2) but before execve(2) */
-static void
-_job_child_pre_exec(job_id_t jid)
+static int
+_job_child_pre_exec(struct child_context *ctx)
 {
     gid_t gid;
-    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
     sigset_t mask;
 
-    const char sql[] = "SELECT working_directory, root_directory, init_groups, "
-                       "user_name, gid, "
-                       "standard_error_path, standard_in_path, standard_out_path, "
-                       "umask "
-                       "FROM jobs WHERE id = ?";
-
-    if (db_query(&stmt, sql, "i", jid) < 0) {
-        printlog(LOG_ERR, "db_query() failed");
-        exit(EXIT_FAILURE);
-    }
-
-    int rv = sqlite3_step(stmt);
-    if (rv == SQLITE_DONE) {
-        printlog(LOG_ERR, "job no longer exists");
-        exit(EXIT_FAILURE);
-    }
-    if (rv != SQLITE_ROW) {
-        printlog(LOG_ERR, "sqlite3_step() failed: %s", sqlite3_errmsg(dbh));
-        exit(EXIT_FAILURE);
-    }
-
-    char *working_directory = (char *) sqlite3_column_text(stmt, 0);
-    char *root_directory = (char *) sqlite3_column_text(stmt, 1);
-    int init_groups = sqlite3_column_int(stmt, 2);
-    char *user_name = (char *) sqlite3_column_text(stmt, 3);
-    char *group_name = (char *) sqlite3_column_text(stmt, 4);
-    char *stderr_path = (char *) sqlite3_column_text(stmt, 5);
-    char *stdin_path = (char *) sqlite3_column_text(stmt, 6);
-    char *stdout_path = (char *) sqlite3_column_text(stmt, 7);
-    char *umask_str = (char *) sqlite3_column_text(stmt, 8);
-
-    if (parse_gid(&gid, group_name) < 0) {
-        printlog(LOG_ERR, "unable to resolve group name `%s'", group_name);
-        exit(EXIT_FAILURE);
-    }
+    if (parse_gid(&gid, ctx->group_name) < 0)
+        return printlog(LOG_ERR, "unable to resolve group name `%s'", ctx->group_name);
 
     (void) setsid();
     sigfillset(&mask);
@@ -126,24 +162,16 @@ _job_child_pre_exec(job_id_t jid)
     //TODO: setrlimit
 
     if (getuid() == 0) {
-        if (strcmp(root_directory, "/") && (chroot(root_directory) < 0)) {
-            printlog(LOG_ERR, "chroot(2) to %s: %s", root_directory, strerror(errno));
-            exit(EXIT_FAILURE);
-        }
+        if (strcmp(ctx->root_directory, "/") && (chroot(ctx->root_directory) < 0))
+            return printlog(LOG_ERR, "chroot(2) to %s: %s", ctx->root_directory, strerror(errno));
     }
-    if (chdir(working_directory) < 0) {
-        printlog(LOG_ERR, "chdir(2) to %s: %s", working_directory, strerror(errno));
-        exit(EXIT_FAILURE);
-    }
+    if (chdir(ctx->working_directory) < 0)
+        return printlog(LOG_ERR, "chdir(2) to %s: %s", ctx->working_directory, strerror(errno));
     if (getuid() == 0) {
-        if (init_groups && (initgroups(user_name, gid) < 0)) {
-            printlog(LOG_ERR, "initgroups(3): %s", strerror(errno));
-            exit(EXIT_FAILURE);
-        }
-        if (setgid(gid) < 0) {
-            printlog(LOG_ERR, "setgid(2): %s", strerror(errno));
-            exit(EXIT_FAILURE);
-        }
+        if (ctx->init_groups && (initgroups(ctx->user_name, gid) < 0))
+            return printlog(LOG_ERR, "initgroups(3): %s", strerror(errno));
+        if (setgid(gid) < 0)
+            return printlog(LOG_ERR, "setgid(2): %s", strerror(errno));
 #ifndef __GLIBC__
         /* KLUDGE: above is actually a test for BSD */
         if (setlogin(user_name) < 0) {
@@ -151,36 +179,28 @@ _job_child_pre_exec(job_id_t jid)
             exit(EXIT_FAILURE);
         }
 #endif
-        struct passwd *pwd = getpwnam(user_name);
-        if (!pwd) {
-            printlog(LOG_ERR, "user not found: %s", user_name);
-            exit(EXIT_FAILURE);
-        }
-        if (setuid(pwd->pw_uid) < 0) {
-            printlog(LOG_ERR, "setuid(2): %s", strerror(errno));
-            exit(EXIT_FAILURE);
-        }
+        struct passwd *pwd = getpwnam(ctx->user_name);
+        if (!pwd)
+            return printlog(LOG_ERR, "user not found: %s", ctx->user_name);
+        if (setuid(pwd->pw_uid) < 0)
+            return printlog(LOG_ERR, "setuid(2): %s", strerror(errno));
     }
 
     mode_t job_umask;
-    sscanf(umask_str, "%hi", (unsigned short *) &job_umask);
+    sscanf(ctx->umask_str, "%hi", (unsigned short *) &job_umask);
     (void) umask(job_umask);
 
     //TODO this->setup_environment();
     //this->createDescriptors();
 
-    if (redirect_file_descriptor(STDIN_FILENO, stdin_path, O_RDONLY, 0600) < 0) {
-        printlog(LOG_ERR, "unable to redirect STDIN");
-        exit(EXIT_FAILURE);
-    }
-    if (redirect_file_descriptor(STDOUT_FILENO, stdout_path, O_CREAT | O_WRONLY, 0600) < 0) {
-        printlog(LOG_ERR, "unable to redirect STDOUT");
-        exit(EXIT_FAILURE);
-    }
-    if (redirect_file_descriptor(STDERR_FILENO, stderr_path, O_CREAT | O_WRONLY, 0600) < 0) {
-        printlog(LOG_ERR, "unable to redirect STDERR");
-        exit(EXIT_FAILURE);
-    }
+    if (redirect_file_descriptor(STDIN_FILENO, ctx->stdin_path, O_RDONLY, 0600) < 0)
+        return printlog(LOG_ERR, "unable to redirect STDIN");
+    if (redirect_file_descriptor(STDOUT_FILENO, ctx->stdout_path, O_CREAT | O_WRONLY, 0600) < 0)
+        return printlog(LOG_ERR, "unable to redirect STDOUT");
+    if (redirect_file_descriptor(STDERR_FILENO, ctx->stderr_path, O_CREAT | O_WRONLY, 0600) < 0)
+        return printlog(LOG_ERR, "unable to redirect STDERR");
+
+    return 0;
 }
 
 static int
@@ -209,12 +229,21 @@ job_command_exec(pid_t *child, job_id_t id, const char *command)
     argv[3] = NULL;
     envp = (char **) &envp_workaround; //string_array_data(job->environment_variables);
 
+    struct child_context CLEANUP_CHILD_CTX *ctx = NULL;
+    if (NULL == (ctx = malloc(sizeof(*ctx))))
+        return printlog(LOG_ERR, "malloc(3): %s", strerror(errno));
+    if (get_child_context(ctx, id) < 0)
+        return printlog(LOG_ERR, "error getting child context");
+
     pid = fork();
     if (pid < 0) {
         printlog(LOG_ERR, "fork(2): %s", strerror(errno));
         return (-1);
     } else if (pid == 0) {
-        _job_child_pre_exec(id);
+        if (_job_child_pre_exec(ctx) < 0) {
+            printlog(LOG_ERR, "error setting child context");
+            exit(EXIT_FAILURE);
+        }
         if (execve(filename, argv, envp) < 0) {
             printlog(LOG_ERR, "execve(2): %s", strerror(errno));
             exit(EXIT_FAILURE);
@@ -246,6 +275,12 @@ job_method_exec(pid_t *child, job_id_t jid, const char *method_name)
         return (0);
     }
 
+    struct child_context CLEANUP_CHILD_CTX *ctx = NULL;
+    if (NULL == (ctx = malloc(sizeof(*ctx))))
+        return printlog(LOG_ERR, "malloc(3): %s", strerror(errno));
+    if (get_child_context(ctx, jid) < 0)
+        return printlog(LOG_ERR, "error getting child context");
+
     filename = "/bin/sh";
     argv[0] = "/bin/sh";
     argv[1] = "-c";
@@ -258,7 +293,10 @@ job_method_exec(pid_t *child, job_id_t jid, const char *method_name)
         printlog(LOG_ERR, "fork(2): %s", strerror(errno));
         goto err_out;
     } else if (pid == 0) {
-        _job_child_pre_exec(jid);
+        if (_job_child_pre_exec(ctx) < 0) {
+            printlog(LOG_ERR, "error setting child context");
+            exit(EXIT_FAILURE);
+        }
         if (execve(filename, argv, envp) < 0) {
             printlog(LOG_ERR, "execve(2): %s", strerror(errno));
             exit(EXIT_FAILURE);
