@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <syslog.h>
 #include <stdarg.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "logger.h"
@@ -95,7 +96,7 @@ logger_append(int level, const char *format, ...)
 		va_end(syslog_args);
 	}
     if (logger_verbose || level != LOG_DEBUG) {
-		fprintf(logger_fh, "%d ", level);
+		fprintf(logger_fh, "%d %d ", level, getpid());
 		vfprintf(logger_fh, format, args);
 		fflush(logger_fh);
 	}
