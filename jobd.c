@@ -640,6 +640,7 @@ main(int argc, char *argv[])
 {
 	pid_t pid;
 	int c, fd, daemon, verbose;
+	int trace = 0;
 
 	pid = getpid();
 	verbose = (pid == 1);
@@ -655,6 +656,8 @@ main(int argc, char *argv[])
                 usage();
                 break;
             case 'v':
+                if (verbose)
+                    trace = 1;
                 verbose = 1;
                 break;
             default:
@@ -715,6 +718,11 @@ main(int argc, char *argv[])
 	if (db_open(NULL, DB_OPEN_CREATE_VOLATILE) < 0) {
 		printlog(LOG_ERR, "unable to open the database");
 		exit(EXIT_FAILURE);
+	}
+
+	if (trace) {
+	    if (db_enable_tracing() < 0)
+	        printlog(LOG_ERR, "unable to enable tracing");
 	}
 
 	become_a_subreaper();

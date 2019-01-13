@@ -438,3 +438,31 @@ void db_statement_free(sqlite3_stmt **stmt)
     sqlite3_finalize(*stmt);
     *stmt = NULL;
 }
+
+static int
+db_trace_callback(unsigned int reason, void *ctx __attribute__((unused)), void *p, void *x)
+{
+	if (reason == SQLITE_TRACE_STMT) {
+		char *xstr = (char *) x;
+		if (xstr[0] == '-' && xstr[1] == '-') {
+			printlog(LOG_DEBUG, "statement: %s", xstr);
+		} else {
+			char *expanded = sqlite3_expanded_sql((sqlite3_stmt *) p);
+			printlog(LOG_DEBUG, "statement: %s", expanded);
+			sqlite3_free(expanded);
+		}
+	} else if (reason == SQLITE_TRACE_ROW) {
+		printlog(LOG_DEBUG, "row returned");
+	} else {
+		return -1;
+	}
+	return 0;
+}
+
+int db_enable_tracing(void)
+{
+	if (sqlite3_trace_v2(dbh, SQLITE_TRACE_STMT | SQLITE_TRACE_ROW, db_trace_callback, NULL) != SQLITE_OK)
+		return db_error;
+	else
+		return 0;
+}

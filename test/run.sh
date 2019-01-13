@@ -41,7 +41,7 @@ set +x
 touch $logfile
 tail -f $logfile &
 tail_pid=$!
-$objdir/sbin/jobd -fv &
+$objdir/sbin/jobd -fvv &
 jobd_pid=$!
 
 
