@@ -15,6 +15,7 @@
  */
 
 #include <fcntl.h>
+#include <stdlib.h>
 #include <syslog.h>
 #include <stdarg.h>
 #include <sys/types.h>
@@ -96,10 +97,15 @@ logger_append(int level, const char *format, ...)
 		va_end(syslog_args);
 	}
     if (logger_verbose || level != LOG_DEBUG) {
-		fprintf(logger_fh, "%d %d ", level, getpid());
-		vfprintf(logger_fh, format, args);
-		fflush(logger_fh);
-	}
+        const char *term = getenv("TERM");
+        if (term && level == LOG_ERR)
+            fprintf(logger_fh, "\033[0;31m");
+        fprintf(logger_fh, "%d %d ", level, getpid());
+        vfprintf(logger_fh, format, args);
+        if (term && level == LOG_ERR)
+            fprintf(logger_fh, "\033[0m");
+        fflush(logger_fh);
+    }
 	va_end(args);
 	if (level <= LOG_ERR)
 		return -1;
