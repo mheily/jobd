@@ -73,7 +73,7 @@ int
 print_all_jobs(void)
 {
 	int rv;
-	char *sql = "SELECT * FROM temp.job_table_view";
+	char *sql = "SELECT Id, Label, State, Type, Terminated, Duration FROM job_table_view";
 	char *err_msg = NULL;
 
 	rv = sqlite3_exec(dbh, sql, renderer, "some stuff", &err_msg);
