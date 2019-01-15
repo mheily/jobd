@@ -207,8 +207,8 @@ db_open(const char *path, int flags)
 		return (-1);
 	}
 
-	dbpath = strdup(path);
-	if (!dbpath) abort(); //FIXME
+    if (db_exec(new_dbh, "PRAGMA journal_mode=WAL") < 0)
+        printlog(LOG_ERR, "failed to enable WAL");
 
 	if (flags & DB_OPEN_WITH_VIEWS) {
 		if (_db_load_views() < 0)
