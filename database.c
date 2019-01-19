@@ -207,7 +207,7 @@ db_open(const char *path, int flags)
 		return (-1);
 	}
 
-    if (db_exec(new_dbh, "PRAGMA journal_mode=WAL") < 0)
+    if (db_exec(dbh, "PRAGMA journal_mode=WAL") < 0)
         printlog(LOG_ERR, "failed to enable WAL");
 
 	if (flags & DB_OPEN_WITH_VIEWS) {

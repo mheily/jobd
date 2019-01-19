@@ -76,7 +76,7 @@ main(int argc, char *argv[])
 
 	command = argv[0];
 	if (!strcmp(command, "init")) {
-		if (db_open(NULL, DB_OPEN_CREATE_MAIN) < 0)
+		if (db_create(NULL, NULL) < 0)
 			errx(1, "unable to create the database");
 		exit(EXIT_SUCCESS);
 	}
