@@ -634,28 +634,37 @@ import_from_directory(const char *configdir)
 int
 parser_import(const char *path)
 {
-	int rv;
-	struct stat sb;
+    char default_path[PATH_MAX];
+    int rv;
+    struct stat sb;
 
-	rv = stat(path, &sb);
-	if (rv < 0)
-		return printlog(LOG_ERR, "stat(2) of %s: %s", path, strerror(errno));
+    if (!path) {
+        int rv = snprintf((char *) &default_path, sizeof(default_path),
+                          "%s/manifests", compile_time_option.datarootdir);
+        if (rv >= (int) sizeof(default_path) || rv < 0)
+            return printlog(LOG_ERR, "snprintf failed");
+        path = (char *) &default_path;
+    }
 
-	if (db_exec(dbh, "BEGIN TRANSACTION") < 0)
-		return db_error;
+    rv = stat(path, &sb);
+    if (rv < 0)
+        return printlog(LOG_ERR, "stat(2) of %s: %s", path, strerror(errno));
 
-	if (S_ISDIR(sb.st_mode))
-		rv = import_from_directory(path);
-	else
-		rv = import_from_file(path);
+    if (db_exec(dbh, "BEGIN TRANSACTION") < 0)
+        return db_error;
 
-	if (rv == 0) {
-		if (db_exec(dbh, "COMMIT") < 0)
-			return -1;
-		else
-			return 0;
-	} else {
-		(void) db_exec(dbh, "ROLLBACK");
-		return -1;
-	}
+    if (S_ISDIR(sb.st_mode))
+        rv = import_from_directory(path);
+    else
+        rv = import_from_file(path);
+
+    if (rv == 0) {
+        if (db_exec(dbh, "COMMIT") < 0)
+            return -1;
+        else
+            return 0;
+    } else {
+        (void) db_exec(dbh, "ROLLBACK");
+        return -1;
+    }
 }
