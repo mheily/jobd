@@ -444,6 +444,27 @@ job_db_insert_methods(struct job_parser *jpr)
 }
 
 static int
+_toml_raw_to_sqlite_value(char **result, int *datatype, const char *raw)
+{
+    if (!strncmp(raw, "true", 4)) {
+        *datatype = PROPERTY_TYPE_BOOL;
+        *result = strdup("1");
+    } else if (!strncmp(raw, "false", 5)) {
+        *datatype = PROPERTY_TYPE_BOOL;
+        *result = strdup("0");
+    } else if (*raw == '\'' || *raw == '"') {
+        *datatype = PROPERTY_TYPE_STRING;
+        if (toml_rtos(raw, result))
+            return printlog(LOG_ERR, "error converting raw value to string");
+    } else {
+        *result = NULL;
+        *datatype = PROPERTY_TYPE_INVALID;
+        return printlog(LOG_ERR, "unable to determine datatype");
+    }
+    return 0;
+}
+
+static int
 job_db_insert_properties(struct job_parser *jpr)
 {
     toml_table_t *subtab;
@@ -453,10 +474,8 @@ job_db_insert_properties(struct job_parser *jpr)
     int i, datatype;
 
     subtab = toml_table_in(jpr->tab, "properties");
-    if (!subtab) {
+    if (!subtab)
     	goto insert_default_values;
-        return (0);
-    }
 
     for (i = 0; (key = toml_key_in(subtab, i)) != 0; i++) {
         raw = toml_raw_in(subtab, key);
@@ -464,23 +483,8 @@ job_db_insert_properties(struct job_parser *jpr)
             printlog(LOG_ERR, "error parsing `%s' into raw", key);
             return (-1);
         }
-
-        if (!strncmp(raw, "true", 4)) {
-            datatype = PROPERTY_TYPE_BOOL;
-            val = strdup("1");
-        } else if (!strncmp(raw, "false", 5)) {
-            datatype = PROPERTY_TYPE_BOOL;
-            val = strdup("0");
-        } else if (*raw == '\'' || *raw == '"') {
-            datatype = PROPERTY_TYPE_STRING;
-            if (toml_rtos(raw, &val)) {
-                printlog(LOG_ERR, "error parsing %s", key);
-                return (-1);
-            }
-        } else {
-            printlog(LOG_ERR, "unable to determine datatype of `%s'", key);
+        if (_toml_raw_to_sqlite_value(&val, &datatype, raw) < 0)
             return (-1);
-        }
 
         int success;
         sqlite3_stmt CLEANUP_STMT *stmt = NULL;

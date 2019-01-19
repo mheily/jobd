@@ -26,6 +26,7 @@ struct job_parser * job_parser_new(void);
 void job_parser_free(struct job_parser *jpr);
 int parser_import(const char *path);
 
+#define PROPERTY_TYPE_INVALID 0
 #define PROPERTY_TYPE_INT 1
 #define PROPERTY_TYPE_STRING 2
 #define PROPERTY_TYPE_BOOL 3
