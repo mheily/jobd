@@ -136,23 +136,19 @@ usage(void)
 static int
 next_runnable_job(job_id_t *result)
 {
-	job_id_t id;
-	const char *sql = "SELECT id FROM active_jobs "
-					  "WHERE id NOT IN (SELECT job_id AS id FROM volatile.processes) "
-					  " AND job_state_id = (SELECT id FROM volatile.job_states WHERE name = 'pending') "
-					  "LIMIT 1";
+    job_id_t id;
+    const char *sql = "SELECT id FROM runnable_jobs LIMIT 1";
 
-	if (db_get_id(&id, sql, "") < 0) {
-		printlog(LOG_ERR, "database error");
-		*result = INVALID_ROW_ID;
-		return (-1);
-	}
-	if (id == INVALID_ROW_ID)
-		*result = INVALID_ROW_ID;
-	else
-		*result = id;
+    if (db_get_id(&id, sql, "") < 0) {
+        *result = INVALID_ROW_ID;
+        return printlog(LOG_ERR, "database error");
+    }
+    if (id == INVALID_ROW_ID)
+        *result = INVALID_ROW_ID;
+    else
+        *result = id;
 
-	return (0);
+    return 0;
 }
 
 // rename to start_next_job() ?
@@ -265,76 +261,79 @@ reaper(pid_t pid, int status)
 static void
 shutdown_handler(int signum)
 {
-	pid_t pid;
-	int status;
+    pid_t pid;
+    int status;
 
-	printlog(LOG_NOTICE, "terminating due to signal %d", signum);
-    
-	jobd_is_shutting_down = true;
+    printlog(LOG_NOTICE, "terminating due to signal %d", signum);
+
+    jobd_is_shutting_down = true;
 
     int64_t id;
-    const char *sql = "SELECT id FROM volatile.active_jobs "
- 					  " WHERE job_state_id IN (?,?,?) "
-	   "LIMIT 1";
+    const char *sql = "SELECT job_id FROM jobs_current_states "
+                      " WHERE job_state_id IN (?,?,?) "
+                      "LIMIT 1";
 
     //FIXME: the above sql doesnt care about dependencies and will
     // stop things in random order.
 
     for (;;) {
-		if (db_get_id(&id, sql, "iii", JOB_STATE_RUNNING, JOB_STATE_STARTING, JOB_STATE_STOPPING) < 0) {
-			printlog(LOG_ERR, "database error");
-			break;
-		}
-		if (id == INVALID_ROW_ID) {
-			printlog(LOG_DEBUG, "no more stoppable jobs");
-			break;
-		}
-		enum job_state state;
-		if (job_get_state(&state, id) < 0) {
-			printlog(LOG_ERR, "unable to get job state");
-			break;
-		}
-		if (state == JOB_STATE_RUNNING || state == JOB_STATE_STARTING) {
-			if (job_stop(id) < 0) {
-				printlog(LOG_ERR, "unable to stop job: %s", job_id_to_str(id));
-				if (job_set_state(id, JOB_STATE_ERROR) < 0) {
-					printlog(LOG_ERR, "database error");
-					break; // should probably panic here
-				}
-				continue;
-			}
-		} else if (state == JOB_STATE_STOPPING) {
+        if (db_get_id(&id, sql, "iii", JOB_STATE_RUNNING, JOB_STATE_STARTING, JOB_STATE_STOPPING) < 0) {
+            printlog(LOG_ERR, "database error");
+            break;
+        }
+        if (id == INVALID_ROW_ID) {
+            printlog(LOG_DEBUG, "no more stoppable jobs");
+            break;
+        }
+        enum job_state state;
+        if (job_get_state(&state, id) < 0) {
+            printlog(LOG_ERR, "unable to get job state");
+            break;
+        }
+        if (state == JOB_STATE_RUNNING || state == JOB_STATE_STARTING) {
+            if (job_stop(id) < 0) {
+                printlog(LOG_ERR, "unable to stop job: %s", job_id_to_str(id));
+                if (job_set_state(id, JOB_STATE_ERROR) < 0) {
+                    printlog(LOG_ERR, "database error");
+                    break; // should probably panic here
+                }
+                continue;
+            }
+        } else if (state == JOB_STATE_STOPPING) {
             printlog(LOG_DEBUG, "waiting for a random job to stop"); // why not wait for specific job??
-			//FIXME: SIGALRM timeout isnt being set
-			pid = wait(&status);
-			if (pid > 0) {
-				reaper(pid, status);
-			} else {
-				if (errno == EINTR) {
-					if (sigalrm_flag) {
-						printlog(LOG_ERR, "timeout: one or more jobs failed to terminate");
-					} else {
-						printlog(LOG_ERR, "caught unhandled signal");
-					}
-				} else if (errno == ECHILD) {
-					printlog(LOG_WARNING, "no remaining children to wait for");
-					break;
-				} else {
-					printlog(LOG_ERR, "wait(2): %s", strerror(errno));
-				}
-				exit(EXIT_FAILURE);
-			}
-		}
-	}
+            //FIXME: SIGALRM timeout isnt being set
+            pid = wait(&status);
+            if (pid > 0) {
+                reaper(pid, status);
+            } else {
+                if (errno == EINTR) {
+                    if (sigalrm_flag) {
+                        printlog(LOG_ERR, "timeout: one or more jobs failed to terminate");
+                    } else {
+                        printlog(LOG_ERR, "caught unhandled signal");
+                    }
+                } else if (errno == ECHILD) {
+                    printlog(LOG_WARNING, "no remaining children to wait for");
+                    break;
+                } else {
+                    printlog(LOG_ERR, "wait(2): %s", strerror(errno));
+                }
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
 
-	if (pidfile_fh)
-		pidfile_remove(pidfile_fh);
+    if (pidfile_fh)
+        pidfile_remove(pidfile_fh);
 
-	if (signum == SIGINT) {
-		exit(EXIT_FAILURE);
-	} else if (signum == SIGTERM) {
-		exit(EXIT_SUCCESS);
-	}
+    if (db_close(dbh) < 0)
+        printlog(LOG_WARNING, "error closing database");
+
+    if (signum == SIGINT) {
+        exit(EXIT_FAILURE);
+    } else if (signum == SIGTERM) {
+        exit(EXIT_SUCCESS);
+    }
 }
 
 static void

@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#include "config.h"
 #include "database.h"
 #include "logger.h"
 #include "toml.h"
@@ -525,6 +526,52 @@ insert_default_values:
     return (0);
 }
 
+int job_db_insert_state(struct job_parser *jpr)
+{
+    char *buf;
+
+    toml_table_t *subtab = toml_table_in(jpr->tab, "properties");
+    if (subtab) {
+        const char *raw = toml_raw_in(subtab, "enabled");
+        int datatype;
+        if (raw) {
+            if (_toml_raw_to_sqlite_value(&buf, &datatype, raw) < 0)
+                return -1;
+            if (datatype != PROPERTY_TYPE_BOOL)
+                return -2;
+        } else {
+            buf = strdup("1");
+        }
+    } else {
+        buf = strdup("1");
+    }
+
+    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
+    const char *sql =
+            "INSERT INTO jobs_current_states "
+            "(job_id, job_state_id) VALUES (?,?)";
+
+            /* TODO: stop hardcoding job_state_id and do something like:
+            "       CASE ? "
+            "       WHEN '0' THEN (SELECT id FROM job_states WHERE name = 'disabled') "
+            "       WHEN '1' THEN (SELECT id FROM job_states WHERE name = 'pending') "
+            "       END job_state_id)";
+             */
+
+    if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 1, jpr->job->row_id) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_bind_int64(stmt, 2, ((buf[0] = '1') ? 2 : 1)) != SQLITE_OK)
+        return db_error;
+    if (sqlite3_step(stmt) != SQLITE_DONE)
+        return db_error;
+
+    free(buf); // XXX-will leak in unhappy path
+    return 0;
+}
+
+
 int
 job_db_insert(struct job_parser *jpr)
 {
@@ -567,6 +614,9 @@ job_db_insert(struct job_parser *jpr)
 
     if (job_db_insert_properties(jpr) < 0)
         return printlog(LOG_ERR, "error importing %s properties", job->id);
+
+    if (job_db_insert_state(jpr) < 0)
+        return printlog(LOG_ERR, "error setting initial state of %s", job->id);
 
     return 0;
 }

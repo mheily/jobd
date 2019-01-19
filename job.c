@@ -694,7 +694,7 @@ int
 job_register_pid(int64_t row_id, pid_t pid)
 {
     sqlite3_stmt CLEANUP_STMT *stmt = NULL;
-    const char *sql = "INSERT INTO volatile.processes "
+    const char *sql = "INSERT OR REPLACE INTO processes "
                       " (pid, job_id, start_time) "
                       "VALUES "
                       " (?, ?, ?)";
@@ -765,7 +765,7 @@ int
 job_set_exit_status(pid_t pid, int status)
 {
     sqlite3_stmt CLEANUP_STMT *stmt = NULL;
-    const char *sql = "UPDATE volatile.processes "
+    const char *sql = "UPDATE processes "
                       "SET exited = 1, exit_status = ?, end_time = ?"
                       "WHERE pid = ?";
 
@@ -787,7 +787,7 @@ int
 job_set_signal_status(pid_t pid, int signum)
 {
     sqlite3_stmt CLEANUP_STMT *stmt = NULL;
-    const char *sql = "UPDATE volatile.processes "
+    const char *sql = "UPDATE processes "
                       "SET signaled = 1, signal_number = ?, end_time = ?"
                       "WHERE pid = ?";
 
@@ -808,9 +808,9 @@ job_set_signal_status(pid_t pid, int signum)
 int job_set_state(int64_t job_id, enum job_state state)
 {
     sqlite3_stmt CLEANUP_STMT *stmt = NULL;
-    const char *sql = "UPDATE volatile.active_jobs "
+    const char *sql = "UPDATE jobs_current_states "
                       "SET job_state_id = ? "
-                      "WHERE id = ?";
+                      "WHERE job_id = ?";
 
     if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK)
         return db_error;
@@ -830,8 +830,8 @@ int job_get_state(enum job_state *state, job_id_t id)
 {
     int64_t result;
     const char *sql = "SELECT job_state_id "
-                      " FROM volatile.active_jobs "
-                      "WHERE id = ?";
+                      " FROM jobs_current_states "
+                      "WHERE job_id = ?";
 
     if (db_get_id(&result, sql, "i", id) < 0) {
         printlog(LOG_ERR, "database error");

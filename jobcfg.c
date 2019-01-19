@@ -41,53 +41,59 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	int c;
-	char *command = NULL;
-	char *f_flag = NULL;
+    int c;
+    char *command = NULL;
+    char *f_flag = NULL;
 
-	if (logger_init(NULL) < 0)
-		errx(1, "unable to initialize logging");
-	if (db_init() < 0)
-		errx(1, "unable to initialize database functions");
+    if (logger_init(NULL) < 0)
+        errx(1, "unable to initialize logging");
+    if (db_init() < 0)
+        errx(1, "unable to initialize database functions");
 
     progname = basename(argv[0]);
-  	while ((c = getopt (argc, argv, "f:hv")) != -1) {
-		switch (c) {
-			case 'f':
-				f_flag = strdup(optarg);
-				if (!f_flag)
-					err(1, "strdup");
-				break;
+    while ((c = getopt(argc, argv, "f:hv")) != -1) {
+        switch (c) {
+            case 'f':
+                f_flag = strdup(optarg);
+                if (!f_flag)
+                    err(1, "strdup");
+                break;
             case 'h':
                 usage();
                 break;
-			case 'v': 
-				logger_set_verbose(1);
-				break;
-			default:
-			    usage();
-		}
-	}
-	argc -= optind;
-	argv += optind;
+            case 'v':
+                logger_set_verbose(1);
+                break;
+            default:
+                usage();
+        }
+    }
+    argc -= optind;
+    argv += optind;
 
-	if (argc != 1)
-		usage();
+    if (argc != 1)
+        usage();
 
-	command = argv[0];
-	if (!strcmp(command, "init")) {
-		if (db_create(NULL, NULL) < 0)
-			errx(1, "unable to create the database");
-		exit(EXIT_SUCCESS);
-	}
+    command = argv[0];
+    if (!strcmp(command, "init")) {
+        if (db_create(NULL, NULL) < 0)
+            errx(1, "unable to create the database");
+    } else {
+        if (db_open(NULL, 0) < 0)
+            errx(1, "unable to open the database");
 
-	if (db_open(NULL, 0) < 0)
-		errx(1, "unable to open the database");
+        if (!strcmp(command, "import")) {
+            if (parser_import(f_flag ? f_flag : "/dev/stdin") < 0)
+                goto err_out;
+        }
+    }
 
-	if (!strcmp(command, "import")) {
-		if (parser_import(f_flag ? f_flag : "/dev/stdin") < 0)
-			exit(EXIT_FAILURE);
-	}
+    if (db_close(dbh) < 0)
+        exit(EXIT_FAILURE);
 
-	exit(EXIT_SUCCESS);
+    exit(EXIT_SUCCESS);
+
+err_out:
+    (void) db_close(dbh);
+    exit(EXIT_FAILURE);
 }

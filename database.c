@@ -44,90 +44,6 @@ _db_log_callback(void *unused, int error_code, const char *msg)
 	printlog(LOG_ERR, "sqlite3 error %d: %s", error_code, msg);
 }
 
-static int
-_db_setup_volatile(void)
-{
-	char path[PATH_MAX];
-	int rv;
-
-	rv = snprintf((char *)&path, sizeof(path),  "%s/volatile.sql", compile_time_option.datarootdir);
-	if (rv >= (int)sizeof(path) || rv < 0) {
-			printlog(LOG_ERR, "snprintf failed");
-			return (-1);
-	}
-
-	rv = db_exec_path(dbh, path);
-	if (rv < 0) {
-		printlog(LOG_ERR, "Error executing SQL from %s", path);
-		return (-1);
-	}
-
-	return (0);
-}
-
-static int
-_db_create_volatile(const char *dbfile)
-{
-	sqlite3 *tmpconn;
-	int rv;
-
-	rv = sqlite3_open_v2(dbfile, &tmpconn, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
-	if (rv != SQLITE_OK) {
-		//FIXME:printlog(LOG_ERR, "Error opening %s: %s", path, sqlite3_errmsg(dbh));
-		return (-1);
-	}
-	if (sqlite3_close(tmpconn) != SQLITE_OK)
-		return (-1);
-
-	printlog(LOG_DEBUG, "created an empty %s", dbfile);
-	return (0);
-}
-
-static int
-_db_attach_volatile(const char *path)
-{
-	char sql[PATH_MAX+1024];
-	int rv;
-
-	rv = snprintf((char *)&sql, sizeof(sql), 
-		"ATTACH DATABASE '%s' AS 'volatile';"
-		"PRAGMA volatile.synchronous = OFF;",
-		 path); //WARN: injection
-	if (rv >= (int)sizeof(sql) || rv < 0) {
-			printlog(LOG_ERR, "snprintf failed");
-			return (-1);
-	}
-
-	if (db_exec(dbh, sql) < 0) {
-		printlog(LOG_ERR, "Error attaching volatile database");
-		return (-1);
-	}
-
-	printlog(LOG_DEBUG, "attached %s as volatile", path);
-	return (0);
-}
-
-static int
-_db_load_views(void)
-{
-	char path[PATH_MAX];
-	int rv;
-
-	rv = snprintf((char *)&path, sizeof(path),  "%s/views.sql", compile_time_option.datarootdir);
-	if (rv >= (int)sizeof(path) || rv < 0) {
-		printlog(LOG_ERR, "snprintf failed");
-		return (-1);
-	}
-
-	rv = db_exec_path(dbh, path);
-	if (rv < 0) {
-		printlog(LOG_ERR, "Error executing SQL from %s", path);
-		return (-1);
-	}
-
-	return (0);
-}
-
 int
 db_init(void)
 {
@@ -156,66 +72,25 @@ db_init(void)
 }
 
 int
-db_open(const char *path, int flags)
+db_open(const char *path, int flags __attribute__((unused)))
 {
-	char volatile_dbpath[PATH_MAX];
-	int rv, sqlite_flags;
+    sqlite3 *conn = NULL;
 
-	rv = snprintf((char *)&volatile_dbpath, sizeof(volatile_dbpath),  "%s/jobd/volatile.db",
-			compile_time_option.rundir);
-	if (rv >= (int)sizeof(volatile_dbpath) || rv < 0) {
-			printlog(LOG_ERR, "snprintf failed");
-			return (-1);
-	}
+    if (dbh)
+        return printlog(LOG_ERR, "database is already open");
+    if (!path)
+        path = db_default.dbpath;
 
-	if (dbh) {
-		printlog(LOG_ERR, "database is already open");
-		return (-1);
-	}
+    int sqlite_flags = SQLITE_OPEN_READWRITE;
+    if (sqlite3_open_v2(path, &conn, sqlite_flags, NULL) != SQLITE_OK)
+        return printlog(LOG_ERR, "Error opening %s: %s", path, sqlite3_errmsg(dbh));
 
-	if (!path)
-		path = db_default.dbpath;
-	
-	sqlite_flags = SQLITE_OPEN_READWRITE;
+    if (db_exec(conn, "PRAGMA journal_mode=WAL") < 0)
+        printlog(LOG_WARNING, "failed to enable WAL; expect worse performance");
 
-	rv = sqlite3_open_v2(path, &dbh, sqlite_flags, NULL);
-	if (rv != SQLITE_OK) {
-		printlog(LOG_ERR, "Error opening %s: %s", path, sqlite3_errmsg(dbh));
-		return (-1);
-	}
-	printlog(LOG_DEBUG, "opened %s with flags %d", path, sqlite_flags);
+    dbh = conn;
 
-	//KLUDGE: should refactor volatile out of db_open() entirely
-	if (flags & DB_OPEN_NO_VOLATILE) {
-		/* NOOP */
-	} else if (access(volatile_dbpath, F_OK) == 0) {
-		if (_db_attach_volatile(volatile_dbpath) < 0)
-			return (-1);
-	} else if (flags & DB_OPEN_CREATE_VOLATILE) {
-		if (_db_create_volatile(volatile_dbpath) < 0) {
-			unlink(volatile_dbpath);
-			return (-1);
-		}
-
-		if (_db_attach_volatile(volatile_dbpath) < 0)
-			return (-1);
-	
-		if (_db_setup_volatile() < 0)
-			return (-1);
-	} else {
-		printlog(LOG_ERR, "unable to open volatile.db");
-		return (-1);
-	}
-
-    if (db_exec(dbh, "PRAGMA journal_mode=WAL") < 0)
-        printlog(LOG_ERR, "failed to enable WAL");
-
-	if (flags & DB_OPEN_WITH_VIEWS) {
-		if (_db_load_views() < 0)
-			abort();
-	}
-
-	return (0);
+    return printlog(LOG_DEBUG, "opened %s with flags=%d", path, sqlite_flags);
 }
 
 int
@@ -233,6 +108,17 @@ db_reopen(void)
 	} else {
 		return printlog(LOG_ERR, "database error: %s", sqlite3_errstr(rv));
 	}
+}
+
+int db_close(sqlite3 *conn)
+{
+    if (conn == NULL)
+        conn = dbh;
+    if (sqlite3_close(conn) != SQLITE_OK)
+        return db_error;
+    if (conn == dbh)
+        dbh = NULL;
+    return 0;
 }
 
 int

@@ -66,7 +66,7 @@ jobd_pid=""
 assert_contains 'sending SIGTERM to job shutdown_handler'
 
 # Run the jobstat command
-$objdir/bin/jobstat
+$objdir/bin/jobstat >> $logfile 2>&1
 assert_contains 'Label'
 
 printf "\n\nSUCCESS: All tests passed.\n"

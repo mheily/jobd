@@ -170,7 +170,7 @@ CREATE VIEW job_table_view
 AS
 SELECT jobs.id AS ID,
        jobs.job_id AS Label,
-       (SELECT name FROM job_states WHERE id = jobs.job_state_id) AS State,
+       (SELECT name FROM job_states WHERE id = job_state_id) AS State,
        (SELECT name FROM job_types WHERE id = job_type_id) AS "Type",
        CASE
            WHEN processes.exited = 1 THEN 'exit(' || processes.exit_status || ')'
@@ -182,5 +182,6 @@ SELECT jobs.id AS ID,
            ELSE (processes.end_time - processes.start_time) || 's'
            END Duration
 FROM jobs
+LEFT JOIN jobs_current_states ON jobs.id = jobs_current_states.job_id
 LEFT JOIN processes ON processes.job_id = jobs.id
 ORDER BY Label;
