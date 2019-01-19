@@ -78,7 +78,7 @@ print_all_jobs(void)
 
 	rv = sqlite3_exec(dbh, sql, renderer, "some stuff", &err_msg);
 	if (rv != SQLITE_OK) {
-		printlog(LOG_ERR, "Database error: %s", err_msg);
+		printlog(LOG_ERR, "Database error %d: %s", rv, err_msg);
 		free(err_msg);
 		return (-1);
 	}
