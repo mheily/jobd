@@ -238,35 +238,24 @@ db_reopen(void)
 int
 db_create(const char *path, const char *schemapath)
 {
-	int rv, flags;
-	
-	if (dbh) {
-		printlog(LOG_ERR, "database is already open");
-		return (-1);
-	}
+    sqlite3 *conn = NULL;
 
-	if (!path)
-		path = db_default.dbpath;
-	if (!schemapath)
-		schemapath = db_default.schemapath;
-	
-	flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
+    if (!path)
+        path = db_default.dbpath;
+    if (!schemapath)
+        schemapath = db_default.schemapath;
 
-	rv = sqlite3_open_v2(path, &dbh, flags, NULL);
-	if (rv != SQLITE_OK) {
-		printlog(LOG_ERR, "Error creating %s: %s", path, sqlite3_errmsg(dbh));
-		dbh = NULL;
-		return (-1);
-	}
-	printlog(LOG_INFO, "opened %s", path);
+    int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
+    if (sqlite3_open_v2(path, &conn, flags, NULL) != SQLITE_OK)
+        return printlog(LOG_ERR, "Error creating %s: %s", path, sqlite3_errmsg(dbh));
 
-	rv = db_exec_path(dbh, schemapath);
-	if (rv < 0) {
-		printlog(LOG_ERR, "Error executing SQL from %s", schemapath);
-		return (-1);
-	}
+    if (db_exec_path(conn, schemapath) < 0) {
+        (void) sqlite3_close(conn);
+        (void) unlink(path);
+        return printlog(LOG_ERR, "Error executing SQL from %s", schemapath);
+    }
 
-	return (0);
+    return printlog(LOG_INFO, "created an empty repository.db at %s", path);
 }
 
 bool
