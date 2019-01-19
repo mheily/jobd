@@ -1,0 +1,105 @@
+# diff -u /etc/rc.ORIG /etc/rc ; diff -u /etc/rc.subr.ORIG /etc/rc.subr ; diff -u /etc/defaults/rc.conf.ORIG /etc/defaults/rc.conf ; diff -u /etc/rc.shutdown.ORIG /etc/rc.shutdown
+--- /etc/rc.ORIG	2019-01-19 17:24:15.216926000 +0000
++++ /etc/rc	2019-01-19 19:40:51.809958000 +0000
+@@ -71,6 +71,20 @@
+ . /etc/rc.subr
+ load_rc_config
+ 
++# Pass control to an alternate system manager, if needed.
++#
++if [ "${rc_system_manager}" != "/etc/rc" -a "${RC_SYSTEM_MANAGER} != "/etc/rc" ] ; then
++	exec $rc_system_manager "$@"
++fi
++
++# Allow an alternate rcorder(8) command to be invoked.
++#
++if [ "${rc_rcorder}" != "/sbin/rcorder" -a "${RC_RCORDER} != "/sbin/rcorder" ] ; then
++	rcorder=$rc_rcorder
++else
++	rcorder="/sbin/rcorder"
++fi
++
+ # If we receive a SIGALRM, re-source /etc/rc.conf; this allows rc.d
+ # scripts to perform "boot-time configuration" including enabling and
+ # disabling rc.d scripts which appear later in the boot order.
+@@ -92,7 +106,7 @@
+ # Do a first pass to get everything up to $early_late_divider so that
+ # we can do a second pass that includes $local_startup directories
+ #
+-files=`rcorder ${skip} ${skip_firstboot} /etc/rc.d/* 2>/dev/null`
++files=`${rcorder} ${skip} ${skip_firstboot} /etc/rc.d/* 2>/dev/null`
+ 
+ _rc_elem_done=' '
+ for _rc_elem in ${files}; do
+@@ -120,7 +134,7 @@
+ 	skip_firstboot=""
+ fi
+ 
+-files=`rcorder ${skip} ${skip_firstboot} /etc/rc.d/* ${local_rc} 2>/dev/null`
++files=`${rcorder} ${skip} ${skip_firstboot} /etc/rc.d/* ${local_rc} 2>/dev/null`
+ for _rc_elem in ${files}; do
+ 	case "$_rc_elem_done" in
+ 	*" $_rc_elem "*)	continue ;;
+--- /etc/rc.subr.ORIG	2019-01-19 17:33:44.071387000 +0000
++++ /etc/rc.subr	2019-01-19 17:37:23.600955000 +0000
+@@ -880,6 +880,14 @@
+ {
+ 	_return=0
+ 	rc_arg=$1
++
++	# If an alternate system manager is specified in rc.conf,
++	# pass control to it.
++	#
++	if [ "${rc_service_manager}" != "/usr/sbin/service" -a "${RC_SERVICE_MANAGER}" != "/usr/sbin/service" ] ; then
++		exec $rc_service_manager "$@"
++	fi
++
+ 	if [ -z "$name" ]; then
+ 		err 3 'run_rc_command: $name is not set.'
+ 	fi
+--- /etc/defaults/rc.conf.ORIG	2019-01-19 17:26:15.902124000 +0000
++++ /etc/defaults/rc.conf	2019-01-19 19:37:57.932611000 +0000
+@@ -26,6 +26,11 @@
+ #rc_debug="NO"		# Set to YES to enable debugging output from rc.d
+ rc_info="NO"		# Enables display of informational messages at boot.
+ rc_startmsgs="YES" 	# Show "Starting foo:" messages at boot
++rc_provider="rc"	# The name of the runcom system or equivalent
++rc_system_manager="/etc/rc"	# The path to /etc/rc or equivalent
++rc_service_manager="/usr/sbin/service"	# The path to service(8) or equivalent
++rc_rcorder="/sbin/rcorder"	# The path to rcorder(8) or equivalent
++rcshutdown="/etc/rc.shutdown"	# The path to /etc/rc.shutdown or equivalent
+ rcshutdown_timeout="90" # Seconds to wait before terminating rc.shutdown
+ early_late_divider="FILESYSTEMS"	# Script that separates early/late
+ 			# stages of the boot process.  Make sure you know
+--- /etc/rc.shutdown.ORIG	2019-01-19 17:44:20.712673000 +0000
++++ /etc/rc.shutdown	2019-01-19 19:40:01.741526000 +0000
+@@ -47,6 +47,20 @@
+ 
+ load_rc_config
+ 
++# Pass control to an alternate system shutdown script, if needed.
++#
++if [ "${rcshutdown}" != "/etc/rc.shutdown" -a "${RCSHUTDOWN} != "/etc/rc.shutdown" ] ; then
++	exec $rcshutdown "$@"
++fi
++
++# Allow an alternate rcorder(8) command to be invoked.
++#
++if [ "${rc_rcorder}" != "/sbin/rcorder" -a "${RC_RCORDER} != "/sbin/rcorder" ] ; then
++        rcorder=$rc_rcorder
++else
++        rcorder="/sbin/rcorder"
++fi
++
+ # reverse_list list
+ #	print the list in reverse order
+ #
+@@ -93,7 +107,7 @@
+ *)     find_local_scripts_new ;;
+ esac
+ 
+-files=`rcorder ${rcorder_opts} /etc/rc.d/* ${local_rc} 2>/dev/null`
++files=`${rcorder} ${rcorder_opts} /etc/rc.d/* ${local_rc} 2>/dev/null`
+ 
+ for _rc_elem in `reverse_list $files`; do
+ 	debug "run_rc_script $_rc_elem faststop"
