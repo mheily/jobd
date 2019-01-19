@@ -56,7 +56,7 @@ _db_setup_volatile(void)
 			return (-1);
 	}
 
-	rv = db_exec_path(path);
+	rv = db_exec_path(dbh, path);
 	if (rv < 0) {
 		printlog(LOG_ERR, "Error executing SQL from %s", path);
 		return (-1);
@@ -119,7 +119,7 @@ _db_load_views(void)
 		return (-1);
 	}
 
-	rv = db_exec_path(path);
+	rv = db_exec_path(dbh, path);
 	if (rv < 0) {
 		printlog(LOG_ERR, "Error executing SQL from %s", path);
 		return (-1);
@@ -260,7 +260,7 @@ db_create(const char *path, const char *schemapath)
 	}
 	printlog(LOG_INFO, "opened %s", path);
 
-	rv = db_exec_path(schemapath);
+	rv = db_exec_path(dbh, schemapath);
 	if (rv < 0) {
 		printlog(LOG_ERR, "Error executing SQL from %s", schemapath);
 		return (-1);
