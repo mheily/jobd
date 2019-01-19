@@ -65,5 +65,9 @@ kill $jobd_pid
 jobd_pid=""
 assert_contains 'sending SIGTERM to job shutdown_handler'
 
+# Run the jobstat command
+$objdir/bin/jobstat
+assert_contains 'Label'
+
 printf "\n\nSUCCESS: All tests passed.\n"
 exit 0
