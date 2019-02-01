@@ -60,6 +60,7 @@
 
 static char *progname;
 
+static void crash(const char *);
 static void sigchld_handler(int);
 static void sigalrm_handler(int);
 static void shutdown_handler(int);
@@ -101,6 +102,33 @@ static volatile sig_atomic_t sigalrm_flag = 0;
 
 static void daemonize(void);
 static void schedule(void);
+
+static void
+crash(const char *reason)
+{
+    printlog(LOG_ERR, "crash handler invoked: %s", reason);
+    if (getpid() == 1) {
+        sleep(10); //FIXME remove this; is not necessary but helps when crashing during boot
+#ifdef revoke
+        revoke("/dev/console");
+#endif
+        int fd = open("/dev/console", O_RDWR | O_NONBLOCK);
+        if (fd != STDIN_FILENO) {
+            (void) dup2(fd, STDIN_FILENO);
+            (void) close(fd);
+        }
+        dup2(STDOUT_FILENO, STDIN_FILENO);
+        dup2(STDERR_FILENO, STDIN_FILENO);
+
+        if (execl("/bin/sh", "/bin/sh", NULL) < 0) {
+            printlog(LOG_ERR, "execv(2): %s", strerror(errno)); //FIXME: log may not be open yet.. printf to stderr?
+            sleep(60);
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        exit(EXIT_FAILURE);
+    }
+}
 
 static void
 daemonize(void)
@@ -330,7 +358,7 @@ shutdown_handler(int signum)
         printlog(LOG_WARNING, "error closing database");
 
     if (signum == SIGINT) {
-        exit(EXIT_FAILURE);
+        crash("caught SIGINT");
     } else if (signum == SIGTERM) {
         exit(EXIT_SUCCESS);
     }
@@ -406,86 +434,93 @@ ipc_server_handler(event_t *ev __attribute__((unused)))
 	return (0);
 }
 
-static void
+static int
 create_event_queue(void)
 {
 #ifdef __linux__
-	sigset_t mask;
-	struct epoll_event ev;
+    sigset_t mask;
+    struct epoll_event ev;
 
-	if ((eventfds.epfd = epoll_create1(EPOLL_CLOEXEC)) < 0)
-		err(1, "epoll_create1(2)");
+    if ((eventfds.epfd = epoll_create1(EPOLL_CLOEXEC)) < 0)
+        return printlog(LOG_ERR, "epoll_create(2): %s", strerror(errno));
 
-	sigemptyset(&mask);
+    sigemptyset(&mask);
 
-	eventfds.signalfd = signalfd(-1, &mask, SFD_CLOEXEC);
-	if (eventfds.signalfd < 0)
-		err(1, "signalfd(2)");
+    eventfds.signalfd = signalfd(-1, &mask, SFD_CLOEXEC);
+    if (eventfds.signalfd < 0)
+        return printlog(LOG_ERR, "signalfd(2): %s", strerror(errno));
 
-	ev.events = EPOLLIN;
-	ev.data.ptr = &dequeue_signal;
-	if (epoll_ctl(eventfds.epfd, EPOLL_CTL_ADD, eventfds.signalfd, &ev) < 0)
-		err(1, "epoll_ctl(2)");
-	
-	ev.events = EPOLLIN;
-	ev.data.ptr = &ipc_server_handler;
-	if (epoll_ctl(eventfds.epfd, EPOLL_CTL_ADD, ipc_get_sockfd(), &ev) < 0)
-		err(1, "epoll_ctl(2)");
+    ev.events = EPOLLIN;
+    ev.data.ptr = &dequeue_signal;
+    if (epoll_ctl(eventfds.epfd, EPOLL_CTL_ADD, eventfds.signalfd, &ev) < 0)
+        return printlog(LOG_ERR, "epoll_ctl(2): %s", strerror(errno));
+
+    ev.events = EPOLLIN;
+    ev.data.ptr = &ipc_server_handler;
+    if (epoll_ctl(eventfds.epfd, EPOLL_CTL_ADD, ipc_get_sockfd(), &ev) < 0)
+        return printlog(LOG_ERR, "epoll_ctl(2): %s", strerror(errno));
 #else
-	struct kevent kev;
+    struct kevent kev;
 
-	if ((kqfd = kqueue()) < 0)
-		err(1, "kqueue(2)");
-	if (fcntl(kqfd, F_SETFD, FD_CLOEXEC) < 0)
-		err(1, "fcntl(2)");
+    if ((kqfd = kqueue()) < 0)
+        return printlog(LOG_ERR, "kqueue(2): %s", strerror(errno));
 
-	EV_SET(&kev, ipc_get_sockfd(), EVFILT_READ, EV_ADD, 0, 0,
-			(void *)&ipc_server_handler);
-	if (kevent(kqfd, &kev, 1, NULL, 0, NULL) < 0)
-		err(1, "kevent(2)");
+    if (fcntl(kqfd, F_SETFD, FD_CLOEXEC) < 0)
+                return printlog(LOG_ERR, "fcntl(2): %s", strerror(errno));
+
+
+    EV_SET(&kev, ipc_get_sockfd(), EVFILT_READ, EV_ADD, 0, 0,
+            (void *)&ipc_server_handler);
+    if (kevent(kqfd, &kev, 1, NULL, 0, NULL) < 0)
+        return printlog(LOG_ERR, "kqueue(2): %s", strerror(errno));
 #endif
+
+    return 0;
 }
 
-static void
+static int
 register_signal_handlers(void)
 {
-	const struct signal_handler *sh;
-	struct sigaction sa;
+    const struct signal_handler *sh;
+    struct sigaction sa;
 
-	/* Special case: disable SA_RESTART on alarms */
-	sa.sa_handler = sigalrm_handler;
-  	sigemptyset(&sa.sa_mask);
-  	sa.sa_flags = 0;
-	if (sigaction(SIGALRM, &sa, NULL) < 0)
-		err(1, "sigaction(2)");
+    /* Special case: disable SA_RESTART on alarms */
+    sa.sa_handler = sigalrm_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    if (sigaction(SIGALRM, &sa, NULL) < 0)
+        return printlog(LOG_ERR, "sigaction(2): %s", strerror(errno));
 
 #ifdef __linux__
-	sigset_t mask;
+    sigset_t mask;
 
-	sigemptyset(&mask);
-	for (sh = &signal_handlers[0]; sh->signum; sh++) {
-		sigaddset(&mask, sh->signum);
-	}
-	if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
-		err(1, "sigprocmask(2)");
+    sigemptyset(&mask);
+    for (sh = &signal_handlers[0]; sh->signum; sh++) {
+        sigaddset(&mask, sh->signum);
+    }
+    if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
+        return printlog(LOG_ERR, "sigprocmask(2): %s", strerror(errno));
 
-	eventfds.signalfd = signalfd(eventfds.signalfd, &mask, SFD_CLOEXEC);
-	if (eventfds.signalfd < 0)
-		err(1, "signalfd(2)");
+    eventfds.signalfd = signalfd(eventfds.signalfd, &mask, SFD_CLOEXEC);
+    if (eventfds.signalfd < 0)
+        return printlog(LOG_ERR, "signalfd(2): %s", strerror(errno));
 
 #else
-	struct kevent kev;
+    struct kevent kev;
 
-	for (sh = &signal_handlers[0]; sh->signum; sh++) {
-		if (signal(sh->signum, (sh->signum == SIGCHLD ? SIG_DFL : SIG_IGN)) == SIG_ERR)
-			err(1, "signal(2): %d", sh->signum);
+    for (sh = &signal_handlers[0]; sh->signum; sh++) {
+        if (signal(sh->signum, (sh->signum == SIGCHLD ? SIG_DFL : SIG_IGN)) == SIG_ERR)
+            return printlog(LOG_ERR, "signal(2): %d: %s", sh->signum, strerror(errno));
 
-		EV_SET(&kev, sh->signum, EVFILT_SIGNAL, EV_ADD, 0, 0,
-				(void *)&dequeue_signal);
-		if (kevent(kqfd, &kev, 1, NULL, 0, NULL) < 0)
-			err(1, "kevent(2)");
-	}
+        EV_SET(&kev, sh->signum, EVFILT_SIGNAL, EV_ADD, 0, 0,
+                (void *)&dequeue_signal);
+        if (kevent(kqfd, &kev, 1, NULL, 0, NULL) < 0)
+                    return printlog(LOG_ERR, "kevent(2): %s", strerror(errno));
+
+    }
 #endif
+
+    return 0;
 }
 
 static int
@@ -614,17 +649,20 @@ create_pid_file(void)
 		} else {
 			printlog(LOG_ERR, "cannot open or create pidfile: %s\n", path);
 		}
-		exit(EXIT_FAILURE);
+		crash("error creating pidfile");
 	}
 	
 	printlog(LOG_DEBUG, "created pidfile %s", path);
 }
 
 static const char *
-bootlog(void)
+bootlog(pid_t pid)
 {
 	static char path[PATH_MAX];
 	int rv;
+
+	if (pid == 1)
+	    return NULL;
 
 	rv = snprintf((char *) &path, sizeof(path), "%s/jobd/boot.log",
 				  compile_time_option.rundir);
@@ -688,15 +726,12 @@ main(int argc, char *argv[])
 		pidfile_write(pidfile_fh);
 	}
 
-	if (logger_init(bootlog()) < 0) {
-		errx(1, "logger_init");
-	}
+	if (logger_init(bootlog(pid)) < 0)
+		crash("unable to initialize the logger");
 	logger_set_verbose(verbose);
 
-	if (ipc_init(NULL) < 0) {
-		printlog(LOG_ERR, "ipc_init() failed");
-		exit(EXIT_FAILURE);
-	}
+	if (ipc_init(NULL) < 0)
+	    crash("unable to initialize IPC");
 
 	if (setsid() == -1) {
 		if (errno != EPERM || getsid(0) != 1) {
@@ -704,29 +739,26 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (ipc_bind() < 0) {
-		printlog(LOG_ERR, "IPC bind failed");
-		abort();
-	}
+	if (ipc_bind() < 0)
+	    crash("unable to bind to the IPC socket");
 
-	if (db_init() < 0) {
-		printlog(LOG_ERR, "unable to initialize the database routines");
-		exit(EXIT_FAILURE);
-	}
+	if (db_init() < 0)
+		crash("unable to initialize the database routines");
 
-	if (db_open(NULL, DB_OPEN_CREATE_VOLATILE) < 0) {
-		printlog(LOG_ERR, "unable to open the database");
-		exit(EXIT_FAILURE);
-	}
+	if (db_open(NULL, DB_OPEN_CREATE_VOLATILE) < 0)
+		crash("unable to open the database");
 
-	if (trace) {
-	    if (db_enable_tracing() < 0)
-	        printlog(LOG_ERR, "unable to enable tracing");
-	}
+	if (trace && db_enable_tracing() < 0)
+        printlog(LOG_ERR, "unable to enable tracing");
 
 	become_a_subreaper();
-	create_event_queue();
-	register_signal_handlers();
+
+	if (create_event_queue() < 0)
+	    crash("unable to create the event queue");
+
+	if (register_signal_handlers() < 0)
+	    crash("unable to register signal handlers");
+
 	(void)kill(getpid(), SIGHUP);
 
 	for (;;) {
