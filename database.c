@@ -85,9 +85,6 @@ db_open(const char *path, int flags __attribute__((unused)))
     if (sqlite3_open_v2(path, &conn, sqlite_flags, NULL) != SQLITE_OK)
         return printlog(LOG_ERR, "Error opening %s: %s", path, sqlite3_errmsg(dbh));
 
-    if (db_exec(conn, "PRAGMA journal_mode=WAL") < 0)
-        printlog(LOG_WARNING, "failed to enable WAL; expect worse performance");
-
     dbh = conn;
 
     return printlog(LOG_DEBUG, "opened %s with flags=%d", path, sqlite_flags);
@@ -134,6 +131,9 @@ db_create(const char *path, const char *schemapath)
     int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
     if (sqlite3_open_v2(path, &conn, flags, NULL) != SQLITE_OK)
         return printlog(LOG_ERR, "Error creating %s: %s", path, sqlite3_errmsg(dbh));
+
+    if (db_exec(conn, "PRAGMA journal_mode=WAL") < 0)
+        printlog(LOG_WARNING, "failed to enable WAL; expect bad performance");
 
     if (db_exec_path(conn, schemapath) < 0) {
         (void) sqlite3_close(conn);
