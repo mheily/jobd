@@ -118,6 +118,14 @@ int db_close(sqlite3 *conn)
     return 0;
 }
 
+int db_checkpoint(sqlite3 *conn)
+{
+    int x, y;
+    if (sqlite3_wal_checkpoint_v2(conn, "main", SQLITE_CHECKPOINT_TRUNCATE, &x, &y) < 0)
+        return printlog(LOG_ERR, "unable to checkpoint database");
+    return 0;
+}
+
 int
 db_create(const char *path, const char *schemapath)
 {
@@ -140,6 +148,9 @@ db_create(const char *path, const char *schemapath)
         (void) unlink(path);
         return printlog(LOG_ERR, "Error executing SQL from %s", schemapath);
     }
+
+    if (db_checkpoint(conn) < 0)
+        printlog(LOG_WARNING, "unable to checkpoint database");
 
     return printlog(LOG_INFO, "created an empty repository.db at %s", path);
 }
