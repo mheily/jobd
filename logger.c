@@ -19,7 +19,9 @@
 #include <syslog.h>
 #include <stdarg.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
+#include <memory.h>
 
 #include "logger.h"
 
@@ -85,6 +87,18 @@ logger_set_verbose(int flag)
 	logger_verbose = flag;
 }
 
+static inline char
+_level_code(int level)
+{
+    switch (level) {
+        case LOG_ERR: return 'E';
+        case LOG_WARNING: return 'W';
+        case LOG_INFO: return 'I';
+        case LOG_DEBUG: return 'D';
+        default: return 'U'; /* Unknown */
+    }
+}
+
 int __attribute__((format(printf, 2, 3)))
 logger_append(int level, const char *format, ...)
 {
@@ -97,10 +111,20 @@ logger_append(int level, const char *format, ...)
 		va_end(syslog_args);
 	}
     if (logger_verbose || level != LOG_DEBUG) {
+        /* Generate our own timestamp */
+        time_t t;
+        struct tm *tms;
+        char tbuf[32];
+        t = time(NULL);
+        tms = localtime(&t);
+        if (strftime(tbuf, sizeof(tbuf), "%a, %d %b %Y %T %z", tms) == 0)
+            strncpy(tbuf, "Unknown timeval", sizeof(tbuf));
+
+        /* Write to the log */
         const char *term = getenv("TERM");
         if (term && level == LOG_ERR)
             fprintf(logger_fh, "\033[0;31m");
-        fprintf(logger_fh, "%d %d ", level, getpid());
+        fprintf(logger_fh, "%c %s %d ", _level_code(level), tbuf, getpid());
         vfprintf(logger_fh, format, args);
         if (term && level == LOG_ERR)
             fprintf(logger_fh, "\033[0m");
