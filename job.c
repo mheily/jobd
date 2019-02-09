@@ -257,23 +257,34 @@ job_command_exec(pid_t *child, job_id_t id, const char *command)
     return (0);
 }
 
-static int
+static int job_script_exec(pid_t *child, job_id_t jid, char *script);
+
+int
 job_method_exec(pid_t *child, job_id_t jid, const char *method_name)
+{
+    char *script;
+    if (job_get_method(&script, jid, method_name) < 0)
+        return -1;
+    if (!script) {
+        printlog(LOG_DEBUG, "job `%s': method not found: `%s'", job_id_to_str(jid), method_name);
+        return 0;
+    }
+    printlog(LOG_DEBUG, "job `%s': invoking method `%s'", job_id_to_str(jid), method_name);
+    int result = job_script_exec(child, jid, script);
+    free(script);
+    return result;
+}
+
+static int
+job_script_exec(pid_t *child, job_id_t jid, char *script)
 {
     const char **empty_envp = {NULL};
     pid_t pid;
-    char *filename, *script = NULL;
+    char *filename = NULL;
     char *argv[5];
     char **envp;
 
     *child = 0;
-
-    if (job_get_method(&script, jid, method_name) < 0)
-        return (-1);
-    if (!script) {
-        printlog(LOG_DEBUG, "job `%s': method not found: `%s'", job_id_to_str(jid), method_name);
-        return (0);
-    }
 
     struct child_context CLEANUP_CHILD_CTX *ctx = NULL;
     if (NULL == (ctx = malloc(sizeof(*ctx))))
@@ -289,10 +300,10 @@ job_method_exec(pid_t *child, job_id_t jid, const char *method_name)
     envp = (char **) empty_envp; //XXX-FIXME string_array_data(job->environment_variables);
 
     pid = fork();
-    if (pid < 0) {
-        printlog(LOG_ERR, "fork(2): %s", strerror(errno));
-        goto err_out;
-    } else if (pid == 0) {
+    if (pid < 0)
+        return printlog(LOG_ERR, "fork(2): %s", strerror(errno));
+
+    if (pid == 0) {
         if (_job_child_pre_exec(ctx) < 0) {
             printlog(LOG_ERR, "error setting child context");
             exit(EXIT_FAILURE);
@@ -303,17 +314,11 @@ job_method_exec(pid_t *child, job_id_t jid, const char *method_name)
         }
         /* NOTREACHED */
     } else {
-        printlog(LOG_DEBUG, "job `%s': method `%s' running as pid %d: script=%s", job_id_to_str(jid), method_name, pid,
-                 script);
+        printlog(LOG_DEBUG, "job `%s': child pid %d is running", job_id_to_str(jid), pid);
         *child = pid;
     }
 
-    free(script);
-    return (0);
-
-err_out:
-    free(script);
-    return (-1);
+    return 0;
 }
 
 const char *job_state_to_str(enum job_state state)
@@ -400,9 +405,12 @@ job_stop(job_id_t id)
     enum job_state state;
 
     if (job_get_state(&state, id) < 0)
-        return (-1);
+        return printlog(LOG_ERR, "state lookup failed");
+    if (job_get_pid(&job_pid, id) < 0)
+        return printlog(LOG_ERR, "pid lookup failed");
 
-    printlog(LOG_DEBUG, "job `%s' current_state=%s next_state=stopping", job_id_to_str(id), job_state_to_str(state));
+    printlog(LOG_DEBUG, "job `%s' current_state=%s next_state=stopping pid=%d",
+            job_id_to_str(id), job_state_to_str(state), job_pid);
 
     if (state == JOB_STATE_DISABLED) {
         printlog(LOG_DEBUG, "job %s is disabled; stopping has no effect", job_id_to_str(id));
@@ -419,14 +427,14 @@ job_stop(job_id_t id)
         return (-1);
     }
 
-    if (job_method_exec(&pid, id, "stop") < 0) {
-        printlog(LOG_ERR, "stop method failed");
-        return (-1);
-    }
-
-    if (job_get_pid(&job_pid, id) < 0) {
-        printlog(LOG_ERR, "pid lookup failed");
-        return (-1);
+    char *script;
+    if (job_get_method(&script, id, "stop") < 0)
+        return printlog(LOG_ERR, "job_get_method() failed");
+    if (script) {
+        if (job_script_exec(&pid, id, script) < 0)
+            return printlog(LOG_ERR, "stop method failed");
+    } else {
+        pid = 0;
     }
 
     if (pid > 0 && (job_pid == 0)) {

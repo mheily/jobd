@@ -562,6 +562,7 @@ dispatch_event(void)
 	int rv;
 
 	for (;;) {
+	    printlog(LOG_DEBUG, "waiting for the next event");
 #ifdef __linux__
 		rv = epoll_wait(eventfds.epfd, &ev, 1, -1);
 #else

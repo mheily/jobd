@@ -108,7 +108,7 @@ int job_get_state(enum job_state *state, job_id_t id);
 int job_set_property(int64_t jid, const char *key, const char *value);
 int job_set_state(int64_t job_id, enum job_state state);
 int job_get_type(enum job_type *type, job_id_t id);
-
+int job_method_exec(pid_t *child, job_id_t jid, const char *method_name);
 int job_register_pid(int64_t row_id, pid_t pid);
 
 int job_set_exit_status(pid_t pid, int status);
