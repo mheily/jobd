@@ -18,6 +18,7 @@
 #define _ARRAY_H
 
 #include <string.h>
+#include <stdlib.h>
 #include <inttypes.h>
 
 #define string_array_data(_strarr) ((_strarr)->strp)
