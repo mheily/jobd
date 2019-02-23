@@ -27,6 +27,7 @@ extern int logger_use_syslog;
 
 FILE *logger_fh;
 
+void logger_enable_syslog(const char *ident, int option, int facility);
 int logger_init(const char *logfile);
 int logger_open(const char *);
 int __attribute__((format(printf, 2, 3))) logger_append(int level, const char *format, ...);

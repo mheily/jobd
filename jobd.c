@@ -730,6 +730,7 @@ main(int argc, char *argv[])
 	if (logger_init(bootlog(pid)) < 0)
 		crash("unable to initialize the logger");
 	logger_set_verbose(verbose);
+    logger_enable_syslog("jobd", LOG_CONS, LOG_AUTH);
 
 	if (ipc_init(NULL) < 0)
 	    crash("unable to initialize IPC");

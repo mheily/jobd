@@ -51,15 +51,16 @@ logger_open(const char *path)
 	return (0);
 }
 
+void logger_enable_syslog(const char *ident, int option, int facility)
+{
+	logger_use_syslog = 1;
+	openlog(ident, option, facility);
+}
+
 int
 logger_init(const char *logfile)
 {
 	int fd;
-
-	/* TODO: add support for syslog */
-	logger_use_syslog = 1;
-	openlog("jobd", LOG_CONS, LOG_AUTH);
-	//logger_use_syslog = 0;
 
 	if (logfile) {
 	    return logger_open(logfile);
