@@ -64,11 +64,14 @@ assert_contains 'sending SIGTERM to job disable_me'
 kill $jobd_pid
 assert_contains 'sending SIGTERM to job shutdown_handler'
 
+printf 'waiting for jobd to terminate.. '
 for i in $(seq 1 10) ; do
-    kill -0 $jobd_pid || break
+    kill -0 $jobd_pid 2>/dev/null || break
+    sleep 1
 done
-kill -0 $jobd_pid || err 'jobd still running'
+kill -0 $jobd_pid 2>/dev/null && err 'jobd still running' || true
 jobd_pid=""
+echo 'done'
 
 # Run the jobstat command
 $objdir/bin/jobstat >> $logfile 2>&1
