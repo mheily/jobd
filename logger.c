@@ -41,36 +41,38 @@ struct {
 int
 logger_open(const char *path)
 {
-	int fd;
-	FILE *nfh;
+    int fd;
+    FILE *nfh;
 
-	fd = open(path, O_WRONLY|O_CREAT, 0600);
-	if (fd < 0)
-		return (-1);
-	if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0)
-		return (-2);
-	nfh = fdopen(fd, "a");
-	if (!nfh) {
-		close(fd);
-		return (-3);
-	}
-	if (logger_fh)
-		fclose(logger_fh);
-	logger_fh = nfh;
-	return (0);
+    fd = open(path, O_WRONLY|O_CREAT, 0600);
+    if (fd < 0)
+        return -1;
+    if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0)
+        return -2;
+    nfh = fdopen(fd, "a");
+    if (!nfh) {
+        close(fd);
+        return -3;
+    }
+    if (logger_fh)
+        fclose(logger_fh);
+    logger_fh = nfh;
+    return 0;
 }
 
-void logger_add_syslog_appender(const char *ident, int option, int facility)
+void
+logger_add_syslog_appender(const char *ident, int option, int facility)
 {
     if (!status_flags.initialized)
         CRASH("not initialized");
     if (status_flags.syslog_appender)
         CRASH("cannot have multiple appenders");
     status_flags.syslog_appender = 1;
-	openlog(ident, option, facility);
+    openlog(ident, option, facility);
 }
 
-void logger_add_file_appender(const char *path)
+void
+logger_add_file_appender(const char *path)
 {
     if (!status_flags.initialized)
         CRASH("not initialized");
@@ -81,7 +83,8 @@ void logger_add_file_appender(const char *path)
         CRASH("error opening logfile");
 }
 
-void logger_add_stderr_appender(void)
+void
+logger_add_stderr_appender(void)
 {
     if (!status_flags.initialized)
         CRASH("not initialized");
@@ -93,7 +96,7 @@ void logger_add_stderr_appender(void)
         CRASH("dup failed");
     if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0)
         CRASH("fcntl failed");
-    stderr_fh = fdopen(fd, "w");
+    stderr_fh = fdopen(fd, "a");
     if (!stderr_fh) {
         close(fd);
         CRASH("fdopen failed");
@@ -135,17 +138,17 @@ _level_code(int level)
 int __attribute__((format(printf, 2, 3)))
 logger_append(int level, const char *format, ...)
 {
-	va_list args;
+    va_list args;
     va_start(args, format);
     if (!status_flags.initialized)
         CRASH("not initialized");
-	if (status_flags.syslog_appender) {
-	    va_list syslog_args;
-	    va_copy(syslog_args, args);
-		vsyslog(level, format, syslog_args);
-		va_end(syslog_args);
-	}
-	if (status_flags.verbose || level != LOG_DEBUG) {
+    if (status_flags.syslog_appender) {
+        va_list syslog_args;
+        va_copy(syslog_args, args);
+        vsyslog(level, format, syslog_args);
+        va_end(syslog_args);
+    }
+    if (status_flags.verbose || level != LOG_DEBUG) {
         if (status_flags.stderr_appender) {
             va_list args2;
             va_copy(args2, args);
@@ -175,8 +178,8 @@ logger_append(int level, const char *format, ...)
         }
     }
     va_end(args);
-	if (level <= LOG_ERR)
-		return -1;
-	else
-		return 0;
+    if (level <= LOG_ERR)
+        return -1;
+    else
+        return 0;
 }
