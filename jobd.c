@@ -727,10 +727,15 @@ main(int argc, char *argv[])
 		pidfile_write(pidfile_fh);
 	}
 
-	if (logger_init(bootlog(pid)) < 0)
+	if (logger_init() < 0)
 		crash("unable to initialize the logger");
 	logger_set_verbose(verbose);
-    logger_enable_syslog("jobd", LOG_CONS, LOG_AUTH);
+	if (daemon) {
+        logger_add_file_appender(bootlog(pid));
+        logger_add_syslog_appender("jobd", LOG_CONS, LOG_AUTH);
+    } else {
+        logger_add_stderr_appender();
+    }
 
 	if (ipc_init(NULL) < 0)
 	    crash("unable to initialize IPC");

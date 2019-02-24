@@ -25,9 +25,18 @@
 
 #include "logger.h"
 
+#define CRASH(message) do { fputs(message, stderr); abort(); } while (0)
+
 FILE *logger_fh;
-int logger_use_syslog;
-int logger_verbose;
+FILE *stderr_fh;
+
+struct {
+    int initialized:1;
+    int verbose:1;
+    int syslog_appender:1;
+    int file_appender:1;
+    int stderr_appender:1;
+} status_flags;
 
 int
 logger_open(const char *path)
@@ -51,41 +60,64 @@ logger_open(const char *path)
 	return (0);
 }
 
-void logger_enable_syslog(const char *ident, int option, int facility)
+void logger_add_syslog_appender(const char *ident, int option, int facility)
 {
-	logger_use_syslog = 1;
+    if (!status_flags.initialized)
+        CRASH("not initialized");
+    if (status_flags.syslog_appender)
+        CRASH("cannot have multiple appenders");
+    status_flags.syslog_appender = 1;
 	openlog(ident, option, facility);
 }
 
-int
-logger_init(const char *logfile)
+void logger_add_file_appender(const char *path)
 {
-	int fd;
+    if (!status_flags.initialized)
+        CRASH("not initialized");
+    if (status_flags.file_appender)
+        CRASH("cannot have multiple appenders");
+    status_flags.file_appender = 1;
+    if (logger_open(path) < 0)
+        CRASH("error opening logfile");
+}
 
-	if (logfile) {
-	    return logger_open(logfile);
-	} else {
-		fd = dup(STDERR_FILENO);
-		if (fd < 0)
-			return (-1);
-		if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) {
-			//TODO: printlog(LOG_ERR, "fcntl(2): %s", strerror(errno));
-			return (-1);
-		}
-		logger_fh = fdopen(fd, "w");
-		if (!logger_fh) {
-			close(fd);
-			return (-1);
-		}
-	}
+void logger_add_stderr_appender(void)
+{
+    if (!status_flags.initialized)
+        CRASH("not initialized");
+    if (status_flags.stderr_appender)
+        CRASH("cannot have multiple appenders");
+    status_flags.stderr_appender = 1;
+    int fd = dup(STDERR_FILENO);
+    if (fd < 0)
+        CRASH("dup failed");
+    if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0)
+        CRASH("fcntl failed");
+    stderr_fh = fdopen(fd, "w");
+    if (!stderr_fh) {
+        close(fd);
+        CRASH("fdopen failed");
+    }
+}
 
-	return (0);
+int
+logger_init(void)
+{
+    if (status_flags.initialized) {
+        memset(&status_flags, 0, sizeof(status_flags));
+        (void)fclose(stderr_fh);
+        stderr_fh = NULL;
+        (void)fclose(logger_fh);
+        logger_fh = NULL;
+    }
+    status_flags.initialized = 1;
+    return 0;
 }
 
 void
 logger_set_verbose(int flag)
 {
-	logger_verbose = flag;
+    status_flags.verbose = flag;
 }
 
 static inline char
@@ -105,33 +137,44 @@ logger_append(int level, const char *format, ...)
 {
 	va_list args;
     va_start(args, format);
-	if (logger_use_syslog) {
+    if (!status_flags.initialized)
+        CRASH("not initialized");
+	if (status_flags.syslog_appender) {
 	    va_list syslog_args;
 	    va_copy(syslog_args, args);
 		vsyslog(level, format, syslog_args);
 		va_end(syslog_args);
 	}
-    if (logger_verbose || level != LOG_DEBUG) {
-        /* Generate our own timestamp */
-        time_t t;
-        struct tm *tms;
-        char tbuf[32];
-        t = time(NULL);
-        tms = localtime(&t);
-        if (strftime(tbuf, sizeof(tbuf), "%a, %d %b %Y %T %z", tms) == 0)
-            strncpy(tbuf, "Unknown timeval", sizeof(tbuf));
+	if (status_flags.verbose || level != LOG_DEBUG) {
+        if (status_flags.stderr_appender) {
+            va_list args2;
+            va_copy(args2, args);
+            vfprintf(stderr_fh, format, args2);
+            fflush(stderr_fh);
+            va_end(args2);
+        }
+        if (status_flags.file_appender) {
+            /* Generate our own timestamp */
+            time_t t;
+            struct tm *tms;
+            char tbuf[32];
+            t = time(NULL);
+            tms = localtime(&t);
+            if (strftime(tbuf, sizeof(tbuf), "%a, %d %b %Y %T %z", tms) == 0)
+                strncpy(tbuf, "Unknown timeval", sizeof(tbuf));
 
-        /* Write to the log */
-        const char *term = getenv("TERM");
-        if (term && level == LOG_ERR)
-            fprintf(logger_fh, "\033[0;31m");
-        fprintf(logger_fh, "%c %s %d ", _level_code(level), tbuf, getpid());
-        vfprintf(logger_fh, format, args);
-        if (term && level == LOG_ERR)
-            fprintf(logger_fh, "\033[0m");
-        fflush(logger_fh);
+            /* Write to the log */
+            const char *term = getenv("TERM");
+            if (term && level == LOG_ERR)
+                fprintf(logger_fh, "\033[0;31m");
+            fprintf(logger_fh, "%c %s %d ", _level_code(level), tbuf, getpid());
+            vfprintf(logger_fh, format, args);
+            if (term && level == LOG_ERR)
+                fprintf(logger_fh, "\033[0m");
+            fflush(logger_fh);
+        }
     }
-	va_end(args);
+    va_end(args);
 	if (level <= LOG_ERR)
 		return -1;
 	else

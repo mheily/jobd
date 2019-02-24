@@ -41,7 +41,7 @@ set +x
 touch $logfile
 tail -f $logfile &
 tail_pid=$!
-$objdir/sbin/jobd -fvv &
+$objdir/sbin/jobd -fvv > $logfile 2>&1 &
 jobd_pid=$!
 
 
@@ -62,8 +62,13 @@ assert_contains 'job disable_me has been disabled'
 assert_contains 'sending SIGTERM to job disable_me'
 
 kill $jobd_pid
-jobd_pid=""
 assert_contains 'sending SIGTERM to job shutdown_handler'
+
+for i in $(seq 1 10) ; do
+    kill -0 $jobd_pid || break
+done
+kill -0 $jobd_pid || err 'jobd still running'
+jobd_pid=""
 
 # Run the jobstat command
 $objdir/bin/jobstat >> $logfile 2>&1

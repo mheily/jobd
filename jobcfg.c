@@ -45,8 +45,9 @@ main(int argc, char *argv[])
     char *command = NULL;
     char *f_flag = NULL;
 
-    if (logger_init(NULL) < 0)
+    if (logger_init() < 0)
         errx(1, "unable to initialize logging");
+    logger_add_stderr_appender();
     if (db_init() < 0)
         errx(1, "unable to initialize database functions");
 

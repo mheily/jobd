@@ -119,8 +119,9 @@ main(int argc, char *argv[])
         usage();
     }
 
-    if (logger_init(NULL) < 0)
+    if (logger_init() < 0)
         errx(1, "logger_init");
+    logger_add_stderr_appender();
 
     if (db_init() < 0)
         errx(1, "logger_init");
