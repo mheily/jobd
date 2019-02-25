@@ -17,9 +17,11 @@ the current release.
 
 The basic commands to build and install the software are:
 
-    ./configure
-    make
-	sudo make install
+        mkdir build
+        cd build
+        cmake ..
+        make
+        sudo make install
 
 <!--
 ## Building under Linux
