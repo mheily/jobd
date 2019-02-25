@@ -1,0 +1,18 @@
+/* DO NOT EDIT -- automatically generated */
+
+#ifndef _CONFIG_H
+#define _CONFIG_H
+
+static const struct {
+    const char *project_name;
+    const char *datarootdir;
+    const char *localstatedir;
+    const char *runstatedir;
+} compile_time_option = {
+        .project_name = "@CMAKE_PROJECT_NAME@",
+        .datarootdir = "@CMAKE_INSTALL_FULL_DATAROOTDIR@",
+        .localstatedir = "@CMAKE_INSTALL_FULL_LOCALSTATEDIR@",
+        .runstatedir = "@CMAKE_INSTALL_FULL_RUNSTATEDIR@"
+};
+
+#endif /* _CONFIG_H */

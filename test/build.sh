@@ -2,18 +2,9 @@
 
 objdir="$(pwd)/test/obj"
 rm -rf $objdir
-mkdir -p $objdir $objdir/libexec $objdir/run/jobd
-grep -q './test/obj' config.mk || {
-	make distclean
-	export PREFIX=$objdir
-	export EXEC_PREFIX=$objdir
-	export BINDIR=$objdir/bin
-	export SBINDIR=$objdir/sbin
-	export MANDIR=$objdir/man
-	export PKGCONFIGDIR=$objdir/etc/jobd
-	export RUNSTATEDIR=$objdir/var/run/jobd
-	export RUNDIR=$objdir/run
-	./configure
+mkdir -p $objdir $objdir/libexec $objdir/run/jobd $objdir/var/log
+grep -q $objdir config.h || {
+    cmake -DCMAKE_INSTALL_PREFIX=$objdir .
 }
 make all -j6
 make install

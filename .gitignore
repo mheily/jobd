@@ -13,7 +13,11 @@ test.log
 /.vagrant/
 /config.h
 /config.inc
-/config.mk
 /test/obj
 cmake-build-debug/
 /core
+
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt

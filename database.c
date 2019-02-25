@@ -49,19 +49,21 @@ db_init(void)
 {
 	memset(&db_default, 0, sizeof(db_default));
 
-	if (asprintf(&db_default.dbpath, "%s/repository.db", compile_time_option.localstatedir) < 0)
+	if (asprintf(&db_default.dbpath, "%s/db/%s/repository.sqlite3",
+	        compile_time_option.localstatedir, compile_time_option.project_name) < 0)
 		db_default.dbpath = NULL;
 	if (!db_default.dbpath) {
 		printlog(LOG_ERR, "asprintf: %s", strerror(errno));
 		return (-1);
 	}
 
-	if (asprintf(&db_default.schemapath, "%s/schema.sql", compile_time_option.datarootdir) < 0)
-		db_default.schemapath = NULL;
-	if (!db_default.schemapath) {
-		printlog(LOG_ERR, "asprintf: %s", strerror(errno));
-		return (-1);
-	}
+    if (asprintf(&db_default.schemapath, "%s/%s/schema.sql", compile_time_option.datarootdir,
+                 compile_time_option.project_name) < 0)
+        db_default.schemapath = NULL;
+    if (!db_default.schemapath) {
+        printlog(LOG_ERR, "asprintf: %s", strerror(errno));
+        return (-1);
+    }
 
 	if (sqlite3_config(SQLITE_CONFIG_LOG, _db_log_callback, NULL) < 0) {
 		printlog(LOG_ERR, "error setting log callback");

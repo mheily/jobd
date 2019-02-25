@@ -32,9 +32,9 @@ objdir="./test/obj"
 
 . ./config.inc
 
-logfile="$RUNDIR/jobd/boot.log"
+logfile="$LOCALSTATEDIR/log/$PROJECT_NAME/boot.log"
 
-install test/job.d/* $DATAROOTDIR/manifests
+install test/job.d/* $DATAROOTDIR/$PROJECT_NAME/manifests
 $BINDIR/jobcfg -f test/job.d -v import
 
 set +x

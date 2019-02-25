@@ -637,7 +637,8 @@ create_pid_file(void)
 	pid_t otherpid;
 	int rv;
 
-	rv = snprintf((char *)&path, sizeof(path), "%s/jobd.pid", compile_time_option.runstatedir);
+	rv = snprintf((char *)&path, sizeof(path), "%s/%s.pid", compile_time_option.project_name,
+	        compile_time_option.runstatedir);
 	if (rv >= (int)sizeof(path)) {
 		printlog(LOG_ERR, "unable to create pidfile; buffer too small");
 		abort();
@@ -665,8 +666,8 @@ bootlog(pid_t pid)
 	if (pid == 1)
 	    return NULL;
 
-	rv = snprintf((char *) &path, sizeof(path), "%s/jobd/boot.log",
-				  compile_time_option.rundir);
+	rv = snprintf((char *) &path, sizeof(path), "%s/%s/boot.log", compile_time_option.project_name,
+				  compile_time_option.runstatedir);
 	if (rv >= (int) sizeof(path) || rv < 0)
 		abort();
 

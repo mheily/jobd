@@ -690,7 +690,7 @@ parser_import(const char *path)
 
     if (!path) {
         int rv = snprintf((char *) &default_path, sizeof(default_path),
-                          "%s/manifests", compile_time_option.datarootdir);
+                          "%s/%s/manifests", compile_time_option.datarootdir, compile_time_option.project_name);
         if (rv >= (int) sizeof(default_path) || rv < 0)
             return printlog(LOG_ERR, "snprintf failed");
         path = (char *) &default_path;

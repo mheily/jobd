@@ -41,7 +41,7 @@ ipc_init(const char *_socketpath)
 	if (_socketpath) {
 		socketpath = strdup(_socketpath);
 	} else {
-		if (asprintf(&socketpath, "%s/jobd.sock", compile_time_option.rundir) < 0)
+		if (asprintf(&socketpath, "%s/%s/jobd.sock", compile_time_option.runstatedir, compile_time_option.project_name) < 0)
 			socketpath = NULL;
 	}
 	if (!socketpath)
