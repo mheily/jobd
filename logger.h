@@ -17,6 +17,7 @@
 #ifndef _LOGGER_H
 #define _LOGGER_H
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <syslog.h>
 
@@ -27,12 +28,19 @@ extern int logger_use_syslog;
 
 FILE *logger_fh;
 
-void logger_add_file_appender(const char *path);
-void logger_add_stderr_appender(void);
-void logger_add_syslog_appender(const char *ident, int option, int facility);
+int logger_add_file_appender(const char *path);
+int logger_add_stderr_appender(void);
+int logger_add_syslog_appender(const char *ident, int option, int facility);
 int logger_init(void);
 int logger_open(const char *);
 int __attribute__((format(printf, 2, 3))) logger_append(int level, const char *format, ...);
 void logger_set_verbose(int);
+
+#define CLEANUP_STR __attribute__((__cleanup__(string_free)))
+
+static inline void string_free(char **strp) {
+    free(*strp);
+    *strp = NULL;
+}
 
 #endif /* _LOGGER_H */

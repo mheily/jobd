@@ -14,6 +14,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <syslog.h>
@@ -24,8 +26,6 @@
 #include <memory.h>
 
 #include "logger.h"
-
-#define CRASH(message) do { fputs(message, stderr); abort(); } while (0)
 
 FILE *logger_fh;
 FILE *stderr_fh;
@@ -38,6 +38,21 @@ struct {
     int stderr_appender:1;
 } status_flags;
 
+/* This is called when there is an error setting up logging. */
+static int __attribute__((format(printf, 2, 3)))
+_fallback_printlog(int level, const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vfprintf(stderr, format, args);
+    fflush(stderr);
+    va_end(args);
+    if (level <= LOG_ERR)
+        return -1;
+    else
+        return 0;
+}
+
 int
 logger_open(const char *path)
 {
@@ -46,13 +61,14 @@ logger_open(const char *path)
 
     fd = open(path, O_WRONLY|O_CREAT, 0600);
     if (fd < 0)
-        return -1;
+        return _fallback_printlog(LOG_ERR, "open(2) of %s: %s",
+                path, strerror(errno));
     if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0)
-        return -2;
+        return _fallback_printlog(LOG_ERR, "fcntl(2): %s", strerror(errno));
     nfh = fdopen(fd, "a");
     if (!nfh) {
-        close(fd);
-        return -3;
+        (void) close(fd);
+        return _fallback_printlog(LOG_ERR, "fdopen(3): %s", strerror(errno));
     }
     if (logger_fh)
         fclose(logger_fh);
@@ -60,47 +76,44 @@ logger_open(const char *path)
     return 0;
 }
 
-void
+int
 logger_add_syslog_appender(const char *ident, int option, int facility)
 {
-    if (!status_flags.initialized)
-        CRASH("not initialized");
-    if (status_flags.syslog_appender)
-        CRASH("cannot have multiple appenders");
-    status_flags.syslog_appender = 1;
+    assert(status_flags.initialized);
+    assert(!status_flags.syslog_appender);
     openlog(ident, option, facility);
+    status_flags.syslog_appender = 1;
+    return 0;
 }
 
-void
+int
 logger_add_file_appender(const char *path)
 {
-    if (!status_flags.initialized)
-        CRASH("not initialized");
-    if (status_flags.file_appender)
-        CRASH("cannot have multiple appenders");
-    status_flags.file_appender = 1;
+    assert(status_flags.initialized);
+    assert(!status_flags.file_appender);
     if (logger_open(path) < 0)
-        CRASH("error opening logfile");
+        return _fallback_printlog(LOG_ERR, "error opening logfile");
+    status_flags.file_appender = 1;
+    return 0;
 }
 
-void
+int
 logger_add_stderr_appender(void)
 {
-    if (!status_flags.initialized)
-        CRASH("not initialized");
-    if (status_flags.stderr_appender)
-        CRASH("cannot have multiple appenders");
-    status_flags.stderr_appender = 1;
+    assert(status_flags.initialized);
+    assert(!status_flags.stderr_appender);
     int fd = dup(STDERR_FILENO);
     if (fd < 0)
-        CRASH("dup failed");
+        return _fallback_printlog(LOG_ERR, "dup(2): %s", strerror(errno));
     if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0)
-        CRASH("fcntl failed");
+        return _fallback_printlog(LOG_ERR, "fcntl(2): %s", strerror(errno));
     stderr_fh = fdopen(fd, "a");
     if (!stderr_fh) {
         close(fd);
-        CRASH("fdopen failed");
+        return _fallback_printlog(LOG_ERR, "fdopen(2): %s", strerror(errno));
     }
+    status_flags.stderr_appender = 1;
+    return 0;
 }
 
 int
@@ -140,8 +153,7 @@ logger_append(int level, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    if (!status_flags.initialized)
-        CRASH("not initialized");
+    assert(status_flags.initialized);
     if (status_flags.syslog_appender) {
         va_list syslog_args;
         va_copy(syslog_args, args);
