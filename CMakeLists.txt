@@ -39,6 +39,9 @@ set_target_properties(static_sqlite
         PROPERTIES
         COMPILE_FLAGS "-DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION -w")
 
+#
+# Local sources
+#
 add_executable(init init.c)
 
 add_executable(jobd
@@ -49,6 +52,8 @@ add_executable(jobd
         config.h
         database.c
         database.h
+        event_loop.c
+        event_loop.h
         ipc.c
         ipc.h
         job.c
@@ -129,6 +134,7 @@ install(DIRECTORY DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/manif
 
 install(DIRECTORY DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/db/${PROJECT_NAME})
 
+install(DIRECTORY DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/log)
 install(DIRECTORY DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/log/${PROJECT_NAME})
 
 install(DIRECTORY DESTINATION ${CMAKE_INSTALL_RUNSTATEDIR}/${PROJECT_NAME})
