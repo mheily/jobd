@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <syslog.h>
 
-#define printlog(level, format,...) logger_append(level, "%s(%s:%d): "format"\n", __func__, __FILE__, __LINE__, ## __VA_ARGS__)
+#define printlog(level, format,...) logger_append(level, "%s(%s:%d): "format"\n", __func__, strrchr(__FILE__, '/') + 1, __LINE__, ## __VA_ARGS__)
 
 extern FILE *logger_fh;
 extern int logger_use_syslog;
