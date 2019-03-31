@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Mark Heily <mark@heily.com>
+ * Copyright (c) 2019 Mark Heily <mark@heily.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,27 +14,16 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef _LOGGER_H
-#define _LOGGER_H
+#ifndef _JOBD_MEMORY_H
+#define _JOBD_MEMORY_H
 
 #include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <syslog.h>
 
-#define printlog(level, format,...) logger_append(level, "%s(%s:%d): "format"\n", __func__, strrchr(__FILE__, '/') + 1, __LINE__, ## __VA_ARGS__)
+#define CLEANUP_STR __attribute__((__cleanup__(string_free)))
 
-extern FILE *logger_fh;
-extern int logger_use_syslog;
+static inline void string_free(char **strp) {
+	free(*strp);
+	*strp = NULL;
+}
 
-FILE *logger_fh;
-
-int logger_add_file_appender(const char *path);
-int logger_add_stderr_appender(void);
-int logger_add_syslog_appender(const char *ident, int option, int facility);
-int logger_init(void);
-int logger_open(const char *);
-int __attribute__((format(printf, 2, 3))) logger_append(int level, const char *format, ...);
-void logger_set_verbose(int);
-
-#endif /* _LOGGER_H */
+#endif

@@ -61,6 +61,7 @@ add_executable(jobd
         jobd.c
         logger.c
         logger.h
+        memory.h
         parser.c
         parser.h
         queue.h
