@@ -37,7 +37,7 @@ add_library(static_sqlite STATIC
 
 set_target_properties(static_sqlite
         PROPERTIES
-        COMPILE_FLAGS "-DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION -w")
+        COMPILE_FLAGS "-DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_ENABLE_JSON1 -w")
 
 #
 # Local sources
@@ -108,10 +108,22 @@ add_executable(jobprop
 
 target_link_libraries(jobprop static_sqlite)
 
+add_executable(supervise
+        supervise.c
+        database.c
+        event_loop.c
+        event_loop.h
+        ipc.c
+        job.c
+        logger.c
+        )
+
+target_link_libraries(supervise static_sqlite nanomsg)
+
 #
 # Installation
 #
-install(TARGETS init
+install(TARGETS init supervise
         RUNTIME
         DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/${CMAKE_PROJECT_NAME})
 
@@ -139,6 +151,7 @@ install(DIRECTORY DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/log)
 install(DIRECTORY DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/log/${PROJECT_NAME})
 
 install(DIRECTORY DESTINATION ${CMAKE_INSTALL_RUNSTATEDIR}/${PROJECT_NAME})
+install(DIRECTORY DESTINATION ${CMAKE_INSTALL_RUNSTATEDIR}/${PROJECT_NAME}/ipc)
 
 enable_testing()
 
