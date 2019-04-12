@@ -28,6 +28,7 @@
 #include "config.h"
 #include "database.h"
 #include "logger.h"
+#include "memory.h"
 #include "toml.h"
 #include "array.h"
 #include "job.h"

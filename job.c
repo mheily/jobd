@@ -29,6 +29,7 @@
 
 #include "database.h"
 #include "logger.h"
+#include "memory.h"
 #include "job.h"
 #include "parser.h"
 

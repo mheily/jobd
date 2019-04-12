@@ -49,7 +49,4 @@ int db_get_string(char *dst, size_t sz, const char *sql, const char *fmt, ...);
 int db_query(sqlite3_stmt **result, const char *sql, const char *fmt, ...);
 int db_enable_tracing(void);
 
-#define CLEANUP_STMT __attribute__((__cleanup__(db_statement_free)))
-void db_statement_free(sqlite3_stmt **stmt);
-
 #endif /* _DATABASE_H */

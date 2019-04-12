@@ -27,6 +27,7 @@
 #include "array.h"
 #include "config.h"
 #include "logger.h"
+#include "memory.h"
 #include "database.h"
 
 static struct {

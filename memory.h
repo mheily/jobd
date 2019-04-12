@@ -26,4 +26,9 @@ static inline void string_free(char **strp) {
 	*strp = NULL;
 }
 
+struct sqlite3_stmt;
+
+#define CLEANUP_STMT __attribute__((__cleanup__(db_statement_free)))
+void db_statement_free(struct sqlite3_stmt **stmt);
+
 #endif
