@@ -34,6 +34,7 @@ struct string_array;
 extern sqlite3 *dbh;
 
 int db_init(void);
+void db_shutdown(void);
 int db_checkpoint(sqlite3 *conn);
 int db_close(sqlite3 *conn);
 int db_create(const char *, const char *);

@@ -187,9 +187,16 @@ _job_child_pre_exec(struct child_context *ctx)
             return printlog(LOG_ERR, "setuid(2): %s", strerror(errno));
     }
 
-    mode_t job_umask;
-    sscanf(ctx->umask_str, "%hi", (unsigned short *) &job_umask);
-    (void) umask(job_umask);
+    errno = 0;
+    char *endptr;
+    long job_umask_l = strtol(ctx->umask_str, &endptr, 10);
+    if (errno != 0)
+        return printlog(LOG_ERR, "bad umask");
+    if (job_umask_l > INT_MAX || job_umask_l < INT_MIN)
+        return printlog(LOG_ERR, "bad range: umask");
+    if (endptr == ctx->umask_str || *endptr != '\0')
+        return printlog(LOG_ERR, "non-numeric characters: umask");
+    (void) umask((mode_t) job_umask_l);
 
     //TODO this->setup_environment();
     //this->createDescriptors();

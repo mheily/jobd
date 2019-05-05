@@ -74,6 +74,14 @@ db_init(void)
 	return (0);
 }
 
+void db_shutdown(void)
+{
+	if (dbh)
+		db_close(dbh);
+	free(db_default.dbpath);
+	free(db_default.schemapath);
+}
+
 int
 db_open(const char *path, int flags __attribute__((unused)))
 {

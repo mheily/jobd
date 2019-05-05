@@ -130,6 +130,16 @@ logger_init(void)
     return 0;
 }
 
+void logger_shutdown(void)
+{
+    if (status_flags.initialized) {
+        if (status_flags.stderr_appender) {
+            fclose(stderr_fh);
+        }
+        status_flags.initialized = 0;
+    }
+}
+
 void
 logger_set_verbose(int flag)
 {

@@ -27,7 +27,7 @@ CREATE TABLE jobs (
     standard_in_path NOT NULL DEFAULT '/dev/null',
     standard_out_path NOT NULL DEFAULT '/dev/null',
     start_order INT,
-    umask VARCHAR,
+    umask VARCHAR DEFAULT '022',
     user_name VARCHAR,
     working_directory VARCHAR NOT NULL DEFAULT '/',
     FOREIGN KEY (job_type_id) REFERENCES job_types (id) ON DELETE RESTRICT

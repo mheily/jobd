@@ -33,6 +33,7 @@ int logger_add_file_appender(const char *path);
 int logger_add_stderr_appender(void);
 int logger_add_syslog_appender(const char *ident, int option, int facility);
 int logger_init(void);
+void logger_shutdown(void);
 int logger_open(const char *);
 int __attribute__((format(printf, 2, 3))) logger_append(int level, const char *format, ...);
 void logger_set_verbose(int);

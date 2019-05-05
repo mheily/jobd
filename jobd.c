@@ -338,6 +338,10 @@ shutdown_handler(int signum)
     if (db_close(dbh) < 0)
         printlog(LOG_WARNING, "error closing database");
 
+    ipc_shutdown();
+    db_shutdown();
+    logger_shutdown();
+
     if (signum == SIGINT) {
         crash("caught SIGINT");
     } else if (signum == SIGTERM) {
