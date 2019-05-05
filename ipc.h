@@ -17,6 +17,11 @@
 #ifndef _IPC_H
 #define _IPC_H
 
+#include <sys/un.h>
+
+/* Maximum length of an IPC message */
+#define IPC_MAX_MSGLEN  32768U
+
 #include "job.h" // just for JOB_ID_MAX
 
 /* Maximum length of a method name */
@@ -26,9 +31,9 @@
 #define JOB_METHOD_ARG_MAX	512
 
 struct ipc_request {
-	char job_id[JOB_ID_MAX];
-	char method[JOB_METHOD_NAME_MAX];
-	char args[JOB_METHOD_ARG_MAX];
+    char job_id[JOB_ID_MAX];
+    char method[JOB_METHOD_NAME_MAX];
+    char args[JOB_METHOD_ARG_MAX];
 };
 
 struct ipc_response {
@@ -41,8 +46,9 @@ struct ipc_response {
 };
 
 struct ipc_session {
-	int client_fd;
-	struct ipc_request req;
+    struct sockaddr_un client_addr;
+    socklen_t client_addrlen;
+    struct ipc_request req;
 	struct ipc_response res;
 };
 
