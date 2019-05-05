@@ -368,55 +368,49 @@ _jobd_ipc_request_handler(const char *method)
 static int
 ipc_server_handler(event_t *ev __attribute__((unused)))
 {
-	struct ipc_session session;
-	job_id_t id;
+    struct ipc_session CLEANUP_IPC_SESSION *session;
+    int retcode;
+    job_id_t id;
 
-	if (ipc_read_request(&session) < 0) {
-		printlog(LOG_ERR, "ipc_read_request() failed");
-		return (-1);
-	}
+    session = ipc_session_new();
+    if (!session)
+        return printlog(LOG_ERR, "session allocation failed");
 
-	const struct ipc_request * const req = &session.req;
-	struct ipc_response * const res = &session.res;
-	printlog(LOG_DEBUG, "got IPC request; method=%s job_id=%s", req->method, req->job_id);
+    if (ipc_read_request(session) < 0) {
+        printlog(LOG_ERR, "ipc_read_request() failed");
+        (void) ipc_send_response(session, IPC_RES_ERR(-32600, "Invalid request"));
+        return (-1);
+    }
 
-	if (!strcmp(req->job_id, "jobd")) {
-		res->retcode = _jobd_ipc_request_handler(req->method);
+	const char * const method = session->req->method;
+	const char * const job_id = jsonrpc_request_param(session->req, "job_id");
+	if (!job_id)
+	    return printlog(LOG_ERR, "missing job_id parameter");
+	printlog(LOG_DEBUG, "got IPC request; method=%s job_id=%s", method, job_id);
+
+	if (!strcmp(job_id, "jobd")) {
+		retcode = _jobd_ipc_request_handler(method);
 	} else {
-	    if (db_get_id(&id, "SELECT id FROM jobs WHERE job_id = ?", "s", req->job_id) < 0) {
-			res->retcode = IPC_RESPONSE_ERROR;
-			if (ipc_send_response(&session) < 0) {
-				printlog(LOG_ERR, "ipc_read_request() failed");
-			}
-			return (-1);
-		}
-		if (id == INVALID_ROW_ID) {
-			res->retcode = IPC_RESPONSE_NOT_FOUND;
-			if (ipc_send_response(&session) < 0) {
-				printlog(LOG_ERR, "ipc_read_request() failed");
-			}
-			return (-1);
-		}
-		if (!strcmp(req->method, "start")) {
-			pid_t pid;
-			res->retcode = job_start(&pid, id);
-		} else if (!strcmp(req->method, "stop")) {
-			res->retcode = job_stop(id);
-		} else if (!strcmp(req->method, "enable")) {
-			res->retcode = job_enable(id);
-		} else if (!strcmp(req->method, "disable")) {
-			res->retcode = job_disable(id);
-		} else {
-			res->retcode = IPC_RESPONSE_NOT_FOUND;		
-		}
+	    if (db_get_id(&id, "SELECT id FROM jobs WHERE job_id = ?", "s", job_id) < 0) {
+			retcode = IPC_RESPONSE_ERROR;
+		} else if (!strcmp(method, "start")) {
+            pid_t pid;
+            retcode = job_start(&pid, id);
+        } else if (!strcmp(method, "stop")) {
+            retcode = job_stop(id);
+        } else if (!strcmp(method, "enable")) {
+            retcode = job_enable(id);
+        } else if (!strcmp(method, "disable")) {
+            retcode = job_disable(id);
+        } else {
+            retcode = IPC_RESPONSE_NOT_FOUND;
+        }
 	}
 
-	if (ipc_send_response(&session) < 0) {
-		printlog(LOG_ERR, "ipc_read_request() failed");
-		return (-1);
-	}
+	if (ipc_send_response(session, IPC_RES(retcode, "{}", "")) < 0)
+		return printlog(LOG_ERR, "ipc_read_request() failed");
 
-	return (0);
+	return 0;
 }
 
 static void

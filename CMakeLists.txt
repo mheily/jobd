@@ -59,6 +59,8 @@ add_executable(jobd
         job.c
         job.h
         jobd.c
+        jsonrpc.c
+        jsonrpc.h
         logger.c
         logger.h
         memory.h
@@ -75,6 +77,8 @@ add_executable(jobadm
         database.c
         ipc.c
         jobadm.c
+        jsonrpc.c
+        jsonrpc.h
         logger.c)
 
 target_link_libraries(jobadm static_sqlite)
@@ -84,6 +88,8 @@ add_executable(jobcfg
         ipc.c
         job.c
         jobcfg.c
+        jsonrpc.c
+        jsonrpc.h
         logger.c
         parser.c
         toml.c)
@@ -94,6 +100,8 @@ add_executable(jobstat
         database.c
         ipc.c
         jobstat.c
+        jsonrpc.c
+        jsonrpc.h
         logger.c)
 
 target_link_libraries(jobstat static_sqlite)
@@ -103,6 +111,8 @@ add_executable(jobprop
         database.c
         ipc.c
         job.c
+        jsonrpc.c
+        jsonrpc.h
         logger.c
         )
 
@@ -115,10 +125,12 @@ add_executable(supervise
         event_loop.h
         ipc.c
         job.c
+        jsonrpc.c
+        jsonrpc.h
         logger.c
         )
 
-target_link_libraries(supervise static_sqlite nanomsg)
+target_link_libraries(supervise static_sqlite)
 
 #
 # Installation

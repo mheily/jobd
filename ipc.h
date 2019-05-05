@@ -17,47 +17,58 @@
 #ifndef _IPC_H
 #define _IPC_H
 
+#include <sys/socket.h>
 #include <sys/un.h>
+
+#include "jsonrpc.h"
 
 /* Maximum length of an IPC message */
 #define IPC_MAX_MSGLEN  32768U
 
-#include "job.h" // just for JOB_ID_MAX
-
-/* Maximum length of a method name */
-#define JOB_METHOD_NAME_MAX	128
-
-/* Maximum length of arguments to a method */
-#define JOB_METHOD_ARG_MAX	512
-
-struct ipc_request {
-    char job_id[JOB_ID_MAX];
-    char method[JOB_METHOD_NAME_MAX];
-    char args[JOB_METHOD_ARG_MAX];
-};
-
 struct ipc_response {
-	enum {
-		IPC_RESPONSE_OK,
-		IPC_RESPONSE_ERROR,
-		IPC_RESPONSE_NOT_FOUND,
-		IPC_RESPONSE_INVALID_STATE,
-	} retcode;
+    enum {
+        IPC_RESPONSE_OK,
+        IPC_RESPONSE_ERROR,
+        IPC_RESPONSE_NOT_FOUND,
+        IPC_RESPONSE_INVALID_STATE,
+    } retcode;
 };
+
+struct ipc_result {
+    int code;
+    char *data;
+    char *errmsg;
+};
+
+#define IPC_RES(_code, _data, _errmsg) ((struct ipc_result) { _code, _data, _errmsg })
+#define IPC_RES_OK                    ((struct ipc_result) { 0, "{}", NULL })
+#define IPC_RES_DATA(_data)        ((struct ipc_result) { 0, _data, NULL })
+#define IPC_RES_ERR(_code, _errmsg) ((struct ipc_result) { _code, NULL, _errmsg })
 
 struct ipc_session {
     struct sockaddr_un client_addr;
     socklen_t client_addrlen;
-    struct ipc_request req;
-	struct ipc_response res;
+    struct jsonrpc_request *req;
 };
 
 int ipc_init(const char *_socketpath);
+void ipc_shutdown(void);
+
 int ipc_bind(void);
+
 int ipc_connect(void);
+
 int ipc_client_request(const char *job_id, const char *method);
+
 int ipc_read_request(struct ipc_session *s);
-int ipc_send_response(struct ipc_session *s);
+
+int ipc_send_response(struct ipc_session *s, struct ipc_result res);
+
+struct ipc_session * ipc_session_new(void);
+
+void ipc_session_destroy(struct ipc_session **s);
+#define CLEANUP_IPC_SESSION __attribute__((__cleanup__(ipc_session_destroy)))
+
 int ipc_get_sockfd(void);
 
 #endif /* _IPC_H */

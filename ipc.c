@@ -21,9 +21,11 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "config.h"
 #include "logger.h"
+#include "memory.h"
 #include "ipc.h"
 
 static int initialized;
@@ -34,138 +36,166 @@ static int ipc_sockfd = -1;
 int
 ipc_init(const char *_socketpath)
 {
-	if (initialized)
-		return (-1);
+    if (initialized)
+        return -1;
 
-	if (_socketpath) {
-		socketpath = strdup(_socketpath);
-	} else {
-		if (asprintf(&socketpath, "%s/%s/jobd.sock", compile_time_option.runstatedir, compile_time_option.project_name) < 0)
-			socketpath = NULL;
-	}
-	if (!socketpath)
-		return (-1);
+    if (jsonrpc_init() < 0)
+        return -2;
 
-	initialized = 1;
+    if (_socketpath) {
+        socketpath = strdup(_socketpath);
+    } else {
+        if (asprintf(&socketpath, "%s/%s/jobd.sock", compile_time_option.runstatedir,
+                     compile_time_option.project_name) < 0)
+            socketpath = NULL;
+    }
+    if (!socketpath)
+        return -1;
 
-	return (0);
+    initialized = 1;
+
+    return 0;
+}
+
+void ipc_shutdown(void)
+{
+    if (initialized) {
+        jsonrpc_shutdown();
+        close(ipc_sockfd);
+        free(socketpath);
+        initialized = 0;
+    }
 }
 
 int
 ipc_client_request(const char *job_id, const char *method)
 {
-	ssize_t bytes;
-	struct sockaddr_un sa_to;
-	socklen_t len;
-	struct ipc_request req;
-	struct ipc_response res;
+    ssize_t bytes;
+    struct sockaddr_un sa_to;
+    socklen_t len;
+    struct jsonrpc_request CLEANUP_JSONRPC_REQUEST *req = NULL;
+    struct jsonrpc_response CLEANUP_JSONRPC_RESPONSE *response = NULL;
 
-	if (!initialized)
-		return (-1);
+    if (!initialized)
+        return -1;
 
-	memset(&sa_to, 0, sizeof(struct sockaddr_un));
+    memset(&sa_to, 0, sizeof(struct sockaddr_un));
     sa_to.sun_family = AF_UNIX;
-	if (strlen(socketpath) > sizeof(sa_to.sun_path) - 1)
-		errx(1, "socket path is too long");
+    if (strlen(socketpath) > sizeof(sa_to.sun_path) - 1)
+        return printlog(LOG_ERR, "socket path is too long");
     strncpy(sa_to.sun_path, socketpath, sizeof(sa_to.sun_path) - 1);
 
-	strncpy(req.method, method, sizeof(req.method));
-	req.method[sizeof(req.method) - 1] = '\0';
-
-	strncpy((char*)&req.job_id, job_id, JOB_ID_MAX);
-	req.job_id[sizeof(req.job_id) - 1] = '\0';
-
-	len = (socklen_t) sizeof(struct sockaddr_un);
-	bytes = sendto(ipc_sockfd, &req, sizeof(req), 0,
+    req = jsonrpc_request_new("1", method, 1, "job_id", job_id);
+    if (!req)
+        return printlog(LOG_ERR, "unable to allocate request");
+    char CLEANUP_STR *buf = NULL;
+    if (jsonrpc_request_serialize(&buf, req) < 0)
+        return printlog(LOG_ERR, "serialization failed");
+    len = (socklen_t) sizeof(struct sockaddr_un);
+    bytes = sendto(ipc_sockfd, buf, strlen(buf), 0,
                    (const struct sockaddr *) &sa_to,
-                           sizeof(sa_to));
-	if (bytes < 0) {
-		err(1, "sendto(2)");
-	} else if ((size_t) bytes < sizeof(req)) {
-		err(1, "TODO - handle short write");
-	}
-	printlog(LOG_DEBUG, "sent IPC request: %s::%s()",req.job_id, req.method);
+                   sizeof(sa_to));
+    if (bytes < 0) {
+        return printlog(LOG_ERR, "sendto(2): %s", strerror(errno));
+    } else if ((size_t) bytes < sizeof(req)) {
+        return printlog(LOG_ERR, "TODO - handle short write");
+    }
+    printlog(LOG_DEBUG, "sent IPC request: %s", buf);
 
-	len = sizeof(struct sockaddr_un);
-	bytes = recvfrom(ipc_sockfd, &res, sizeof(res), 0,
+    char resbuf[IPC_MAX_MSGLEN + 1];
+    len = sizeof(struct sockaddr_un);
+    bytes = recvfrom(ipc_sockfd, resbuf, sizeof(resbuf), 0,
                      (struct sockaddr *) &sa_to,
                      &len);
-    if (bytes < 0) {
-		err(1, "recvfrom(2)");
-	} else if ((size_t)bytes < sizeof(res)) {
-		err(1, "TODO - handle short read of %zu bytes", bytes);
-	}
-	printlog(LOG_DEBUG, "got IPC response; retcode=%d", res.retcode);
-	return (res.retcode);
+    if (bytes < 0)
+        return printlog(LOG_ERR, "recvfrom(2): %s", strerror(errno));
+    resbuf[bytes] = '\0';
+    printlog(LOG_DEBUG, "<<< %s", resbuf);
+
+    if (jsonrpc_response_parse(&response, resbuf, bytes) < 0)
+        return printlog(LOG_ERR, "error parsing response");
+
+    return (response->error.code);
 }
 
 static int
 create_ipc_socket(void)
 {
-	int sd;
-	struct sockaddr_un saun;
+    int sd;
+    struct sockaddr_un saun;
 
-	if (strlen(socketpath) > sizeof(saun.sun_path) - 1) {
-		printlog(LOG_ERR, "socket path is too long");
-		return (-1);
-	}
+    if (strlen(socketpath) > sizeof(saun.sun_path) - 1)
+        return printlog(LOG_ERR, "socket path is too long");
 
     sd = socket(AF_UNIX, SOCK_DGRAM, 0);
-	if (sd < 0) {
-		printlog(LOG_ERR, "socket(2): %s", strerror(errno));
-		return (-1);
-	}
-	if (fcntl(sd, F_SETFD, FD_CLOEXEC) < 0) {
-		printlog(LOG_ERR, "fcntl(2): %s", strerror(errno));
-		close(sd);
-		return (-1);
-	}
+    if (sd < 0)
+        return printlog(LOG_ERR, "socket(2): %s", strerror(errno));
+    if (fcntl(sd, F_SETFD, FD_CLOEXEC) < 0) {
+        printlog(LOG_ERR, "fcntl(2): %s", strerror(errno));
+        close(sd);
+        return -1;
+    }
 
-	memset(&saun, 0, sizeof(saun));
-	saun.sun_family = AF_UNIX;
-	strncpy(saun.sun_path, socketpath, sizeof(saun.sun_path) - 1);
-	memcpy(&ipc_server_addr, &saun, sizeof(ipc_server_addr));//FIXME: is this used?
-	ipc_sockfd = sd;
-	printlog(LOG_DEBUG, "bound to %s", socketpath);
-	return (0);
+    memset(&saun, 0, sizeof(saun));
+    saun.sun_family = AF_UNIX;
+    strncpy(saun.sun_path, socketpath, sizeof(saun.sun_path) - 1);
+    memcpy(&ipc_server_addr, &saun, sizeof(ipc_server_addr));
+    ipc_sockfd = sd;
+    printlog(LOG_DEBUG, "bound to %s", socketpath);
+    return 0;
 }
 
 int
 ipc_bind(void)
 {
-	int rv;
+    int rv;
 
-	if (create_ipc_socket() < 0)
-		return (-1);
-	
-	rv = bind(ipc_sockfd, (struct sockaddr *) &ipc_server_addr, sizeof(ipc_server_addr));
-	if (rv < 0) {
-		if (errno == EADDRINUSE) {
-			unlink(socketpath);
-			if (bind(ipc_sockfd, (struct sockaddr *) &ipc_server_addr, sizeof(ipc_server_addr)) == 0) {
-				return (0);
-			}				
-		}
-		printlog(LOG_ERR, "bind(2) to %s: %s", socketpath, strerror(errno));
-		return (-1);
-	}
+    if (create_ipc_socket() < 0)
+        return -1;
 
-	return (0);
+    rv = bind(ipc_sockfd, (struct sockaddr *) &ipc_server_addr, sizeof(ipc_server_addr));
+    if (rv < 0) {
+        if (errno == EADDRINUSE) {
+            unlink(socketpath);
+            if (bind(ipc_sockfd, (struct sockaddr *) &ipc_server_addr, sizeof(ipc_server_addr)) == 0) {
+                return 0;
+            }
+        }
+        return printlog(LOG_ERR, "bind(2) to %s: %s", socketpath, strerror(errno));
+    }
+
+    return 0;
 }
 
-int ipc_send_response(struct ipc_session *s)
+int ipc_send_response(struct ipc_session *s, const struct ipc_result result)
 {
-	ssize_t bytes;
+    ssize_t bytes;
+    struct jsonrpc_response CLEANUP_JSONRPC_RESPONSE *response = NULL;
 
-	printlog(LOG_DEBUG, "sending IPC response; retcode=%d", s->res.retcode);
-	bytes = sendto(ipc_sockfd, &s->res, sizeof(s->res), 0,
-				   (struct sockaddr*)&s->client_addr, s->client_addrlen);
-	if (bytes < 0) {
-		printlog(LOG_ERR, "sendto(2): %s", strerror(errno));
-		return (-1);
-	}
+    char *id = s->req ? s->req->id : NULL;
+    response = jsonrpc_response_new(id);
+    if (!response)
+        return printlog(LOG_ERR, "error allocating response");
+    if (result.code == 0) {
+        if (jsonrpc_response_set_result(response, result.data) < 0)
+            return printlog(LOG_ERR, "error building response");
+    } else {
+        if (jsonrpc_response_set_error(response, result.code, result.errmsg) < 0)
+            return printlog(LOG_ERR, "error building response");
+    }
+    char CLEANUP_STR *buf = NULL;
+    if (jsonrpc_response_serialize(&buf, response) < 0)
+        return printlog(LOG_ERR, "serialization failed");
 
-	return (0);
+    printlog(LOG_DEBUG, ">>> %s", buf);
+    bytes = sendto(ipc_sockfd, buf, strlen(buf), 0,
+                   (struct sockaddr *) &s->client_addr, s->client_addrlen);
+    if (bytes < 0) {
+        printlog(LOG_ERR, "sendto(2): %s", strerror(errno));
+        return (-1);
+    }
+
+    return (0);
 }
 
 int
@@ -175,37 +205,50 @@ ipc_read_request(struct ipc_session *session)
 
     session->client_addrlen = sizeof(struct sockaddr_un);
     ssize_t bytes = recvfrom(ipc_sockfd, buf, sizeof(buf), 0,
-							 (struct sockaddr*)&session->client_addr, &session->client_addrlen);
-    if (bytes < 0) {
-		printlog(LOG_ERR, "recvfrom(2): %s", strerror(errno));
-		return (-1);
-	}
-    memcpy(&session->req, buf, bytes);
+                             (struct sockaddr *) &session->client_addr, &session->client_addrlen);
+    if (bytes < 0)
+        return printlog(LOG_ERR, "recvfrom(2): %s", strerror(errno));
+    printlog(LOG_DEBUG, "<<< %s", buf);
+    if (jsonrpc_request_parse(&session->req, buf, bytes) < 0)
+        return printlog(LOG_ERR, "unable to parse client request");
 
-	return (0);
+    return 0;
 }
 
 int
 ipc_connect(void)
 {
-	struct sockaddr_un saun;
+    struct sockaddr_un saun;
 
-	if (create_ipc_socket() < 0)
-		return (-1);
-      
-	memset(&saun, 0, sizeof(saun));
-	saun.sun_family = AF_UNIX;
-	memset(saun.sun_path, 0, sizeof(saun.sun_path));
-	if (bind(ipc_sockfd, (struct sockaddr *) &saun, sizeof(saun)) < 0) {
-		printlog(LOG_ERR, "bind(2) to %s: %s", saun.sun_path, strerror(errno));
-		return (-1);
-	}
+    if (create_ipc_socket() < 0)
+        return -1;
 
-	return (0);
+    memset(&saun, 0, sizeof(saun));
+    saun.sun_family = AF_UNIX;
+    memset(saun.sun_path, 0, sizeof(saun.sun_path));
+    if (bind(ipc_sockfd, (struct sockaddr *) &saun, sizeof(saun)) < 0)
+        return printlog(LOG_ERR, "bind(2) to %s: %s", saun.sun_path, strerror(errno));
+
+    return 0;
 }
 
 int
 ipc_get_sockfd(void)
 {
-	return (ipc_sockfd);
+    return ipc_sockfd;
+}
+
+struct ipc_session * ipc_session_new(void)
+{
+    struct ipc_session *p;
+    p = calloc(1, sizeof(*p));
+    return p;
+}
+
+void ipc_session_destroy(struct ipc_session **s) {
+    if (s && *s) {
+        jsonrpc_request_free((*s)->req);
+        free(*s);
+        *s = NULL;
+    }
 }
