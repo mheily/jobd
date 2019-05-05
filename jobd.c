@@ -561,7 +561,7 @@ main(int argc, char *argv[])
         logger_add_stderr_appender();
     }
 
-	if (ipc_init(NULL) < 0)
+	if (ipc_init() < 0)
 	    crash("unable to initialize IPC");
 
 	if (setsid() == -1) {
@@ -570,7 +570,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (ipc_bind() < 0)
+	if (ipc_bind("jobd") < 0)
 	    crash("unable to bind to the IPC socket");
 
 	if (db_init() < 0)

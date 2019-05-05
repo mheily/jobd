@@ -61,10 +61,10 @@ main(int argc, char *argv[])
         errx(1, "logger_init");
     logger_add_stderr_appender();
 
-    if (ipc_init(NULL) < 0)
+    if (ipc_init() < 0)
         errx(1, "ipc_init");
 
-    if (ipc_connect() < 0)
+    if (ipc_connect("jobd") < 0)
         errx(1, "ipc_connect");
 
     job_id = argv[0];

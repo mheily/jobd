@@ -51,12 +51,12 @@ struct ipc_session {
     struct jsonrpc_request *req;
 };
 
-int ipc_init(const char *_socketpath);
+int ipc_init(void);
 void ipc_shutdown(void);
 
-int ipc_bind(void);
+int ipc_bind(const char *service);
 
-int ipc_connect(void);
+int ipc_connect(const char *service);
 
 int ipc_client_request(const char *job_id, const char *method);
 

@@ -34,23 +34,13 @@ static struct sockaddr_un ipc_server_addr;
 static int ipc_sockfd = -1;
 
 int
-ipc_init(const char *_socketpath)
+ipc_init(void)
 {
     if (initialized)
         return -1;
 
     if (jsonrpc_init() < 0)
         return -2;
-
-    if (_socketpath) {
-        socketpath = strdup(_socketpath);
-    } else {
-        if (asprintf(&socketpath, "%s/%s/jobd.sock", compile_time_option.runstatedir,
-                     compile_time_option.project_name) < 0)
-            socketpath = NULL;
-    }
-    if (!socketpath)
-        return -1;
 
     initialized = 1;
 
@@ -81,8 +71,6 @@ ipc_client_request(const char *job_id, const char *method)
 
     memset(&sa_to, 0, sizeof(struct sockaddr_un));
     sa_to.sun_family = AF_UNIX;
-    if (strlen(socketpath) > sizeof(sa_to.sun_path) - 1)
-        return printlog(LOG_ERR, "socket path is too long");
     strncpy(sa_to.sun_path, socketpath, sizeof(sa_to.sun_path) - 1);
 
     req = jsonrpc_request_new("1", method, 1, "job_id", job_id);
@@ -118,14 +106,37 @@ ipc_client_request(const char *job_id, const char *method)
     return (response->error.code);
 }
 
+static char *
+_make_socketpath(const char *service)
+{
+    char *result;
+    struct sockaddr_un saun;
+
+    if (asprintf(&result, "%s/%s/%s.sock", compile_time_option.runstatedir,
+                 compile_time_option.project_name, service) < 0) {
+        printlog(LOG_ERR, "memory error");
+        return NULL;
+    }
+    if (strlen(result) > sizeof(saun.sun_path) - 1) {
+        printlog(LOG_ERR, "socket path is too long");
+        free(result);
+        return NULL;
+    }
+    return result;
+}
+
 static int
-create_ipc_socket(void)
+create_ipc_socket(const char *service)
 {
     int sd;
     struct sockaddr_un saun;
 
-    if (strlen(socketpath) > sizeof(saun.sun_path) - 1)
-        return printlog(LOG_ERR, "socket path is too long");
+    if (socketpath)
+        return printlog(LOG_ERR, "socket already exists");
+
+    socketpath = _make_socketpath(service);
+    if (!socketpath)
+        return printlog(LOG_ERR, "allocation failed");
 
     sd = socket(AF_UNIX, SOCK_DGRAM, 0);
     if (sd < 0)
@@ -141,28 +152,28 @@ create_ipc_socket(void)
     strncpy(saun.sun_path, socketpath, sizeof(saun.sun_path) - 1);
     memcpy(&ipc_server_addr, &saun, sizeof(ipc_server_addr));
     ipc_sockfd = sd;
-    printlog(LOG_DEBUG, "bound to %s", socketpath);
     return 0;
 }
 
 int
-ipc_bind(void)
+ipc_bind(const char *service)
 {
     int rv;
 
-    if (create_ipc_socket() < 0)
+    if (create_ipc_socket(service) < 0)
         return -1;
 
     rv = bind(ipc_sockfd, (struct sockaddr *) &ipc_server_addr, sizeof(ipc_server_addr));
     if (rv < 0) {
         if (errno == EADDRINUSE) {
             unlink(socketpath);
-            if (bind(ipc_sockfd, (struct sockaddr *) &ipc_server_addr, sizeof(ipc_server_addr)) == 0) {
-                return 0;
-            }
+            if (bind(ipc_sockfd, (struct sockaddr *) &ipc_server_addr, sizeof(ipc_server_addr)) < 0)
+                return printlog(LOG_ERR, "bind(2) to %s: %s", socketpath, strerror(errno));
+        } else {
+            return printlog(LOG_ERR, "bind(2) to %s: %s", socketpath, strerror(errno));
         }
-        return printlog(LOG_ERR, "bind(2) to %s: %s", socketpath, strerror(errno));
     }
+    printlog(LOG_DEBUG, "bound to %s", socketpath);
 
     return 0;
 }
@@ -209,18 +220,19 @@ ipc_read_request(struct ipc_session *session)
     if (bytes < 0)
         return printlog(LOG_ERR, "recvfrom(2): %s", strerror(errno));
     printlog(LOG_DEBUG, "<<< %s", buf);
-    if (jsonrpc_request_parse(&session->req, buf, bytes) < 0)
+    if (jsonrpc_request_parse(&session->req, buf, bytes) < 0) {
+        (void) ipc_send_response(session, IPC_RES_ERR(-32600, "Invalid request"));
         return printlog(LOG_ERR, "unable to parse client request");
-
+    }
     return 0;
 }
 
 int
-ipc_connect(void)
+ipc_connect(const char *service)
 {
     struct sockaddr_un saun;
 
-    if (create_ipc_socket() < 0)
+    if (create_ipc_socket(service) < 0)
         return -1;
 
     memset(&saun, 0, sizeof(saun));
