@@ -172,6 +172,35 @@ parse_array_of_strings(struct string_array *result, toml_table_t *tab, const cha
 }
 
 static int
+parse_dict_of_strings(struct string_array *result, toml_table_t *tab, const char *top_key)
+{
+    toml_table_t* subtab;
+    const char *key;
+    char *val;
+    const char *raw;
+    int i;
+
+    subtab = toml_table_in(tab, top_key);
+    if (!subtab) {
+        return 0;
+    }
+
+    for (i = 0; (key = toml_key_in(subtab, i)) != 0; i++) {
+        raw = toml_raw_in(subtab, key);
+        if (!raw || toml_rtos(raw, &val))
+            return printlog(LOG_ERR, "error parsing %s", key);
+
+        if (string_array_push_back(result, strdup(key)) < 0)
+            return -1;
+        if (string_array_push_back(result, strdup(val)) < 0) {
+            //FIXME: need to pop the last element off
+            return -1;
+        }
+    }
+    return 0;
+}
+
+static int
 parse_environment_variables(struct job *job, toml_table_t *tab)
 {
 	toml_table_t* subtab;
@@ -235,6 +264,8 @@ parse_job(struct job_parser *jpr)
 		goto_err("keep_alive");
 	if (parse_string(&j->title, tab, "title", j->id))
 		goto_err("title");
+	if (parse_dict_of_strings(j->methods, tab, "methods"))
+	    goto_err("methods");
 	if (parse_string(&j->root_directory, tab, "root_directory", "/"))
 		goto_err("root_directory");
 	if (parse_string(&j->standard_error_path, tab, "stderr", "/dev/null"))

@@ -486,6 +486,8 @@ job_new(void)
         goto err_out;
     if (!(j->environment_variables = string_array_new()))
         goto err_out;
+    if (!(j->methods = string_array_new()))
+        goto err_out;
 
     return (j);
 
@@ -504,6 +506,7 @@ job_free(struct job *job)
         free(job->description);
         string_array_free(job->environment_variables);
         free(job->id);
+        string_array_free(job->methods);
         free(job->title);
         free(job->root_directory);
         free(job->standard_error_path);

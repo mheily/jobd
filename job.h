@@ -74,6 +74,7 @@ struct job {
 	char *group_name;
 	bool init_groups;
 	bool keep_alive;
+	struct string_array *methods;
 	char *title;
 	char *root_directory;
 	char *standard_error_path;

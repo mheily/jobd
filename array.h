@@ -102,4 +102,19 @@ string_array_contains(struct string_array *haystack, const char *needle)
 	return (0);
 }
 
+/* Lookup a value in an associative array of [key, value, ...] pairs */
+static inline const char *
+string_array_dict_lookup(struct string_array *haystack, const char *needle)
+{
+    uint32_t i;
+
+    if (!haystack || !needle)
+        return NULL;
+    for (i = 0; i < haystack->pos; i += 2) {
+        if (!strcmp(haystack->strp[i], needle))
+            return haystack->strp[i+1];
+    }
+    return NULL;
+}
+
 #endif /* _ARRAY_H */
