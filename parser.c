@@ -560,46 +560,42 @@ insert_default_values:
 
 int job_db_insert_state(struct job_parser *jpr)
 {
-    char *buf;
+    static const char * disabled_str = "disabled";
+    static const char * enabled_str = "pending";
+    const char *state_str;
 
     toml_table_t *subtab = toml_table_in(jpr->tab, "properties");
     if (subtab) {
         const char *raw = toml_raw_in(subtab, "enabled");
         int datatype;
         if (raw) {
+            char CLEANUP_STR *buf = NULL;
             if (_toml_raw_to_sqlite_value(&buf, &datatype, raw) < 0)
                 return -1;
             if (datatype != PROPERTY_TYPE_BOOL)
                 return -2;
+            state_str = strcmp(buf, "0") == 0 ? disabled_str : enabled_str;
         } else {
-            buf = strdup("1");
+            state_str = enabled_str;
         }
     } else {
-        buf = strdup("1");
+        state_str = enabled_str;
     }
 
     sqlite3_stmt CLEANUP_STMT *stmt = NULL;
     const char *sql =
             "INSERT INTO jobs_current_states "
-            "(job_id, job_state_id) VALUES (?,?)";
-
-            /* TODO: stop hardcoding job_state_id and do something like:
-            "       CASE ? "
-            "       WHEN '0' THEN (SELECT id FROM job_states WHERE name = 'disabled') "
-            "       WHEN '1' THEN (SELECT id FROM job_states WHERE name = 'pending') "
-            "       END job_state_id)";
-             */
+            "(job_id, job_state_id) VALUES (?,(SELECT id FROM job_states WHERE name = ?))";
 
     if (sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) != SQLITE_OK)
         return db_error;
     if (sqlite3_bind_int64(stmt, 1, jpr->job->row_id) != SQLITE_OK)
         return db_error;
-    if (sqlite3_bind_int64(stmt, 2, ((buf[0] = '1') ? 2 : 1)) != SQLITE_OK)
+    if (sqlite3_bind_text(stmt, 2, state_str, -1, SQLITE_STATIC) != SQLITE_OK)
         return db_error;
     if (sqlite3_step(stmt) != SQLITE_DONE)
         return db_error;
 
-    free(buf); // XXX-will leak in unhappy path
     return 0;
 }
 
