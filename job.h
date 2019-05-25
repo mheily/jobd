@@ -75,6 +75,7 @@ struct job {
 	bool init_groups;
 	bool keep_alive;
 	struct string_array *methods;
+    struct string_array *properties;
 	char *title;
 	char *root_directory;
 	char *standard_error_path;
@@ -100,6 +101,7 @@ void job_free(struct job *);
 const char * job_id_to_str(job_id_t jid);
 
 int job_get_label_by_pid(char label[JOB_ID_MAX], pid_t pid);
+const char *job_get_label(const struct job *job);
 int job_get_id(int64_t *jid, const char *label);
 int job_get_pid(pid_t *pid, int64_t row_id);
 int job_get_property(char **value, const char *key, int64_t jid);
