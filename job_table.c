@@ -14,6 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -24,5 +25,17 @@ static LIST_HEAD(, job_table_entry) jobtab;
 int job_table_init()
 {
     LIST_INIT(&jobtab);
+    return 0;
+}
+
+int job_table_insert(struct job_table *tab, struct job *job)
+{
+    struct job_table_entry *jte;
+
+    jte = calloc(1, sizeof(*jte));
+    if (!jte)
+        return -1;
+    jte->jte_job = job;
+    LIST_INSERT_HEAD(&jobtab, jte, jte_ent);
     return 0;
 }

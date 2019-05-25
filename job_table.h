@@ -20,8 +20,8 @@
 #include <sys/queue.h>
 #include <sys/types.h>
 
-
 enum terminfo {
+    TERMINFO_NEVER_RAN, // has never ran
     TERMINFO_SIGNAL, // caught signal
     TERMINFO_EXIT, // called exit()
 };
@@ -38,5 +38,5 @@ struct job_table_entry {
 };
 
 int job_table_init();
-
+int job_table_insert(struct job_table *tab, struct job *job);
 #endif //JOBD_JOB_TABLE_H
