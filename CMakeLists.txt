@@ -118,24 +118,10 @@ add_executable(jobprop
 
 target_link_libraries(jobprop static_sqlite)
 
-add_executable(supervise
-        supervise.c
-        database.c
-        event_loop.c
-        event_loop.h
-        ipc.c
-        job.c
-        jsonrpc.c
-        jsonrpc.h
-        logger.c
-        )
-
-target_link_libraries(supervise static_sqlite)
-
 #
 # Installation
 #
-install(TARGETS init supervise
+install(TARGETS init
         RUNTIME
         DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/${CMAKE_PROJECT_NAME})
 
