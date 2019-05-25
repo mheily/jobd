@@ -18,12 +18,28 @@
 #define _JOBD_MEMORY_H
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #define CLEANUP_STR __attribute__((__cleanup__(string_free)))
+
+
+/* Move a local variable somewhere else, so it will not be automatically cleaned up */
+#define LOCAL_MOVE(_lm_dst, _lm_src) do { \
+    *(_lm_dst) = _lm_src; \
+    _lm_src = NULL; \
+} while (0)
 
 static inline void string_free(char **strp) {
 	free(*strp);
 	*strp = NULL;
+}
+
+#define CLEANUP_FILE __attribute__((__cleanup__(file_handle_free)))
+static inline void file_handle_free(FILE **fhp) {
+    if (*fhp) {
+        fclose(*fhp);
+        *fhp = (void*)0xdeadbeef;
+    }
 }
 
 struct sqlite3_stmt;
