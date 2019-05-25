@@ -28,7 +28,7 @@ int job_table_init()
     return 0;
 }
 
-int job_table_insert(struct job_table *tab, struct job *job)
+int job_table_insert(struct job *job)
 {
     struct job_table_entry *jte;
 

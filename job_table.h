@@ -38,5 +38,5 @@ struct job_table_entry {
 };
 
 int job_table_init();
-int job_table_insert(struct job_table *tab, struct job *job);
+int job_table_insert(struct job *job);
 #endif //JOBD_JOB_TABLE_H
