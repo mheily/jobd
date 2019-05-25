@@ -12,13 +12,13 @@ err() {
 
 assert_contains() {
 	msg="$*"
-	echo "assert_contains: waiting for: ${msg}"
+	echo "---- assert_contains: waiting for: ${msg}"
 	for x in $(seq 1 10) ; do
 		grep -q "$msg" $logfile && break || true
 		sleep 1
 	done
 	grep -q "$msg" $logfile || err "unexpected response"
-	echo "assert_contains: success: ${msg}"
+	echo "++++ assert_contains: success: ${msg}"
 }
 
 trap cleanup EXIT
@@ -42,6 +42,7 @@ touch $logfile
 tail -f $logfile &
 tail_pid=$!
 $objdir/sbin/jobd -fvv > $logfile 2>&1 &
+#valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes $objdir/sbin/jobd -fvv > $logfile 2>&1 &
 jobd_pid=$!
 
 
