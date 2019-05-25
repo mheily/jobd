@@ -48,15 +48,15 @@ parse_bool(bool *result, toml_table_t *tab, const char *key, bool default_value)
 	raw = toml_raw_in(tab, key);
 	if (!raw) {
 		*result = default_value;
-		return (0);
-	}
-	
-	if (!toml_rtob(raw, &rv)) {
-		*result = rv;
-		return (0);	
 	} else {
- 		return (-1);
-	}
+        if (!toml_rtob(raw, &rv)) {
+            *result = rv;
+        } else {
+            *result = 2; // Not really helpful
+            return printlog(LOG_ERR, "error converting to bool");
+        }
+    }
+    return 0;
 }
 
 static int
@@ -72,20 +72,20 @@ parse_string(char **result, toml_table_t *tab, const char *key, const char *defa
 				printlog(LOG_ERR, "strdup(3): %s", strerror(errno));
 				goto err;
 			}
-			return (0);
+			return 0;
 		} else {
 			printlog(LOG_ERR, "no value provided for %s and no default", key);
 			goto err;
 		}
 	}
-	
+
 	if (toml_rtos(raw, result)) {
 		printlog(LOG_ERR, "invalid value for %s", key);
 		*result = NULL;
 		return (-1);
 	}
 
-	return (0);
+	return 0;
 
 err:
 	*result = NULL;
@@ -93,56 +93,41 @@ err:
 }
 
 
-
 static int
 parse_uid(uid_t *result, toml_table_t *tab, const char *key, const uid_t default_value)
 {
 	struct passwd *pwd;
 	const char *raw;
-	char *buf;
+	char CLEANUP_STR *buf = NULL;
+
+	*result = -1;
 
 	raw = toml_raw_in(tab, key);
 	if (!raw) {
 		*result = default_value;
-		return (0);
-	}
-	
-	if (toml_rtos(raw, &buf)) {
-		printlog(LOG_ERR, "invalid value for %s", key);
-		*result = -1;
-		return (-1);
-	}
-
-	pwd = getpwnam(buf);
-	if (pwd) {
-		*result = pwd->pw_uid;
-		free(buf);
-		return (0);
 	} else {
-		printlog(LOG_ERR, "user not found: %s", buf);
-		free(buf);
-		return (-1);
-	}
+        if (toml_rtos(raw, &buf))
+            return printlog(LOG_ERR, "invalid value for %s", key);
+
+        pwd = getpwnam(buf);
+        if (!pwd)
+            return printlog(LOG_ERR, "user not found: %s", buf);
+        *result = pwd->pw_uid;
+    }
+
+	return 0;
 }
 
 static int
 uid_to_name(char **name, uid_t uid)
 {
-	struct passwd *pwd;
-
-	pwd = getpwuid(uid);
-	if (pwd) {
-		*name = strdup(pwd->pw_name);
-		if (*name == NULL) {
-			printlog(LOG_ERR, "strdup(3): %s", strerror(errno));
-			return (-1);	
-		} else {
-			return (0);
-		}
-	} else {
-		printlog(LOG_ERR, "user not found for uid %d", uid);
-		return (-1);
-	}
+	struct passwd *pwd = getpwuid(uid);
+	if (!pwd)
+        return printlog(LOG_ERR, "getpwuid(3) of %d: %s", uid, strerror(errno));
+    *name = strdup(pwd->pw_name);
+    if (*name == NULL)
+        return printlog(LOG_ERR, "strdup(3): %s", strerror(errno));
+    return 0;
 }
 
 static int
@@ -154,21 +139,18 @@ parse_array_of_strings(struct string_array *result, toml_table_t *tab, const cha
 	int i;
 
 	arr = toml_array_in(tab, top_key);
-	if (!arr) {
-		return (0);
-	}
+	if (!arr)
+		return 0;
 
 	for (i = 0; (raw = toml_raw_at(arr, i)) != 0; i++) {
-		if (!raw || toml_rtos(raw, &val)) {
-			printlog(LOG_ERR, "error parsing %s element %d", top_key, i);
-			return (-1);
-		} else {
-			if (string_array_push_back(result, strdup(val)) < 0)
-				return (-1);
-		}
+		if (!raw || toml_rtos(raw, &val))
+			return printlog(LOG_ERR, "error parsing %s element %d", top_key, i);
+//FIXME: leak if strdup fail
+        if (string_array_push_back(result, strdup(val)) < 0)
+            return -1;
 	}
 
-	return (0);
+	return 0;
 }
 
 static int
@@ -210,27 +192,24 @@ parse_environment_variables(struct job *job, toml_table_t *tab)
 	int i;
 
 	subtab = toml_table_in(tab, "environment");
-	if (!subtab) {
-		return (0);
-	}
+	if (!subtab)
+	    return 0;
 		
 	for (i = 0; (key = toml_key_in(subtab, i)) != 0; i++) {
 		raw = toml_raw_in(subtab, key);
-		if (!raw || toml_rtos(raw, &val)) {
-			printlog(LOG_ERR, "error parsing %s", key);
-			return (-1);
-		}
+		if (!raw || toml_rtos(raw, &val))
+			return printlog(LOG_ERR, "error parsing %s", key);
 		if (asprintf(&keyval, "%s=%s", key, val) < 0) {
 			printlog(LOG_ERR, "asprintf: %s", strerror(errno));
 			free(val);
 		}
 		free(val);
-
+//fixme several leaks here
 		if (string_array_push_back(job->environment_variables, keyval) < 0)
 			return (-1);
 	}
 
-	return (0);
+	return 0;
 }
 
 int
@@ -346,57 +325,55 @@ os_err:
 int
 parse_job_file(struct job_parser *jpr, const char *path)
 {
-	FILE *fh;
+	FILE CLEANUP_FILE *fh = NULL;
 	char errbuf[256];
 
-	jpr->job = job_new();
-	if (!jpr->job) {
-		printlog(LOG_ERR, "calloc: %s", strerror(errno));
-		return (-1);
-	}
-		
 	fh = fopen(path, "r");
-	if (!fh) {
-		printlog(LOG_ERR, "fopen(3) of %s: %s", path, strerror(errno));
-		goto err;
-	}
+	if (!fh)
+		return printlog(LOG_ERR, "fopen(3) of %s: %s", path, strerror(errno));
 
 	jpr->tab = toml_parse_file(fh, errbuf, sizeof(errbuf));
-	if (!jpr->tab) {
-		printlog(LOG_ERR, "error parsing %s: %s", path, (char*) &errbuf);
-		goto err;
-	}
-	(void) fclose(fh);
+	if (!jpr->tab)
+		return printlog(LOG_ERR, "error parsing %s: %s", path, (char*) &errbuf);
 
-	if (parse_job(jpr) < 0) {
-		printlog(LOG_ERR, "parse_job() failed");
-		goto err;
-	}
+	if (parse_job(jpr) < 0)
+		return printlog(LOG_ERR, "parse_job() failed");
 
-	if (jpr->job->id[0] == '\0') {
-		if (generate_job_name(jpr->job, path) < 0)
-			goto err;
-	}
+	if (jpr->job->id[0] == '\0' && generate_job_name(jpr->job, path) < 0)
+	    return printlog(LOG_ERR, "unable to generate job name");
 
-	return (0);
-
-err:
-	job_parser_free(jpr);
-	return (-1);
+	return 0;
 }
 
-struct job_parser * job_parser_new(void)
+int job_parser_new(struct job_parser **result)
 {
-	return calloc(1, sizeof(struct job_parser));
+    struct job_parser CLEANUP_JOB_PARSER *parser = NULL;
+    *result = NULL;
+    parser = calloc(1, sizeof(struct job_parser));
+    if (!parser)
+        return printlog(LOG_ERR, "calloc: %s", strerror(errno));
+    parser->job = job_new();
+    if (!parser->job)
+        return printlog(LOG_ERR, "alloc error");
+
+    LOCAL_MOVE(result, parser);
+
+    return 0;
 }
 
-void job_parser_free(struct job_parser *jpr)
+void job_parser_destroy(struct job_parser **jpr)
 {
-	if (jpr) {
-		toml_free(jpr->tab);
-		job_free(jpr->job);
-		free(jpr);
+	if (*jpr) {
+		toml_free((*jpr)->tab);
+		job_free((*jpr)->job);
+		free(*jpr);
+		*jpr = NULL;
 	}
+}
+
+struct job *job_parser_get_job(struct job_parser *jpr)
+{
+    return jpr->job;
 }
 
 static int
@@ -652,10 +629,11 @@ job_db_insert(struct job_parser *jpr)
 static int
 import_from_file(const char *path)
 {
-	struct job_parser *jpr;
+	struct job_parser CLEANUP_JOB_PARSER *jpr = NULL;
 
-	if (!(jpr = job_parser_new()))
-		return -1;
+
+	if (job_parser_new(&jpr) < 0)
+		return printlog(LOG_ERR, "allocation failed");
 
 	printlog(LOG_DEBUG, "importing job from manifest at %s", path);
 	if (parse_job_file(jpr, path) != 0)
@@ -664,7 +642,6 @@ import_from_file(const char *path)
 	if (job_db_insert(jpr) < 0)
 		abort();
 
-	job_parser_free(jpr);
 	return 0;
 }
 

@@ -22,9 +22,12 @@ struct job_parser;
 
 int job_db_insert(struct job_parser *jpr);
 int parse_job_file(struct job_parser *jpr, const char *path);
-struct job_parser * job_parser_new(void);
-void job_parser_free(struct job_parser *jpr);
+struct job *job_parser_get_job(struct job_parser *jpr);
+int job_parser_new(struct job_parser **result);
+void job_parser_destroy(struct job_parser **jpr);
 int parser_import(const char *path);
+
+#define CLEANUP_JOB_PARSER __attribute__((__cleanup__(job_parser_destroy)))
 
 #define PROPERTY_TYPE_INVALID 0
 #define PROPERTY_TYPE_INT 1
