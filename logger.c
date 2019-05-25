@@ -117,6 +117,26 @@ logger_add_stderr_appender(void)
 }
 
 int
+logger_redirect_file_descriptor(int oldfd, const char *path, int flags, mode_t mode)
+{
+    int newfd;
+
+    newfd = open(path, flags, mode);
+    if (newfd < 0)
+        return printlog(LOG_ERR, "open(2) of %s: %s", path, strerror(errno));
+
+    if (dup2(newfd, oldfd) < 0) {
+        printlog(LOG_ERR, "dup2(2): %s", strerror(errno));
+        (void) close(newfd);
+        return -1;
+    }
+    if (close(newfd) < 0)
+        return printlog(LOG_ERR, "close(2): %s", strerror(errno));
+
+    return 0;
+}
+
+int
 logger_init(void)
 {
     if (status_flags.initialized) {

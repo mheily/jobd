@@ -37,5 +37,6 @@ void logger_shutdown(void);
 int logger_open(const char *);
 int __attribute__((format(printf, 2, 3))) logger_append(int level, const char *format, ...);
 void logger_set_verbose(int);
+int logger_redirect_file_descriptor(int oldfd, const char *path, int flags, mode_t mode);
 
 #endif /* _LOGGER_H */

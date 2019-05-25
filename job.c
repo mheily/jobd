@@ -104,29 +104,6 @@ void autofree_child_context(struct child_context **ctx)
 }
 
 static int
-redirect_file_descriptor(int oldfd, const char *path, int flags, mode_t mode)
-{
-    int newfd;
-
-    newfd = open(path, flags, mode);
-    if (newfd < 0) {
-        printlog(LOG_ERR, "open(2) of %s: %s", path, strerror(errno));
-        return (-1);
-    }
-    if (dup2(newfd, oldfd) < 0) {
-        printlog(LOG_ERR, "dup2(2): %s", strerror(errno));
-        (void) close(newfd);
-        return (-1);
-    }
-    if (close(newfd) < 0) {
-        printlog(LOG_ERR, "close(2): %s", strerror(errno));
-        return (-1);
-    }
-
-    return (0);
-}
-
-static int
 parse_gid(gid_t *result, const char *group_name)
 {
     struct group *grp;
@@ -201,11 +178,11 @@ _job_child_pre_exec(struct child_context *ctx)
     //TODO this->setup_environment();
     //this->createDescriptors();
 
-    if (redirect_file_descriptor(STDIN_FILENO, ctx->stdin_path, O_RDONLY, 0600) < 0)
+    if (logger_redirect_file_descriptor(STDIN_FILENO, ctx->stdin_path, O_RDONLY, 0600) < 0)
         return printlog(LOG_ERR, "unable to redirect STDIN");
-    if (redirect_file_descriptor(STDOUT_FILENO, ctx->stdout_path, O_CREAT | O_WRONLY, 0600) < 0)
+    if (logger_redirect_file_descriptor(STDOUT_FILENO, ctx->stdout_path, O_CREAT | O_WRONLY, 0600) < 0)
         return printlog(LOG_ERR, "unable to redirect STDOUT");
-    if (redirect_file_descriptor(STDERR_FILENO, ctx->stderr_path, O_CREAT | O_WRONLY, 0600) < 0)
+    if (logger_redirect_file_descriptor(STDERR_FILENO, ctx->stderr_path, O_CREAT | O_WRONLY, 0600) < 0)
         return printlog(LOG_ERR, "unable to redirect STDERR");
 
     return 0;
@@ -932,3 +909,7 @@ int job_get_id(int64_t *jid, const char *label)
     return db_get_id(jid, sql, "s", label);
 }
 
+const char *job_get_label(const struct job *job)
+{
+    return job->id;
+}
