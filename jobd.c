@@ -378,7 +378,6 @@ ipc_server_handler(event_t *ev __attribute__((unused)))
 
     if (ipc_read_request(session) < 0) {
         printlog(LOG_ERR, "ipc_read_request() failed");
-        (void) ipc_send_response(session, IPC_RES_ERR(-32600, "Invalid request"));
         return (-1);
     }
 
