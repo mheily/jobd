@@ -58,6 +58,8 @@ add_executable(jobd
         ipc.h
         job.c
         job.h
+        job_table.c
+        job_table.h
         jobd.c
         jsonrpc.c
         jsonrpc.h
@@ -68,8 +70,7 @@ add_executable(jobd
         parser.h
         queue.h
         toml.c
-        toml.h
-        )
+        toml.h)
 
 target_link_libraries(jobd static_sqlite)
 

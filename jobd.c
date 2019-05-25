@@ -52,6 +52,7 @@
 #include "event_loop.h"
 #include "logger.h"
 #include "job.h"
+#include "job_table.h"
 #include "ipc.h"
 #include "pidfile.h"
 
@@ -559,6 +560,9 @@ main(int argc, char *argv[])
     } else {
         logger_add_stderr_appender();
     }
+
+	if (job_table_init() < 0)
+        crash("unable to initialize job table");
 
 	if (ipc_init() < 0)
 	    crash("unable to initialize IPC");
