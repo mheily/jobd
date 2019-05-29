@@ -66,7 +66,6 @@ struct job {
 	/* Items below here are parsed from the manifest */
 	struct string_array *before, *after;
 	char *id;
-	char *command;
 	char *description;
 	bool wait_flag;
 	struct string_array *environment_variables;
@@ -105,7 +104,6 @@ const char *job_get_label(const struct job *job);
 int job_get_id(int64_t *jid, const char *label);
 int job_get_pid(pid_t *pid, int64_t row_id);
 int job_get_property(char **value, const char *key, int64_t jid);
-int job_get_command(char dest[JOB_ARG_MAX], job_id_t id);
 int job_get_method(char **dest, job_id_t jid, const char *method_name);
 int job_get_state(enum job_state *state, job_id_t id);
 int job_set_property(int64_t jid, const char *key, const char *value);

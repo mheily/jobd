@@ -188,60 +188,6 @@ _job_child_pre_exec(struct child_context *ctx)
     return 0;
 }
 
-static int
-job_command_exec(pid_t *child, job_id_t id, const char *command)
-{
-    pid_t pid;
-    char *filename;
-    char exec_command[JOB_ARG_MAX + sizeof("exec ")];
-    char *argv[5];
-    static char *envp_workaround[] = {NULL};
-    char **envp;
-    ssize_t rv;
-
-    *child = 0;
-
-    rv = snprintf((char *) &exec_command, sizeof(exec_command), "exec %s", command);
-    if (rv < 0 || rv >= (int) sizeof(exec_command)) {
-        printlog(LOG_ERR, "buffer too small");
-        return (-1);
-    }
-
-    filename = "/bin/sh";
-    argv[0] = "/bin/sh";
-    argv[1] = "-c";
-    argv[2] = exec_command;
-    argv[3] = NULL;
-    envp = (char **) &envp_workaround; //string_array_data(job->environment_variables);
-
-    struct child_context CLEANUP_CHILD_CTX *ctx = NULL;
-    if (NULL == (ctx = malloc(sizeof(*ctx))))
-        return printlog(LOG_ERR, "malloc(3): %s", strerror(errno));
-    if (get_child_context(ctx, id) < 0)
-        return printlog(LOG_ERR, "error getting child context");
-
-    pid = fork();
-    if (pid < 0) {
-        printlog(LOG_ERR, "fork(2): %s", strerror(errno));
-        return (-1);
-    } else if (pid == 0) {
-        if (_job_child_pre_exec(ctx) < 0) {
-            printlog(LOG_ERR, "error setting child context");
-            exit(EXIT_FAILURE);
-        }
-        if (execve(filename, argv, envp) < 0) {
-            printlog(LOG_ERR, "execve(2): %s", strerror(errno));
-            exit(EXIT_FAILURE);
-        }
-        /* NOTREACHED */
-    } else {
-        printlog(LOG_DEBUG, "job `%s': executing command as pid %d: %s", job_id_to_str(id), pid, exec_command);
-        *child = pid;
-    }
-
-    return (0);
-}
-
 static int job_script_exec(pid_t *child, job_id_t jid, char *script);
 
 int
@@ -335,52 +281,16 @@ const char *job_state_to_str(enum job_state state)
 int
 job_start(pid_t *pid, job_id_t id)
 {
-    enum job_state state;
-    char command[JOB_ARG_MAX];
+    if (job_method_exec(pid, id, "start") < 0)
+        return printlog(LOG_ERR, "start method failed");
 
-    if (job_get_state(&state, id) < 0) {
-        printlog(LOG_ERR, "unable to get job state");
-        return (-1);
-    }
-    if (job_get_command(command, id) < 0) {
-        printlog(LOG_ERR, "unable to get command");
-        return (-1);
-    }
-
-    printlog(LOG_DEBUG, "job `%s' current_state=%s next_state=starting", job_id_to_str(id), job_state_to_str(state));
-
-    if (state != JOB_STATE_PENDING && state != JOB_STATE_STOPPED) {
-        printlog(LOG_ERR, "job is in the wrong state to be started: %s", job_state_to_str(state));
-        return (-1);
-    }
-
-    if (command[0] != '\0') {
-        if (job_command_exec(pid, id, command) < 0) {
-            printlog(LOG_ERR, "start command failed");
-            return (-1);
-        }
-    } else {
-        if (job_method_exec(pid, id, "start") < 0) {
-            printlog(LOG_ERR, "start method failed");
-            return (-1);
-        }
-    }
-
-    /*
-        job->state = JOB_STATE_STARTING;
-
-        TODO: allow the use of a check script that waits for the service to finish initializing.
-    */
     if (*pid > 0) {
-        if (job_set_state(id, JOB_STATE_RUNNING) < 0)
-            return printlog(LOG_ERR, "unable to set state");
-
         printlog(LOG_DEBUG, "job %s started with pid %d", job_id_to_str(id), *pid);
         if (job_register_pid(id, *pid) < 0)
             return printlog(LOG_ERR, "unable to register pid");
     }
 
-    return (0);
+    return 0;
 }
 
 int
@@ -479,7 +389,6 @@ job_free(struct job *job)
     if (job) {
         string_array_free(job->after);
         string_array_free(job->before);
-        free(job->command);
         free(job->description);
         string_array_free(job->environment_variables);
         free(job->id);
@@ -494,28 +403,6 @@ job_free(struct job *job)
         free(job->group_name);
         free(job->umask_str);
         free(job);
-    }
-}
-
-int job_get_command(char dest[JOB_ARG_MAX], job_id_t jid)
-{
-    sqlite3_stmt CLEANUP_STMT *stmt = NULL;
-    const char sql[] = "SELECT command FROM jobs WHERE id = ?";
-
-    dest[0] = '\0';
-
-    if (db_query(&stmt, sql, "i", jid) < 0)
-        return printlog(LOG_ERR, "db_query() failed");
-
-    switch (sqlite3_step(stmt)) {
-        case SQLITE_ROW:
-            strncpy(dest, (char *) sqlite3_column_text(stmt, 0), JOB_ARG_MAX - 2);
-            dest[JOB_ARG_MAX - 1] = '\0';
-            return 0;
-        case SQLITE_DONE:
-            return -1; //lame
-        default:
-            return db_error;
     }
 }
 

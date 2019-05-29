@@ -16,7 +16,6 @@ CREATE TABLE jobs (
     id INTEGER PRIMARY KEY,
     job_id TEXT UNIQUE NOT NULL,
     job_type_id INTEGER NOT NULL,
-    command TEXT NOT NULL, -- DEADWOOD: should rip this out in favor of stop/start methods
     description VARCHAR,
     wait BOOLEAN NOT NULL DEFAULT 0 CHECK (wait IN (0,1)),
     gid VARCHAR,

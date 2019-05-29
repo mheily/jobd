@@ -223,8 +223,6 @@ parse_job(struct job_parser *jpr)
 
 	if (parse_string(&j->id, tab, "name", ""))
 		goto_err("name");
-	if (parse_string(&j->command, tab, "command", ""))
-		goto_err("command");
 	if (parse_string(&j->description, tab, "description", ""))
 		goto_err("description");
 	if (parse_array_of_strings(j->after, tab, "after"))
@@ -587,7 +585,7 @@ job_db_insert(struct job_parser *jpr)
     const char *sql = "INSERT INTO jobs (job_id, description, gid, init_groups, "
                       "keep_alive, root_directory, standard_error_path, "
                       "standard_in_path, standard_out_path, umask, user_name, "
-                      "working_directory, command, wait, job_type_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                      "working_directory, wait, job_type_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
     rv = sqlite3_prepare_v2(dbh, sql, -1, &stmt, 0) == SQLITE_OK &&
          sqlite3_bind_text(stmt, 1, job->id, -1, SQLITE_STATIC) == SQLITE_OK &&
@@ -602,9 +600,8 @@ job_db_insert(struct job_parser *jpr)
          sqlite3_bind_text(stmt, 10, job->umask_str, -1, SQLITE_STATIC) == SQLITE_OK &&
          sqlite3_bind_text(stmt, 11, job->user_name, -1, SQLITE_STATIC) == SQLITE_OK &&
          sqlite3_bind_text(stmt, 12, job->working_directory, -1, SQLITE_STATIC) == SQLITE_OK &&
-         sqlite3_bind_text(stmt, 13, job->command, -1, SQLITE_STATIC) == SQLITE_OK &&
-         sqlite3_bind_int(stmt, 14, job->wait_flag) == SQLITE_OK &&
-         sqlite3_bind_int(stmt, 15, job->job_type) == SQLITE_OK;
+         sqlite3_bind_int(stmt, 13, job->wait_flag) == SQLITE_OK &&
+         sqlite3_bind_int(stmt, 14, job->job_type) == SQLITE_OK;
 
     if (!rv || sqlite3_step(stmt) != SQLITE_DONE)
         return printlog(LOG_ERR, "error importing %s", job->id);
