@@ -1,5 +1,12 @@
 # jobd
 
+## IMPORTANT NOTICE
+
+Development of this project has been paused indefinitely.
+Current efforts are focused on reviving and improving the
+original [relaunchd](https://github.com/mheily/relaunchd) project
+instead.
+
 ## Overview 
 
 jobd is an init system. It is currently under heavy development, and should not be used for anything important. Be especially mindful that there is NO WARRANTY provided with this software.  
